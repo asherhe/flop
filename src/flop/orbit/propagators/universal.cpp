@@ -6,6 +6,8 @@
 #include <numeric>
 #include <stdexcept>
 
+#include "flop/orbit/scale.hpp"
+
 namespace flop::orbit {
 namespace {
 
@@ -96,7 +98,10 @@ UniversalPropagator::UniversalPropagator(double mu, const OrbitState &orbit) :
     throw std::invalid_argument("Invalid universal propagation seed");
   }
 
-  speed_scale_ = std::sqrt(mu / radius_at_epoch_);
+  if (!std::isfinite(radius_at_epoch_)) {
+    throw std::domain_error("Propagation seed exceeds the representable domain");
+  }
+  speed_scale_ = detail::circular_speed(mu, radius_at_epoch_);
   time_scale_ = radius_at_epoch_ / speed_scale_;
   if (!std::isfinite(time_scale_) || time_scale_ <= 0) {
     throw std::domain_error("Propagation seed exceeds the representable domain");
@@ -104,7 +109,7 @@ UniversalPropagator::UniversalPropagator(double mu, const OrbitState &orbit) :
 
   initial_position_ = position / radius_at_epoch_;
   initial_velocity_ = velocity / speed_scale_;
-  alpha_ = 2 - initial_velocity_.dot(initial_velocity_);
+  alpha_ = 2 - detail::relative_speed_squared(velocity, radius_at_epoch_, mu);
   radial_speed_ = initial_position_.dot(initial_velocity_);
   if (!std::isfinite(alpha_)) {
     throw std::domain_error("Propagation seed exceeds the representable domain");

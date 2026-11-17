@@ -174,6 +174,34 @@ TEST_CASE("Element initialization handles every conic with Unity's orientation c
   }
 }
 
+TEST_CASE("Hyperbolic epoch states retain their radius near the asymptote") {
+  constexpr double ECCENTRICITY = 2;
+  for (const double anomaly : {-38.0, 38.0}) {
+    CAPTURE(anomaly);
+    const auto expected = analytical(ECCENTRICITY, anomaly, 1, 1);
+    const auto seed = state_at_epoch_from_elements(1, 0, {1, ECCENTRICITY, 0, expected.mean});
+    check_state(seed.state, expected.state);
+    CHECK(
+        seed.state.position.length() / expected.state.position.length() == Approx(1).epsilon(1e-13)
+    );
+  }
+
+  constexpr double MEAN = std::numeric_limits<double>::max();
+  const auto distant = state_at_epoch_from_elements(1, 0, {1, ECCENTRICITY, 0, MEAN});
+  // for this orbit, r = (e cosh(F) - 1) / 3. at this scale r / M rounds to 1/3.
+  CHECK(distant.state.position.length() / (MEAN / 3) == Approx(1).epsilon(1e-13));
+}
+
+TEST_CASE("Parabolic epoch states retain their radius far from periapsis") {
+  constexpr double D = 1e20;
+  const auto expected = analytical(1, D, 1, 1);
+  const auto seed = state_at_epoch_from_elements(1, 0, {1, 1, 0, expected.mean});
+  CHECK(seed.state.position.x / expected.state.position.x == Approx(1).epsilon(1e-13));
+  CHECK(seed.state.position.y / expected.state.position.y == Approx(1).epsilon(1e-13));
+  CHECK(seed.state.velocity.x / expected.state.velocity.x == Approx(1).epsilon(1e-13));
+  CHECK(seed.state.velocity.y / expected.state.velocity.y == Approx(1).epsilon(1e-13));
+}
+
 TEST_CASE("Orbital geometry describes bound and unbound conics") {
   const OrbitState circular{0, {{4, 0}, {0, -2}}};
   const auto bound = geometry(16, circular);
@@ -243,6 +271,32 @@ TEST_CASE("Reseeding replaces the propagator's coefficients after validation") {
   check_state(propagator.state_at(30), expected.state_at(30));
   CHECK_THROWS_AS((propagator = UniversalPropagator{0, circular}), std::invalid_argument);
   check_state(propagator.state_at(30), expected.state_at(30));
+}
+
+TEST_CASE("Extreme unit scales preserve circular geometry and quarter-turn propagation") {
+  for (const int sign : {-1, 1}) {
+    CAPTURE(sign);
+    const double radius = std::scalbn(1.0, -80 * sign);
+    const double speed = std::scalbn(1.0, 540 * sign);
+    const double mu = std::scalbn(1.0, 1000 * sign);
+    const double time_scale = radius / speed;
+    const OrbitState seed{0, {{radius, 0}, {0, speed}}};
+    const auto shape = geometry(mu, seed);
+    CHECK(shape.eccentricity == 0);
+    CHECK(shape.semilatus_rectum / radius == 1);
+    CHECK(shape.periapsis / radius == 1);
+    CHECK(shape.apoapsis / radius == 1);
+    CHECK(shape.period / time_scale == Approx(2 * std::numbers::pi).epsilon(1e-13));
+
+    const auto from_elements = state_at_epoch_from_elements(mu, 0, {radius * speed, 0, 0, 0});
+    CHECK(from_elements.state.position.x / radius == 1);
+    CHECK(from_elements.state.velocity.y / speed == 1);
+
+    const UniversalPropagator propagator(mu, seed);
+    const auto state = propagator.state_at(time_scale * (std::numbers::pi / 2));
+    CHECK((state.position / radius - Vec2d{0, 1}).length() < 1e-13);
+    CHECK((state.velocity / speed - Vec2d{-1, 0}).length() < 1e-13);
+  }
 }
 
 TEST_CASE("Universal propagation rejects invalid seeds and query times") {
