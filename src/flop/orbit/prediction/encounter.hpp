@@ -37,6 +37,7 @@ inline constexpr std::size_t DEFAULT_ENCOUNTER_STEP_LIMIT = 250000;
 
 // gets a list of encounters with the given orbit over the requested time interval.
 // both orbits must name the same frame in frames. propagation uses that frame's gravity.
+// a minimum is confirmed by samples with distinguishable approach and recession rates.
 // the step limit bounds adaptive sampling. bracket refinement is separate.
 [[nodiscard]] EncounterSearchResult closest_approaches(
     const RefFrameManager &frames,

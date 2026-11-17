@@ -87,6 +87,13 @@ TEST_CASE("Closest approach finds the conjunction of two circular ephemerides") 
       first_soi_entry(frames, subject, frames.frame_id("moon"), 0, 2 * expected_ut, 0);
   CHECK_FALSE(disjoint.crossing_ut);
   CHECK(disjoint.searched_through == 2 * expected_ut);
+
+  const auto grazing_frames = planet_and_moon(MOON_ORBIT_RADIUS - RADIUS);
+  const auto grazing = first_soi_entry(
+      grazing_frames, subject, grazing_frames.frame_id("moon"), expected_ut - 1, expected_ut + 1, 1
+  );
+  CHECK_FALSE(grazing.crossing_ut);
+  CHECK(grazing.searched_through == expected_ut + 1);
 }
 
 TEST_CASE("SOI entry finds a short flyby with both interval endpoints outside") {
@@ -106,6 +113,24 @@ TEST_CASE("SOI entry finds a short flyby with both interval endpoints outside") 
   CHECK(*entry.crossing_ut < minimum_ut);
   CHECK(moon_distance(*entry.crossing_ut) == Approx(radius).margin(1e-9));
   CHECK(entry.searched_through == *entry.crossing_ut);
+}
+
+TEST_CASE("Constant separation produces neither closest approaches nor SOI entry") {
+  const double radius = std::sqrt(2.0);
+  const OrbitState center{0, {{0, 1}, {-1, 0}}, PLANET};
+  const RefFrameManager frames({
+      {"planet", 1, {}, {}, 0},
+      {"moon", MOON_MU, "planet", center, radius},
+  });
+  const OrbitState subject{0, {{1, 0}, {0, 1}}, PLANET};
+  constexpr double END_UT = 2 * std::numbers::pi;
+  const auto approaches = closest_approaches(frames, subject, center, 0, END_UT);
+  CHECK(approaches.encounters.empty());
+  CHECK(approaches.searched_through == END_UT);
+
+  const auto entry = first_soi_entry(frames, subject, frames.frame_id("moon"), 0, END_UT);
+  CHECK_FALSE(entry.crossing_ut);
+  CHECK(entry.searched_through == END_UT);
 }
 
 TEST_CASE("SOI searches report their completed coverage and reject invalid comparisons") {
@@ -177,6 +202,22 @@ TEST_CASE("Analytic SOI escape selects the next outbound crossing of a bound orb
   const auto already_outgoing = first_soi_escape(frames, orbit, 2 * crossing_ut, period, 0);
   REQUIRE(already_outgoing.crossing_ut.has_value());
   CHECK(*already_outgoing.crossing_ut == 2 * crossing_ut);
+}
+
+TEST_CASE("SOI escape detects a bound orbit starting just inside the boundary") {
+  constexpr double MU = 3;
+  constexpr double END_UT = 0.001;
+  const double radius = std::nextafter(2.0, 3.0);
+  const auto frames = escape_frames(MU, radius);
+  const OrbitState orbit{0, {{2, 0}, {0.375, 0.625}}, frames.frame_id("planet")};
+  const UniversalPropagator propagator(MU, orbit);
+  REQUIRE(propagator.position_at(0).length() < radius);
+  REQUIRE(propagator.position_at(END_UT).length() > radius);
+  const auto escape = first_soi_escape(frames, orbit, 0, END_UT);
+  REQUIRE(escape.crossing_ut.has_value());
+  CHECK(*escape.crossing_ut > 0);
+  CHECK(*escape.crossing_ut < 1e-12);
+  CHECK(escape.searched_through == *escape.crossing_ut);
 }
 
 TEST_CASE("Analytic SOI escape handles parabolic, near-parabolic and hyperbolic motion") {

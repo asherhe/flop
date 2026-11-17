@@ -65,6 +65,29 @@ struct Sample {
   [[nodiscard]] double rate() const {
     return range_rate_sign(first.position - second.position, first.velocity - second.velocity);
   }
+
+  // the differences inherit roundoff from the original states. compare the
+  // normalized dot product with that uncertainty before using its sign.
+  [[nodiscard]] double resolved_rate() const {
+    const double value = rate();
+    if (value == 0) {
+      return 0;
+    }
+    const double position_scale =
+        std::max(max_component(first.position), max_component(second.position));
+    const double velocity_scale =
+        std::max(max_component(first.velocity), max_component(second.velocity));
+    const double position_error =
+        (ROUNDING_MARGIN * position_scale) / max_component(first.position - second.position);
+    const double velocity_error =
+        (ROUNDING_MARGIN * velocity_scale) / max_component(first.velocity - second.velocity);
+    return std::abs(value) > position_error + velocity_error ? value : 0.0;
+  }
+
+  [[nodiscard]] double separation_error(double radius) const {
+    return ROUNDING_MARGIN *
+           std::max({radius, max_component(first.position), max_component(second.position)});
+  }
 };
 
 class Search {
@@ -122,13 +145,17 @@ inline SOISearchResult search_sphere_crossing(
     return direction * (point.separation() - radius);
   };
   const auto rate = [=](const Sample &point) { return direction * point.rate(); };
-  if (previous.ut < end_ut && distance(previous) >= 0 && rate(previous) > 0) {
+  const bool entering = direction < 0;
+  const auto resolved_rate = [=](const Sample &point) {
+    return entering ? direction * point.resolved_rate() : rate(point);
+  };
+  if (previous.ut < end_ut && distance(previous) >= 0 && resolved_rate(previous) > 0) {
     return {previous.ut, previous.ut};
   }
   for (std::size_t step = 0; step < step_limit && previous.ut < end_ut; ++step) {
     const Sample next = search.next(previous, end_ut);
     if (distance(previous) < 0) {
-      if (distance(next) >= 0 && rate(next) > 0) {
+      if (distance(next) >= 0 && resolved_rate(next) > 0) {
         const double ut = crossing(search, previous, next, distance).ut;
         return {ut, ut};
       }
@@ -136,10 +163,10 @@ inline SOISearchResult search_sphere_crossing(
       // falls inside the sphere. find the intervening closest approach, then
       // search between the earlier sample and that approach for the capture time.
       // for escape, use the farthest point to bracket the outward crossing.
-      if (rate(previous) > 0 && rate(next) <= 0) {
+      if (resolved_rate(previous) > 0 && rate(next) <= 0) {
         const auto extreme =
             crossing(search, previous, next, [&](const Sample &point) { return -rate(point); });
-        if (distance(extreme) > 0) {
+        if (distance(extreme) > (entering ? extreme.separation_error(radius) : 0)) {
           const double ut = crossing(search, previous, extreme, distance).ut;
           return {ut, ut};
         }

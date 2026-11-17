@@ -1,5 +1,6 @@
 #include "flop/orbit/prediction/encounter.hpp"
 
+#include <optional>
 #include <stdexcept>
 
 #include "flop/orbit/prediction/encounter_search.hpp"
@@ -25,18 +26,26 @@ EncounterSearchResult closest_approaches(
   const detail::Search search(mu, first_propagator, &second_propagator);
   EncounterSearchResult result{{}, begin_ut};
   detail::Sample previous = search.at(begin_ut);
-  // search for brackets where extrema exist. a change from negative to
-  // nonnegative in the derivative identifies a local minimum of distance.
+  std::optional<detail::Sample> approaching;
+  if (previous.resolved_rate() < 0) {
+    approaching = previous;
+  }
+  // search for brackets where extrema exist. confirm a change from
+  // approaching to receding across samples whose signs are resolved.
   for (std::size_t step = 0; step < step_limit && previous.ut < end_ut; ++step) {
     const detail::Sample next = search.next(previous, end_ut);
-    if (previous.rate() < 0 && next.rate() >= 0) {
+    const double rate = next.resolved_rate();
+    if (rate < 0) {
+      approaching = next;
+    } else if (rate > 0 && approaching) {
       // we've bracketed a local minimum of distance. refine its time and
       // retain the states of both orbits at that encounter.
       const detail::Sample approach =
-          detail::crossing(search, previous, next, [](const detail::Sample &point) {
+          detail::crossing(search, *approaching, next, [](const detail::Sample &point) {
             return point.rate();
           });
       result.encounters.push_back({approach.ut, approach.first, approach.second});
+      approaching.reset();
     }
     previous = next;
   }

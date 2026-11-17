@@ -98,6 +98,11 @@ std::optional<SOISearchResult> analytic_escape(
   const double exit_phase = time_from_periapsis(exit_chi, periapsis, eccentricity, alpha);
   double elapsed = exit_phase - start_phase;
   if (elapsed <= 0 && alpha > 0) {
+    if (start_radius < radius) {
+      // the outbound crossing is still ahead. nearly equal phases can cancel
+      // when the subject starts just inside the boundary.
+      return std::nullopt;
+    }
     // the outbound intersection is on the next period if it has already passed.
     elapsed += 2 * std::numbers::pi / (alpha * std::sqrt(alpha));
   }
