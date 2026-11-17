@@ -180,6 +180,36 @@ TEST_CASE("Simultaneous SOI entries prefer the lowest destination frame ID") {
   CHECK(immediate.transition->next_orbit.epoch == inside_ut);
 }
 
+TEST_CASE("Patch prediction follows a chain of SOI transitions at the same UT") {
+  const RefFrameManager frames({
+      {"star", 1, {}, {}, 0},
+      {"planet", 3, "star", OrbitState{0, {{1, 0}, {0, 1}}}, 10},
+      {"moon", 1e-4, "planet", OrbitState{0, {{3, 0}, {0, 1}}}, 2},
+  });
+  const auto star = frames.frame_id("star");
+  const auto planet = frames.frame_id("planet");
+  const auto moon = frames.frame_id("moon");
+  const OrbitState initial{0, {{5, 0}, {-0.5, 2}}, star};
+
+  for (double end_ut : {0.0, 1.0}) {
+    CAPTURE(end_ut);
+    const auto result = build_patches(frames, initial, 0, end_ut);
+    REQUIRE(result.patches.size() == 3);
+    CHECK(result.endpoint_resolved);
+    CHECK(result.searched_through == end_ut);
+    CHECK(result.patches.at(0).orbit.frame_id == star);
+    CHECK(result.patches.at(1).orbit.frame_id == planet);
+    CHECK(result.patches.at(1).begin_ut == 0);
+    CHECK(result.patches.at(1).end_ut == 0);
+    CHECK(result.patches.at(2).orbit.frame_id == moon);
+    CHECK(result.patches.at(2).begin_ut == 0);
+    CHECK(result.patch_at(0) == &result.patches.back());
+    CHECK(result.patches.back().orbit.state.position.x == 1);
+    CHECK(result.patches.back().orbit.state.velocity.x == -0.5);
+    CHECK(result.patches.back().orbit.state.velocity.y == 0);
+  }
+}
+
 TEST_CASE("Patch prediction validates inputs and retains the seed over a singleton interval") {
   const RefFrameManager frames({{"planet", PLANET_MU, {}, {}, 0}});
   const OrbitState initial{0, APPROACH, frames.frame_id("planet")};

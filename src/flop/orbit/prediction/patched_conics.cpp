@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <span>
 #include <stdexcept>
 
 #include "flop/orbit/prediction/encounter_search.hpp"
@@ -21,7 +22,8 @@ struct Candidate {
 } // namespace
 
 const OrbitPatch *OrbitPatchSegments::patch_at(double ut) const {
-  if (!std::isfinite(ut) || patches.empty() || ut > searched_through) {
+  if (!std::isfinite(ut) || patches.empty() || ut > searched_through ||
+      (ut == searched_through && !endpoint_resolved)) {
     return nullptr;
   }
   const auto next = std::ranges::upper_bound(patches, ut, {}, &OrbitPatch::begin_ut);
@@ -38,10 +40,6 @@ SOITransitionSearchResult next_soi_transition(
   detail::validate_interval(begin_ut, end_ut);
   const auto &center = frames.frame(orbit.frame_id);
   const UniversalPropagator propagator(center.gravitational_parameter, orbit);
-  if (begin_ut == end_ut) {
-    return {std::nullopt, end_ut};
-  }
-
   std::optional<Candidate> candidate;
   double searched_through = end_ut;
   const auto consider = [&](const SOISearchResult &search, FrameId destination) {
@@ -62,9 +60,9 @@ SOITransitionSearchResult next_soi_transition(
     if (child.parent != center.id) {
       continue;
     }
-    // keep the interval nonempty so a child can still report an immediate crossing.
-    const double horizon = std::max(searched_through, std::nextafter(begin_ut, end_ut));
-    consider(first_soi_entry(frames, orbit, child.id, begin_ut, horizon, step_limit), child.id);
+    consider(
+        first_soi_entry(frames, orbit, child.id, begin_ut, searched_through, step_limit), child.id
+    );
   }
 
   // another search's coverage can expire before the first predicted transition.
@@ -97,23 +95,33 @@ OrbitPatchSegments build_patches(
   OrbitPatchSegments prediction{{{orbit, begin_ut, begin_ut}}, begin_ut};
   // current time as we step through patches.
   double ut = begin_ut;
+  std::size_t chain_begin = 0;
   for (std::size_t count = 0; count < TRANSITION_LIMIT; ++count) {
     const auto result =
         next_soi_transition(frames, prediction.patches.back().orbit, ut, end_ut, step_limit);
     prediction.patches.back().end_ut = result.searched_through;
     prediction.searched_through = result.searched_through;
-    if (!result.transition || (count > 0 && result.searched_through == ut)) {
-      // two successive transitions at the same UT would fail to advance the prediction.
-      break;
+    if (!result.transition) {
+      return prediction;
+    }
+    if (result.searched_through != ut) {
+      chain_begin = prediction.patches.size() - 1;
+    }
+    const auto &next_orbit = result.transition->next_orbit;
+    const auto chain = std::span<const OrbitPatch>(prediction.patches).subspan(chain_begin);
+    // follow every transition at this UT until the craft settles in a frame or repeats one.
+    if (std::ranges::any_of(chain, [&](const OrbitPatch &patch) {
+          return patch.orbit.frame_id == next_orbit.frame_id;
+        })) {
+      prediction.endpoint_resolved = false;
+      return prediction;
     }
 
     // advance to the next patch at the transition time.
     ut = result.searched_through;
-    prediction.patches.push_back({result.transition->next_orbit, ut, ut});
-    if (ut == end_ut) {
-      break;
-    }
+    prediction.patches.push_back({next_orbit, ut, ut});
   }
+  prediction.endpoint_resolved = false;
   return prediction;
 }
 

@@ -52,6 +52,7 @@ inline constexpr std::size_t DEFAULT_ENCOUNTER_STEP_LIMIT = 250000;
 // the target must be a child of the subject's frame. both orbits use the shared
 // parent frame's gravity, and the SOI radius comes from the target frame.
 // a subject already inside and moving inward at begin_ut reports an immediate crossing.
+// a singleton interval only checks for that immediate crossing.
 // to express the state in the capturing body's frame, subtract that body's position
 // and velocity evaluated at the time of capture.
 [[nodiscard]] SOISearchResult first_soi_entry(
@@ -66,6 +67,7 @@ inline constexpr std::size_t DEFAULT_ENCOUNTER_STEP_LIMIT = 250000;
 // detects escape from the SOI of the current celestial body, centered at the reference
 // origin. a subject already outside and moving outward at begin_ut reports an
 // immediate crossing. the root frame has no escape crossing.
+// a singleton interval only checks for an immediate crossing.
 // to express the state in the parent frame, add the current central body's
 // position and velocity relative to its parent at the time of escape.
 // the step limit applies to the numerical fallback.

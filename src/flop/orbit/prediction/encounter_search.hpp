@@ -149,7 +149,7 @@ inline SOISearchResult search_sphere_crossing(
   const auto resolved_rate = [=](const Sample &point) {
     return entering ? direction * point.resolved_rate() : rate(point);
   };
-  if (previous.ut < end_ut && distance(previous) >= 0 && resolved_rate(previous) > 0) {
+  if (distance(previous) >= 0 && resolved_rate(previous) > 0) {
     return {previous.ut, previous.ut};
   }
   for (std::size_t step = 0; step < step_limit && previous.ut < end_ut; ++step) {

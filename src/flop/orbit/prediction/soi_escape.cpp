@@ -166,12 +166,15 @@ SOISearchResult first_soi_escape(
   const auto &center = frames.frame(subject.frame_id);
   const double mu = center.gravitational_parameter;
   const UniversalPropagator propagator(mu, subject);
-  if (!center.parent || begin_ut == end_ut) {
+  if (!center.parent) {
     return {std::nullopt, end_ut};
   }
   const double radius = center.sphere_of_influence_radius;
   const detail::Search search(mu, propagator, nullptr);
   const detail::Sample start = search.at(begin_ut);
+  if (begin_ut == end_ut) {
+    return detail::search_sphere_crossing(search, start, radius, 1, end_ut, 0);
+  }
   if (const auto result = analytic_escape(mu, propagator, start, radius, end_ut)) {
     return *result;
   }
