@@ -1,0 +1,47 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "headless",
+      "displayName": "Windows GCC headless",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "BUILD_TESTING": true,
+        "FLOP_BUILD_GAME": false
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "headless",
+      "configurePreset": "headless"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "headless",
+      "configurePreset": "headless",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "headless",
+      "steps": [
+        { "type": "configure", "name": "headless" },
+        { "type": "build", "name": "headless" },
+        { "type": "test", "name": "headless" }
+      ]
+    }
+  ]
+}
