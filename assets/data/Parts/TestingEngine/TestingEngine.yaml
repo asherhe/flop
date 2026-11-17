@@ -1,0 +1,79 @@
+# TestingEngine.data
+
+name: Testing Engine
+mass: 1.2 # t
+crossfeed: true
+
+attachmentNodes:
+  - name: top
+    pos: { x: 0.0, y: 0.75 }
+  - name: bottom
+    pos: { x: 0.0, y: -0.75 }
+
+plugins:
+  SpriteRendererPlugin:
+    sprite: Assets/GameData/Parts/TestingEngine/TestingEngine.png
+    material:
+      path: Assets/GameData/Parts/Part.mat
+      properties:
+        _NormalMap:
+          type: Texture2D
+          value: Assets/GameData/Parts/TestingEngine/TestingEngine-Normal.png
+  EnginePlugin:
+    # isp: 316 # s
+    isp: 1000 # ridiculously good isp for testing
+    # thrust: 26.7 # kN
+    thrust: 100 # better thrust for faster testing
+    thrustDir: { x: 0.0, y: 1.0 }
+    propellantRatio:
+      NTO: 1.5
+      Hydrazine: 1.0
+
+    plume:
+      nozzlePos: { x: 0.0, y: -0.75 }
+      nozzleSize: 1.0
+      spreadAngle: 0.0
+
+      # below are particle settings
+
+      # how long each particle lasts for, in seconds
+      lifetime: [0.2, 0.3]
+      # emission rate of plume particles, in particles/s
+      rate: [300, 500]
+      # particle properties on start
+      start:
+        # particle size, m
+        size: [0.1, 0.4]
+        # particle speed, m/s
+        speed: [20.0, 30.0]
+      # properties over time
+      life:
+        # gradient for particle color over its lifetime
+        color:
+          colorKeys:
+            0.00: "#FFFBBC"
+            0.37: "#FFBE5F"
+            0.66: "#A64D46"
+            0.87: "#677A8F"
+          alphaKeys:
+            0.00: 0.00
+            0.10: 1.00
+            0.81: 1.00
+            1.00: 0.00
+
+        size:
+          0.00: 0.00
+          0.02: 0.35
+          0.33: 0.96
+          0.76: 0.66
+          1.00: 0.00
+
+    light:
+      color: "#FFA43B"
+      intensity: 3.83
+      radius: 4.50
+      falloff: 0.73
+
+      flickerFrequency: 12.8
+      flickerMin: 0.7
+      flickerMax: 1.9
