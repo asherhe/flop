@@ -11,8 +11,9 @@ if(FLOP_BUILD_GAME)
         "FLOP_BUILD_GAME requires the desktop game target. Use OFF for the headless build.")
 endif()
 
-add_library(flop_core STATIC src/flop/math/vec2.cpp)
-target_include_directories(flop_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+add_library(flop_core INTERFACE)
+target_include_directories(flop_core INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_compile_features(flop_core INTERFACE cxx_std_20)
 
 include(CTest)
 if(BUILD_TESTING)
