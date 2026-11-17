@@ -11,15 +11,23 @@ if(FLOP_BUILD_GAME)
         "FLOP_BUILD_GAME requires the desktop game target. Use OFF for the headless build.")
 endif()
 
-add_library(flop_core INTERFACE)
-target_include_directories(flop_core INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_compile_features(flop_core INTERFACE cxx_std_20)
+add_library(flop_core STATIC
+    src/flop/orbit/ref_frame.cpp
+    src/flop/orbit/state.cpp
+    src/flop/orbit/propagators/universal.cpp
+)
+target_include_directories(flop_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_compile_features(flop_core PUBLIC cxx_std_20)
 
 include(CTest)
 if(BUILD_TESTING)
     include(cmake/dependencies.cmake)
 
-    add_executable(flop_tests tests/math/vec2_tests.cpp)
+    add_executable(flop_tests
+        tests/math/vec2_tests.cpp
+        tests/orbit/propagation_tests.cpp
+        tests/orbit/reference_frame_tests.cpp
+    )
     target_link_libraries(flop_tests PRIVATE flop_core Catch2::Catch2WithMain)
 
     list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")

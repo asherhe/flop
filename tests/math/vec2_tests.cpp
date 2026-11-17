@@ -47,9 +47,9 @@ TEST_CASE("Scalar arithmetic scales both vector components", "[math]") {
 }
 
 TEST_CASE("Dot product uses both vector components", "[math]") {
-  constexpr Vec2d a{2.0, 3.0};
-  constexpr Vec2d b{5.0, 7.0};
-  STATIC_REQUIRE(a.dot(b) == 31.0);
+  constexpr Vec2d A{2.0, 3.0};
+  constexpr Vec2d B{5.0, 7.0};
+  STATIC_REQUIRE(A.dot(B) == 31.0);
 }
 
 TEST_CASE("Cross product gives the signed determinant", "[math]") {
@@ -83,16 +83,16 @@ TEST_CASE("Both vector components must be finite", "[math]") {
 }
 
 TEST_CASE("Vector rotation follows the sign of the angle in radians", "[math]") {
-  constexpr double right_angle = std::numbers::pi / 2.0;
-  constexpr double tolerance = 1e-12;
+  constexpr double RIGHT_ANGLE = std::numbers::pi / 2.0;
+  constexpr double TOLERANCE = 1e-12;
   const Vec2d value{2.0, 3.0};
   check_components(value.rotate(0.0), value);
 
-  const auto counterclockwise = value.rotate(right_angle);
-  CHECK_THAT(counterclockwise.x, WithinAbs(-3.0, tolerance));
-  CHECK_THAT(counterclockwise.y, WithinAbs(2.0, tolerance));
+  const auto counterclockwise = value.rotate(RIGHT_ANGLE);
+  CHECK_THAT(counterclockwise.x, WithinAbs(-3.0, TOLERANCE));
+  CHECK_THAT(counterclockwise.y, WithinAbs(2.0, TOLERANCE));
 
-  const auto clockwise = value.rotate(-right_angle);
-  CHECK_THAT(clockwise.x, WithinAbs(3.0, tolerance));
-  CHECK_THAT(clockwise.y, WithinAbs(-2.0, tolerance));
+  const auto clockwise = value.rotate(-RIGHT_ANGLE);
+  CHECK_THAT(clockwise.x, WithinAbs(3.0, TOLERANCE));
+  CHECK_THAT(clockwise.y, WithinAbs(-2.0, TOLERANCE));
 }
