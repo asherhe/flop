@@ -51,6 +51,9 @@ public:
   [[nodiscard]] const RefFrame &frame(FrameId id) const;
   [[nodiscard]] std::span<const RefFrame> frames() const { return frames_; }
 
+  // prepared motion of this frame relative to its parent. the root has no ephemeris.
+  [[nodiscard]] const UniversalPropagator &ephemeris_about_parent(FrameId id) const;
+
   // get the position and velocity of the 'from' origin relative to the 'to' origin.
   // add these to a state expressed in 'from' to express it in 'to'.
   [[nodiscard]] StateVectors offset(FrameId from, FrameId to, double ut) const;

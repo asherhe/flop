@@ -110,6 +110,14 @@ const RefFrame &RefFrameManager::frame(FrameId id) const {
   return frames_[frame_index(id)];
 }
 
+const UniversalPropagator &RefFrameManager::ephemeris_about_parent(FrameId id) const {
+  const auto &ephemeris = ephemerides_[frame_index(id)];
+  if (!ephemeris) {
+    throw std::invalid_argument("The root frame has no parent ephemeris");
+  }
+  return *ephemeris;
+}
+
 StateVectors RefFrameManager::offset(FrameId from, FrameId to, double ut) const {
   if (!std::isfinite(ut)) {
     throw std::invalid_argument("Invalid frame evaluation time");

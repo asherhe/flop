@@ -14,6 +14,9 @@ endif()
 add_library(flop_core STATIC
     src/flop/orbit/ref_frame.cpp
     src/flop/orbit/state.cpp
+    src/flop/orbit/prediction/encounter.cpp
+    src/flop/orbit/prediction/soi_escape.cpp
+    src/flop/orbit/prediction/soi_intercept.cpp
     src/flop/orbit/propagators/universal.cpp
 )
 target_include_directories(flop_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -25,6 +28,7 @@ if(BUILD_TESTING)
 
     add_executable(flop_tests
         tests/math/vec2_tests.cpp
+        tests/orbit/encounter_tests.cpp
         tests/orbit/propagation_tests.cpp
         tests/orbit/reference_frame_tests.cpp
     )
