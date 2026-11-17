@@ -1,0 +1,25 @@
+# TestingTank.yaml
+
+name: Testing Tank
+mass: 0.6 # t
+crossfeed: true
+
+attachmentNodes:
+  - name: top
+    pos: { x: 0.0, y: 1.0 }
+  - name: bottom
+    pos: { x: 0.0, y: -1.0 }
+
+plugins:
+  SpriteRendererPlugin:
+    sprite: assets/parts/TestingTank/TestingTank.png
+    material:
+      path: assets/shared/materials/part.mat
+      properties:
+        _NormalMap:
+          type: Texture2D
+          value: assets/parts/TestingTank/TestingTank-Normal.png
+  ResourceContainerPlugin:
+    maxAmount:
+      NTO: 3600
+      Hydrazine: 2400

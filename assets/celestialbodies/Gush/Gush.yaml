@@ -1,0 +1,28 @@
+# Gush.yaml
+
+name: Gush
+color: "#89b8b8"
+
+# planetary info
+radius: 1300.0 # km
+surfaceGravity: 3.7 # m/s^2
+dayLength: 94.96 # hours
+
+surfaceMaterial:
+  path: assets/shared/materials/surfaceblank.mat
+  properties:
+    _Color:
+      type: Color
+      value: "#181717"
+
+# orbital info, set to false if there is no orbit (i.e. the Sun)
+orbit:
+  parent: Gus
+  semimajorAxis: 6.350e5 # km
+  eccentricity: 0.012
+  longitudePeriapsis: 86.0 # deg
+  epochMeanAnom: 117.0 # deg
+  epochTime: 0.0 # s
+
+# atmospheric data, set to false if no atmosphere
+atmosphere: false
