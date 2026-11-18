@@ -5,6 +5,8 @@
 
 #include "flop/craft/craft.hpp"
 
+#include "support/stub_universe_context.hpp"
+
 namespace {
 
 flop::orbit::RefFrameManager frames() {
@@ -30,8 +32,9 @@ std::vector<flop::craft::PartTypeConfig> basic_types() {
 
 TEST_CASE("Craft owns its resolved orbital state and initial patch") {
   auto config = basic_config();
-  const auto reference_frames = frames();
-  flop::craft::Craft craft(config, reference_frames, basic_types());
+  const flop::testing::StubUniverseContext context(frames());
+  const auto &reference_frames = context.reference_frames();
+  flop::craft::Craft craft(config, context, basic_types());
   config.name = "Changed";
 
   CHECK(craft.name() == "Test Craft");
@@ -46,18 +49,14 @@ TEST_CASE("Craft owns its resolved orbital state and initial patch") {
 }
 
 TEST_CASE("Craft validates parent reference and typed orbital inputs") {
-  const auto reference_frames = frames();
+  const flop::testing::StubUniverseContext context(frames());
   auto config = basic_config();
   config.orbit.parent_name = "missing";
-  CHECK_THROWS_AS(
-      flop::craft::Craft(config, reference_frames, basic_types()), std::invalid_argument
-  );
+  CHECK_THROWS_AS(flop::craft::Craft(config, context, basic_types()), std::invalid_argument);
 
   config = basic_config();
   config.orbit.specific_angular_momentum_m2_per_s = 0;
-  CHECK_THROWS_AS(
-      flop::craft::Craft(config, reference_frames, basic_types()), std::invalid_argument
-  );
+  CHECK_THROWS_AS(flop::craft::Craft(config, context, basic_types()), std::invalid_argument);
 }
 
 TEST_CASE("Craft owns installed parts and resolves reciprocal attachment nodes") {
@@ -70,13 +69,13 @@ TEST_CASE("Craft owns installed parts and resolves reciprocal attachment nodes")
       {"Pod", "Pod", 800, true, {{"bottom", {0, -1}}}},
       {"Tank", "Tank", 600, true, {{"top", {0, 1}}}},
   };
-  const auto reference_frames = frames();
-  const flop::craft::Craft craft(config, reference_frames, types);
+  const flop::testing::StubUniverseContext context(frames());
+  const flop::craft::Craft craft(config, context, types);
   REQUIRE(craft.parts().size() == 2);
   CHECK(craft.part("tank_2").dry_mass_kg == 600);
   CHECK(craft.part("tank_2").position_meters.y == -2);
   CHECK(craft.part("pod_1").attachments.front().attach_part_id == "tank_2");
 
   config.parts[1].attachments.clear();
-  CHECK_THROWS_AS(flop::craft::Craft(config, reference_frames, types), std::invalid_argument);
+  CHECK_THROWS_AS(flop::craft::Craft(config, context, types), std::invalid_argument);
 }

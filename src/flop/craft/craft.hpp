@@ -9,6 +9,7 @@
 #include "flop/craft/part.hpp"
 #include "flop/orbit/prediction/patched_conics.hpp"
 #include "flop/orbit/ref_frame.hpp"
+#include "flop/world/universe_context.hpp"
 
 namespace flop::craft {
 
@@ -17,7 +18,7 @@ class Craft {
 public:
   Craft(
       CraftConfig config,
-      const orbit::RefFrameManager &frames,
+      const world::UniverseContext &context,
       std::vector<PartTypeConfig> part_types = {}
   );
 
@@ -31,6 +32,7 @@ public:
   void predict_patches(const orbit::RefFrameManager &frames, double begin_ut, double end_ut);
 
 private:
+  const world::UniverseContext *context_;
   std::string name_;
   orbit::OrbitState orbit_state_;
   orbit::OrbitPatchSegments patches_;

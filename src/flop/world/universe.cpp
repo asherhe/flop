@@ -26,7 +26,7 @@ double valid_gravitational_constant(double value) {
 }
 
 std::vector<CelestialBody> make_bodies(
-    std::vector<BodyConfig> configs, double gravitational_constant
+    std::vector<BodyConfig> configs, double gravitational_constant, const UniverseContext &context
 ) {
   std::vector<CelestialBody> bodies;
   bodies.reserve(configs.size());
@@ -39,7 +39,7 @@ std::vector<CelestialBody> make_bodies(
         }) != bodies.end()) {
       throw std::invalid_argument("Duplicate celestial body name: " + config.name);
     }
-    bodies.emplace_back(config, gravitational_constant);
+    bodies.emplace_back(config, gravitational_constant, context);
   }
   return bodies;
 }
@@ -93,7 +93,7 @@ Universe::Universe(
 ) :
     ut_sec_(valid_ut(initial_ut_sec)),
     gravitational_constant_(valid_gravitational_constant(gravitational_constant)),
-    bodies_(make_bodies(std::move(configs), gravitational_constant_)),
+    bodies_(make_bodies(std::move(configs), gravitational_constant_, *this)),
     frames_(make_frames(bodies_)), root_frame_id_(root_frame_id(frames_)),
     resources_(std::move(resource_configs)) {}
 

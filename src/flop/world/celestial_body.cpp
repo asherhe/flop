@@ -10,8 +10,9 @@
 
 namespace flop::world {
 
-CelestialBody::CelestialBody(BodyConfig config, double gravitational_constant) :
-    config_(std::move(config)) {
+CelestialBody::CelestialBody(
+    BodyConfig config, double gravitational_constant, const UniverseContext &context
+) : context_(&context), config_(std::move(config)) {
   if (config_.name.empty() || !positive_finite(config_.radius_meters) ||
       !positive_finite(config_.surface_gravity_m_per_s2) ||
       !positive_finite(config_.day_length_sec) || !positive_finite(gravitational_constant)) {

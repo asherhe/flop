@@ -7,6 +7,8 @@
 
 #include "flop/world/celestial_body.hpp"
 
+#include "support/stub_universe_context.hpp"
+
 namespace {
 
 using Catch::Approx;
@@ -18,24 +20,30 @@ const BodyConfig ROOT{"root", 10, 1, 100, {}};
 const BodyConfig CHILD{"child", 2, 1, 50, BodyOrbitConfig{"root", 4, 0, 0, 0, 100}};
 constexpr double G = 6.67430e-11;
 
+// a body never dereferences its context during construction or frame queries,
+// so any valid stub is sufficient for these tests.
+const flop::testing::StubUniverseContext CONTEXT{
+    flop::orbit::RefFrameManager{{{"root", 100, {}, {}, std::numeric_limits<double>::infinity()}}}
+};
+
 } // namespace
 
 TEST_CASE("Celestial body owns its config and derives gravity and mass") {
   auto config = ROOT;
-  CelestialBody body(config, G);
+  CelestialBody body(config, G, CONTEXT);
   config.name = "changed";
   CHECK(body.name() == "root");
   CHECK(body.config().radius_meters == 10);
   CHECK(body.gravitational_parameter() == 100);
   CHECK(body.mass_kg() == Approx(100 / G));
 
-  CelestialBody other(ROOT, 1e-10);
+  CelestialBody other(ROOT, 1e-10, CONTEXT);
   CHECK(other.gravitational_parameter() == body.gravitational_parameter());
   CHECK(other.mass_kg() == Approx(1e12));
 }
 
 TEST_CASE("Celestial body supplies root and child frame definitions") {
-  const CelestialBody root(ROOT, G);
+  const CelestialBody root(ROOT, G, CONTEXT);
   const auto root_frame = root.ref_frame_definition();
   CHECK(root_frame.name == "root");
   CHECK(root_frame.gravitational_parameter == 100);
@@ -43,7 +51,7 @@ TEST_CASE("Celestial body supplies root and child frame definitions") {
   CHECK_FALSE(root_frame.orbit_about_parent.has_value());
   CHECK(std::isinf(root_frame.sphere_of_influence_radius));
 
-  const CelestialBody child(CHILD, G);
+  const CelestialBody child(CHILD, G, CONTEXT);
   const auto child_frame = child.ref_frame_definition(root.gravitational_parameter());
   REQUIRE(child_frame.parent_name.has_value());
   CHECK(*child_frame.parent_name == "root");
@@ -96,21 +104,23 @@ TEST_CASE("Celestial body rejects invalid physical and orbit config") {
   SECTION("nonfinite epoch") {
     body.orbit = BodyOrbitConfig{"root", 4, 0, 0, 0, std::numeric_limits<double>::infinity()};
   }
-  CHECK_THROWS_AS(CelestialBody(body, G), std::invalid_argument);
+  CHECK_THROWS_AS(CelestialBody(body, G, CONTEXT), std::invalid_argument);
 }
 
 TEST_CASE("Celestial body checks parent gravity and derived orbit domain") {
-  const CelestialBody root(ROOT, G);
-  const CelestialBody child(CHILD, G);
+  const CelestialBody root(ROOT, G, CONTEXT);
+  const CelestialBody child(CHILD, G, CONTEXT);
   CHECK_THROWS_AS(root.ref_frame_definition(100), std::invalid_argument);
   CHECK_THROWS_AS(child.ref_frame_definition(), std::invalid_argument);
   CHECK_THROWS_AS(child.ref_frame_definition(0), std::invalid_argument);
   CHECK_THROWS_AS(
       child.ref_frame_definition(std::numeric_limits<double>::infinity()), std::invalid_argument
   );
-  CHECK_THROWS_AS(CelestialBody(ROOT, 0), std::invalid_argument);
+  CHECK_THROWS_AS(CelestialBody(ROOT, 0, CONTEXT), std::invalid_argument);
 
   auto large_orbit = CHILD;
   large_orbit.orbit->semimajor_axis_meters = 1e300;
-  CHECK_THROWS_AS(CelestialBody(large_orbit, G).ref_frame_definition(1e300), std::invalid_argument);
+  CHECK_THROWS_AS(
+      CelestialBody(large_orbit, G, CONTEXT).ref_frame_definition(1e300), std::invalid_argument
+  );
 }

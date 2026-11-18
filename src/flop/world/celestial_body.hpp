@@ -2,12 +2,13 @@
 
 #include "flop/orbit/ref_frame.hpp"
 #include "flop/world/body_config.hpp"
+#include "flop/world/universe_context.hpp"
 
 namespace flop::world {
 
 class CelestialBody {
 public:
-  explicit CelestialBody(BodyConfig config, double gravitational_constant);
+  CelestialBody(BodyConfig config, double gravitational_constant, const UniverseContext &context);
 
   [[nodiscard]] const BodyConfig &config() const noexcept { return config_; }
   [[nodiscard]] const std::string &name() const noexcept { return config_.name; }
@@ -20,6 +21,12 @@ public:
   ) const;
 
 private:
+  // the world this body belongs to. currently unused: a body resolves all of
+  // its physical values from its own config at construction. stored so future
+  // body behavior can reach shared managers without a new constructor argument.
+  // not dereferenced during Universe construction, while the Universe is still
+  // being built.
+  const UniverseContext *context_;
   BodyConfig config_;
   double gravitational_parameter_;
   double mass_kg_;

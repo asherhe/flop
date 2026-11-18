@@ -8,6 +8,7 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "flop/world/universe.hpp"
+#include "flop/world/universe_context.hpp"
 
 namespace {
 using Catch::Approx;
@@ -54,6 +55,16 @@ TEST_CASE("Universe initializes and owns the shared resource registry") {
       Universe({ROOT}, {{"NTO", "N2O4", 0, ResourceFlow::stage}}),
       ContainsSubstring("Invalid resource type")
   );
+}
+
+TEST_CASE("Universe satisfies the UniverseContext interface") {
+  using flop::craft::ResourceFlow;
+  using flop::world::UniverseContext;
+  const Universe universe({ROOT}, {{"NTO", "N2O4", 1.0, ResourceFlow::stage}});
+  const UniverseContext &context = universe;
+  CHECK(context.resources().at("NTO").name == "N2O4");
+  CHECK(&context.reference_frames() == &universe.reference_frames());
+  CHECK(context.reference_frames().frame(universe.frame_id("root")).name == "root");
 }
 
 TEST_CASE("Universe resolves names independently of input order") {

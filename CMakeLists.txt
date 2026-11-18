@@ -52,6 +52,7 @@ if(BUILD_TESTING)
         tests/world/universe_tests.cpp
     )
     target_link_libraries(flop_tests PRIVATE flop_core Catch2::Catch2WithMain)
+    target_include_directories(flop_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
 
     list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
     include(Catch)

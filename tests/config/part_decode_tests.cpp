@@ -158,7 +158,7 @@ TEST_CASE("Shipped craft assembles its three decoded part types") {
   const auto config = flop::config::load_craft_config(
       resolver, AssetPath("assets/spacecraft/OrbitalTestCraft.yaml"), types
   );
-  const flop::craft::Craft craft(config, universe.reference_frames(), types);
+  const flop::craft::Craft craft(config, universe, types);
   REQUIRE(craft.parts().size() == 3);
   CHECK(craft.part("TestingEngine_3").dry_mass_kg == 1200);
   CHECK(craft.part("TestingTank_2").attachments.size() == 2);
@@ -204,7 +204,7 @@ TEST_CASE("Craft plugin fields override matching part type fields") {
   flop::craft::CraftConfig config{
       "Test", {"Hamswell", 1.73e10, 0.08, 1, 1, 0}, {0, 0}, {placement}, true
   };
-  const flop::craft::Craft craft(config, universe.reference_frames(), {pod});
+  const flop::craft::Craft craft(config, universe, {pod});
   const auto &plugins = craft.part("pod_1").plugins;
   const auto wheel =
       std::ranges::find(plugins, "ReactionWheelPlugin", &flop::craft::PartPluginConfig::name);

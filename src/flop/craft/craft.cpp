@@ -10,8 +10,11 @@
 
 namespace flop::craft {
 Craft::Craft(
-    CraftConfig config, const orbit::RefFrameManager &frames, std::vector<PartTypeConfig> part_types
-) : name_(std::move(config.name)) {
+    CraftConfig config,
+    const world::UniverseContext &context,
+    std::vector<PartTypeConfig> part_types
+) : context_(&context), name_(std::move(config.name)) {
+  const auto &frames = context.reference_frames();
   const auto &orbit_config = config.orbit;
   if (name_.empty() || orbit_config.parent_name.empty() ||
       !std::isfinite(orbit_config.specific_angular_momentum_m2_per_s) ||

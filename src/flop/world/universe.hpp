@@ -6,12 +6,13 @@
 
 #include "flop/craft/resource_registry.hpp"
 #include "flop/world/celestial_body.hpp"
+#include "flop/world/universe_context.hpp"
 
 namespace flop::world {
 
 // describes a full game world.
 // owns universal time (UT), celestial bodies, and all universal Manager instances
-class Universe {
+class Universe : public UniverseContext {
 public:
   explicit Universe(
       std::vector<BodyConfig> configs,
@@ -27,13 +28,17 @@ public:
 
   [[nodiscard]] double ut_sec() const noexcept { return ut_sec_; }
   [[nodiscard]] double gravitational_constant() const noexcept { return gravitational_constant_; }
-  [[nodiscard]] const craft::ResourceRegistry &resources() const noexcept { return resources_; }
+  [[nodiscard]] const craft::ResourceRegistry &resources() const noexcept override {
+    return resources_;
+  }
 
   [[nodiscard]] std::span<const CelestialBody> bodies() const noexcept { return bodies_; }
   // get CelestialBody by name
   [[nodiscard]] const CelestialBody &body(std::string_view name) const;
 
-  [[nodiscard]] const orbit::RefFrameManager &reference_frames() const noexcept { return frames_; }
+  [[nodiscard]] const orbit::RefFrameManager &reference_frames() const noexcept override {
+    return frames_;
+  }
   // get FrameId by celestial body name
   [[nodiscard]] orbit::FrameId frame_id(std::string_view name) const;
 
