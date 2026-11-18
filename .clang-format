@@ -17,6 +17,7 @@ AlignAfterOpenBracket: BlockIndent
 BreakConstructorInitializers: AfterColon
 
 ColumnLimit: 100 
+PenaltyReturnTypeOnItsOwnLine: 1000
 ReflowComments: true
 
 SortIncludes: CaseSensitive

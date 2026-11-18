@@ -15,8 +15,9 @@ public:
   [[nodiscard]] double mass_kg() const noexcept { return mass_kg_; }
 
   // a child requires its parent's gravitational parameter; the root has none
-  [[nodiscard]] orbit::RefFrameDefinition
-  ref_frame_definition(std::optional<double> parent_mu = std::nullopt) const;
+  [[nodiscard]] orbit::RefFrameDefinition ref_frame_definition(
+      std::optional<double> parent_mu = std::nullopt
+  ) const;
 
 private:
   BodyConfig config_;

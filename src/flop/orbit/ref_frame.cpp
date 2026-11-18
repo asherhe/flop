@@ -53,7 +53,7 @@ RefFrameManager::RefFrameManager(std::vector<RefFrameDefinition> definitions) {
   }
 
   if (std::ranges::count_if(frames_, [](const auto &node) { return !node.parent; }) != 1) {
-    throw std::invalid_argument("An ephemeris requires one root frame");
+    throw std::invalid_argument("A frame hierarchy requires one root frame");
   }
 
   for (const auto &node : frames_) {
@@ -73,19 +73,19 @@ RefFrameManager::RefFrameManager(std::vector<RefFrameDefinition> definitions) {
     }
   }
 
-  ephemerides_.resize(frames_.size());
+  propagators_.resize(frames_.size());
   for (std::size_t index = 0; index < frames_.size(); ++index) {
     const auto &node = frames_[index];
     if (node.parent) {
       const auto &parent = frame(*node.parent);
-      ephemerides_[index].emplace(parent.gravitational_parameter, *node.orbit_about_parent);
+      propagators_[index].emplace(parent.gravitational_parameter, *node.orbit_about_parent);
     }
   }
 }
 
 RefFrameManager &RefFrameManager::operator=(RefFrameManager other) noexcept {
   frames_.swap(other.frames_);
-  ephemerides_.swap(other.ephemerides_);
+  propagators_.swap(other.propagators_);
   return *this;
 }
 
@@ -110,12 +110,12 @@ const RefFrame &RefFrameManager::frame(FrameId id) const {
   return frames_[frame_index(id)];
 }
 
-const UniversalPropagator &RefFrameManager::ephemeris_about_parent(FrameId id) const {
-  const auto &ephemeris = ephemerides_[frame_index(id)];
-  if (!ephemeris) {
-    throw std::invalid_argument("The root frame has no parent ephemeris");
+const UniversalPropagator &RefFrameManager::propagator_about_parent(FrameId id) const {
+  const auto &propagator = propagators_[frame_index(id)];
+  if (!propagator) {
+    throw std::invalid_argument("The root frame has no parent propagator");
   }
-  return *ephemeris;
+  return *propagator;
 }
 
 StateVectors RefFrameManager::offset(FrameId from, FrameId to, double ut) const {
@@ -142,10 +142,10 @@ StateVectors RefFrameManager::offset(FrameId from, FrameId to, double ut) const 
   // position and velocity of the two origins in common space
   StateVectors result{};
   for (const auto index : from_path) {
-    accumulate(result, ephemerides_[index]->state_at(ut), 1);
+    accumulate(result, propagators_[index]->state_at(ut), 1);
   }
   for (const auto index : to_path) {
-    accumulate(result, ephemerides_[index]->state_at(ut), -1);
+    accumulate(result, propagators_[index]->state_at(ut), -1);
   }
   if (!is_finite(result.position) || !is_finite(result.velocity)) {
     throw std::domain_error("Orbital frame offset exceeds the representable domain");

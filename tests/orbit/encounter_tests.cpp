@@ -64,7 +64,7 @@ void check_escape(double mu, OrbitState orbit, double radius, double begin_ut, d
 
 } // namespace
 
-TEST_CASE("Closest approach finds the conjunction of two circular ephemerides") {
+TEST_CASE("Closest approach finds the conjunction of two circular body orbits") {
   const auto frames = planet_and_moon(500);
   constexpr double RADIUS = 9000;
   constexpr double PHASE = -0.2;
@@ -169,7 +169,7 @@ TEST_CASE("SOI searches report their completed coverage and reject invalid compa
   const auto root_escape = first_soi_escape(frames, FLYBY, 0, 25, 0);
   CHECK_FALSE(root_escape.crossing_ut);
   CHECK(root_escape.searched_through == 25);
-  CHECK_THROWS_AS(frames.ephemeris_about_parent(PLANET), std::invalid_argument);
+  CHECK_THROWS_AS(frames.propagator_about_parent(PLANET), std::invalid_argument);
 }
 
 TEST_CASE("Analytic SOI escape selects the next outbound crossing of a bound orbit") {

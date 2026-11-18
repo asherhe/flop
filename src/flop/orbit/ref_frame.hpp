@@ -46,13 +46,15 @@ public:
   RefFrameManager(const RefFrameManager &) = default;
   RefFrameManager(RefFrameManager &&) noexcept = default;
   RefFrameManager &operator=(RefFrameManager other) noexcept;
+  RefFrameManager &operator=(RefFrameManager &&) = default;
+  ~RefFrameManager() = default;
 
   [[nodiscard]] FrameId frame_id(std::string_view name) const;
   [[nodiscard]] const RefFrame &frame(FrameId id) const;
   [[nodiscard]] std::span<const RefFrame> frames() const { return frames_; }
 
-  // prepared motion of this frame relative to its parent. the root has no ephemeris.
-  [[nodiscard]] const UniversalPropagator &ephemeris_about_parent(FrameId id) const;
+  // for determining motion of this frame relative to its parent. the root has no propagator.
+  [[nodiscard]] const UniversalPropagator &propagator_about_parent(FrameId id) const;
 
   // get the position and velocity of the 'from' origin relative to the 'to' origin.
   // add these to a state expressed in 'from' to express it in 'to'.
@@ -62,8 +64,8 @@ private:
   [[nodiscard]] std::size_t frame_index(FrameId id) const;
 
   std::vector<RefFrame> frames_;
-  // indexed alongside frames_; the root has no parent-relative ephemeris
-  std::vector<std::optional<UniversalPropagator>> ephemerides_;
+  // indexed alongside frames_; the root has no parent-relative propagator
+  std::vector<std::optional<UniversalPropagator>> propagators_;
 };
 
 } // namespace flop::orbit

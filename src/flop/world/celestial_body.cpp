@@ -35,8 +35,9 @@ CelestialBody::CelestialBody(BodyConfig config, double gravitational_constant) :
   }
 }
 
-orbit::RefFrameDefinition
-CelestialBody::ref_frame_definition(std::optional<double> parent_mu) const {
+orbit::RefFrameDefinition CelestialBody::ref_frame_definition(
+    std::optional<double> parent_mu
+) const {
   if (!config_.orbit) {
     if (parent_mu) {
       throw std::invalid_argument("Root celestial body cannot have a parent gravity");

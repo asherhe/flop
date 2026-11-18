@@ -47,7 +47,7 @@ SOISearchResult first_soi_entry(
   if (cannot_enter(mu, subject, center.orbit_about_parent.value(), radius)) {
     return {std::nullopt, end_ut};
   }
-  const detail::Search search(mu, first, &frames.ephemeris_about_parent(target));
+  const detail::Search search(mu, first, &frames.propagator_about_parent(target));
   return detail::search_sphere_crossing(
       search, search.at(begin_ut), radius, -1, end_ut, step_limit
   );

@@ -86,7 +86,7 @@ TEST_CASE("Frame managers assign IDs and resolve parent names in any input order
   CHECK(region.orbit_about_parent->frame_id == original.frame_id("root"));
 }
 
-TEST_CASE("Frame hierarchies reject invalid topology and child ephemerides") {
+TEST_CASE("Frame hierarchies reject invalid topology and child orbits") {
   RefFrameDefinition child = REGION;
   SECTION("multiple roots") {
     child.parent_name.reset();
