@@ -79,6 +79,11 @@ public:
     }
   }
 
+  [[nodiscard]] double positive_double() const;
+  [[nodiscard]] std::string nonempty_string() const;
+  // retain this field's source location when a unit conversion overflows
+  [[nodiscard]] double checked_finite(double value) const;
+
   // if this value node holds an asset path, resolve it
   [[nodiscard]] AssetPath asset_path() const;
 

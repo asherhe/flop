@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <random>
 #include <stdexcept>
@@ -159,6 +160,27 @@ TEST_CASE("Config views add sequence indices to conversion errors") {
   CHECK_THROWS_WITH(
       load_config<std::vector<std::string>>(resolver, AssetPath("assets/bad_sequence.yaml")),
       ContainsSubstring("[1]")
+  );
+}
+
+TEST_CASE("Config views validate reusable scalar constraints at the source field") {
+  const ConfigView root(
+      YAML::Load("name: ''\nradius: -1\nvalid_name: Hamswell\nvalid_radius: 2\n"),
+      "assets/values.yaml"
+  );
+  CHECK(root.required("valid_name").nonempty_string() == "Hamswell");
+  CHECK(root.required("valid_radius").positive_double() == 2);
+  CHECK_THROWS_WITH(
+      root.required("name").nonempty_string(),
+      ContainsSubstring("[name]") && ContainsSubstring("cannot be empty")
+  );
+  CHECK_THROWS_WITH(
+      root.required("radius").positive_double(),
+      ContainsSubstring("[radius]") && ContainsSubstring("must be positive")
+  );
+  CHECK_THROWS_WITH(
+      root.required("valid_radius").checked_finite(std::numeric_limits<double>::infinity()),
+      ContainsSubstring("[valid_radius]") && ContainsSubstring("finite after conversion")
   );
 }
 

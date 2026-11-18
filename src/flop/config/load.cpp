@@ -79,6 +79,26 @@ bool ConfigView::has(std::string_view key) const {
   return static_cast<bool>(node_[std::string(key)]);
 }
 
+double ConfigView::positive_double() const {
+  const double value = as<double>();
+  if (value <= 0)
+    fail(node_.Mark(), "Value must be positive");
+  return value;
+}
+
+std::string ConfigView::nonempty_string() const {
+  auto value = as<std::string>();
+  if (value.empty())
+    fail(node_.Mark(), "Value cannot be empty");
+  return value;
+}
+
+double ConfigView::checked_finite(double value) const {
+  if (!std::isfinite(value))
+    fail(node_.Mark(), "Value must be finite after conversion");
+  return value;
+}
+
 ConfigView ConfigView::at(std::size_t index) const {
   if (!node_.IsSequence())
     fail(node_.Mark(), "Expected a sequence");
