@@ -4,6 +4,7 @@
 #include <string_view>
 #include <vector>
 
+#include "flop/craft/resource_registry.hpp"
 #include "flop/world/celestial_body.hpp"
 
 namespace flop::world {
@@ -17,9 +18,16 @@ public:
       double initial_ut_sec = 0,
       double gravitational_constant = 6.67430e-11
   );
+  Universe(
+      std::vector<BodyConfig> configs,
+      std::vector<craft::ResourceConfig> resource_configs,
+      double initial_ut_sec = 0,
+      double gravitational_constant = 6.67430e-11
+  );
 
   [[nodiscard]] double ut_sec() const noexcept { return ut_sec_; }
   [[nodiscard]] double gravitational_constant() const noexcept { return gravitational_constant_; }
+  [[nodiscard]] const craft::ResourceRegistry &resources() const noexcept { return resources_; }
 
   [[nodiscard]] std::span<const CelestialBody> bodies() const noexcept { return bodies_; }
   // get CelestialBody by name
@@ -41,6 +49,7 @@ private:
   std::vector<CelestialBody> bodies_;
   orbit::RefFrameManager frames_;
   orbit::FrameId root_frame_id_;
+  craft::ResourceRegistry resources_;
 };
 
 } // namespace flop::world

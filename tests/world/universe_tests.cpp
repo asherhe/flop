@@ -38,6 +38,24 @@ TEST_CASE("Universe owns finite UT, gravity, and a nonempty body hierarchy") {
   );
 }
 
+TEST_CASE("Universe initializes and owns the shared resource registry") {
+  using flop::craft::ResourceFlow;
+  std::vector<flop::craft::ResourceConfig> resource_configs{
+      {"NTO", "N2O4", 1.0, ResourceFlow::stage}
+  };
+  const Universe universe({ROOT}, resource_configs);
+  resource_configs.front().name = "changed";
+
+  CHECK(universe.resources().at("NTO").name == "N2O4");
+  CHECK(universe.resources().at("NTO").kg_per_unit == 1.0);
+  CHECK(universe.resources().at("NTO").flow == ResourceFlow::stage);
+  CHECK(Universe({ROOT}).resources().resources().empty());
+  CHECK_THROWS_WITH(
+      Universe({ROOT}, {{"NTO", "N2O4", 0, ResourceFlow::stage}}),
+      ContainsSubstring("Invalid resource type")
+  );
+}
+
 TEST_CASE("Universe resolves names independently of input order") {
   const Universe first({ROOT, CHILD});
   const Universe reversed({CHILD, ROOT});

@@ -83,11 +83,19 @@ orbit::FrameId root_frame_id(const orbit::RefFrameManager &frames) {
 
 Universe::Universe(
     std::vector<BodyConfig> configs, double initial_ut_sec, double gravitational_constant
+) : Universe(std::move(configs), {}, initial_ut_sec, gravitational_constant) {}
+
+Universe::Universe(
+    std::vector<BodyConfig> configs,
+    std::vector<craft::ResourceConfig> resource_configs,
+    double initial_ut_sec,
+    double gravitational_constant
 ) :
     ut_sec_(valid_ut(initial_ut_sec)),
     gravitational_constant_(valid_gravitational_constant(gravitational_constant)),
     bodies_(make_bodies(std::move(configs), gravitational_constant_)),
-    frames_(make_frames(bodies_)), root_frame_id_(root_frame_id(frames_)) {}
+    frames_(make_frames(bodies_)), root_frame_id_(root_frame_id(frames_)),
+    resources_(std::move(resource_configs)) {}
 
 const CelestialBody &Universe::body(std::string_view name) const {
   const auto found = std::ranges::find_if(bodies_, [name](const CelestialBody &candidate) {
