@@ -107,6 +107,10 @@ Craft::Craft(
         throw std::invalid_argument("Part attachment is not reciprocal");
     }
   }
+
+  // built last, once parts_ is fully validated: resource state reads the
+  // installed container plugins and the shared resource registry.
+  resources_ = CraftResources(parts_, context);
 }
 
 const Part &Craft::part(std::string_view id) const {

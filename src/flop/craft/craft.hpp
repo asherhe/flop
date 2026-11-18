@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "flop/craft/craft_config.hpp"
+#include "flop/craft/craft_resources.hpp"
 #include "flop/craft/part.hpp"
 #include "flop/orbit/prediction/patched_conics.hpp"
 #include "flop/orbit/ref_frame.hpp"
@@ -28,6 +29,9 @@ public:
   [[nodiscard]] std::span<const Part> parts() const noexcept { return parts_; }
   [[nodiscard]] const Part &part(std::string_view id) const;
 
+  [[nodiscard]] const CraftResources &resources() const noexcept { return resources_; }
+  [[nodiscard]] CraftResources &resources() noexcept { return resources_; }
+
   // replace the owned prediction only after the requested interval is covered.
   void predict_patches(const orbit::RefFrameManager &frames, double begin_ut, double end_ut);
 
@@ -37,6 +41,7 @@ private:
   orbit::OrbitState orbit_state_;
   orbit::OrbitPatchSegments patches_;
   std::vector<Part> parts_;
+  CraftResources resources_;
 };
 
 } // namespace flop::craft

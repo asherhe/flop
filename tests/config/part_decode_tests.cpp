@@ -10,6 +10,7 @@
 #include "flop/config/decode/craft.hpp"
 #include "flop/config/decode/part.hpp"
 #include "flop/config/decode/part_plugin.hpp"
+#include "flop/config/decode/resources.hpp"
 #include "flop/craft/craft.hpp"
 #include "flop/world/universe.hpp"
 
@@ -149,7 +150,10 @@ TEST_CASE("Shipped craft assembles its three decoded part types") {
   const auto hamswell = load_config<flop::world::BodyConfig>(
       resolver, AssetPath("assets/celestialbodies/Hamswell/Hamswell.yaml")
   );
-  const flop::world::Universe universe({sun, hamswell});
+  const auto resources = load_config<std::vector<flop::craft::ResourceConfig>>(
+      resolver, AssetPath("assets/resources.yaml")
+  );
+  const flop::world::Universe universe({sun, hamswell}, resources);
   const std::vector<PartTypeConfig> types{
       load_part_type(resolver, "TestingCommandPod"),
       load_part_type(resolver, "TestingTank"),
