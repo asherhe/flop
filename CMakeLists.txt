@@ -20,6 +20,7 @@ add_library(flop_core STATIC
     src/flop/orbit/prediction/soi_escape.cpp
     src/flop/orbit/prediction/soi_intercept.cpp
     src/flop/orbit/propagators/universal.cpp
+    src/flop/world/universe.cpp
 )
 target_include_directories(flop_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_compile_features(flop_core PUBLIC cxx_std_20)
@@ -44,6 +45,7 @@ if(BUILD_TESTING)
         tests/orbit/patched_conics_tests.cpp
         tests/orbit/propagation_tests.cpp
         tests/orbit/reference_frame_tests.cpp
+        tests/world/universe_tests.cpp
     )
     target_link_libraries(flop_tests PRIVATE flop_core Catch2::Catch2WithMain)
 
