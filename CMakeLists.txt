@@ -12,9 +12,11 @@ if(FLOP_BUILD_GAME)
 endif()
 
 add_library(flop_core STATIC
+    src/flop/craft/craft.cpp
     src/flop/config/asset_path.cpp
     src/flop/config/decode/body.cpp
     src/flop/config/decode/body_orbit.cpp
+    src/flop/config/decode/craft.cpp
     src/flop/config/load.cpp
     src/flop/orbit/ref_frame.cpp
     src/flop/orbit/state.cpp
@@ -35,6 +37,7 @@ target_link_libraries(flop_core PUBLIC yaml-cpp::yaml-cpp)
 
 if(BUILD_TESTING)
     add_executable(flop_tests
+        tests/craft/craft_tests.cpp
         tests/math/vec2_tests.cpp
         tests/orbit/encounter_tests.cpp
         tests/orbit/patched_conics_tests.cpp
@@ -52,6 +55,7 @@ if(BUILD_TESTING)
     add_executable(flop_config_tests
         tests/config/body_decode_tests.cpp
         tests/config/body_orbit_decode_tests.cpp
+        tests/config/craft_decode_tests.cpp
         tests/config/config_tests.cpp
     )
     target_link_libraries(flop_config_tests PRIVATE flop_core Catch2::Catch2WithMain)
