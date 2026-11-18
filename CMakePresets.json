@@ -16,7 +16,16 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "BUILD_TESTING": true,
-        "FLOP_BUILD_GAME": false
+        "FLOP_BUILD_GAME": false,
+        "FLOP_BUILD_CONFIG": false
+      }
+    },
+    {
+      "name": "headless-config",
+      "displayName": "Windows GCC headless with YAML configuration",
+      "inherits": "headless",
+      "cacheVariables": {
+        "FLOP_BUILD_CONFIG": true
       }
     }
   ],
@@ -24,6 +33,10 @@
     {
       "name": "headless",
       "configurePreset": "headless"
+    },
+    {
+      "name": "headless-config",
+      "configurePreset": "headless-config"
     }
   ],
   "testPresets": [
@@ -32,6 +45,11 @@
       "configurePreset": "headless",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "headless-config",
+      "inherits": "headless",
+      "configurePreset": "headless-config"
     }
   ],
   "workflowPresets": [
@@ -41,6 +59,14 @@
         { "type": "configure", "name": "headless" },
         { "type": "build", "name": "headless" },
         { "type": "test", "name": "headless" }
+      ]
+    },
+    {
+      "name": "headless-config",
+      "steps": [
+        { "type": "configure", "name": "headless-config" },
+        { "type": "build", "name": "headless-config" },
+        { "type": "test", "name": "headless-config" }
       ]
     }
   ]
