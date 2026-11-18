@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
+
+#include "flop/craft/part_config.hpp"
 
 namespace flop::craft {
 
@@ -24,6 +27,8 @@ struct CraftConfig {
   std::string name;
   CraftOrbitConfig orbit;
   CraftAttitudeConfig initial_attitude;
+  std::vector<PartConfig> parts;
+  bool plugins_resolved{};
 };
 
 } // namespace flop::craft

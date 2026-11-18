@@ -28,11 +28,12 @@ const std::string BASIC_YAML =
     "orbit: {parent: Hamswell, h: 100, e: 0.1, omega: 0.2, M0: 0.3, t0: 4}\n"
     "rotation: {angle: 0.4, momentum: -5}\n"
     "parts:\n"
-    "  - {type: Pod, id: pod_1, name: Pod}\n";
+    "  - {type: Pod, id: pod_1, name: Pod, transform: {pos: {x: 0, y: 0}, rot: 0}, "
+    "attachments: [], plugins: {}}\n";
 
 } // namespace
 
-TEST_CASE("Shipped craft decodes its own fields independently of part configuration") {
+TEST_CASE("Shipped craft decodes installed part geometry and attachments") {
   const AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
   const auto config =
       load_config<CraftConfig>(resolver, AssetPath("assets/spacecraft/OrbitalTestCraft.yaml"));
@@ -46,16 +47,21 @@ TEST_CASE("Shipped craft decodes its own fields independently of part configurat
   CHECK(config.orbit.epoch_sec == 0);
   CHECK(config.initial_attitude.angle_radians == Approx(2.7));
   CHECK(config.initial_attitude.angular_momentum_kg_m2_per_s == -1000);
+  REQUIRE(config.parts.size() == 3);
+  CHECK(config.parts[1].id == "TestingTank_2");
+  CHECK(config.parts[1].position_meters.y == -2);
+  REQUIRE(config.parts[1].attachments.size() == 2);
+  CHECK(config.parts[1].attachments[1].attach_part_id == "TestingEngine_3");
 }
 
-TEST_CASE("Craft decoder validates only the parts collection boundary") {
+TEST_CASE("Craft decoder validates its parts collection and part fields") {
   auto yaml = BASIC_YAML;
   yaml.replace(yaml.find("parts:\n"), std::string::npos, "parts: wrong\n");
   CHECK_THROWS_WITH(decode(yaml), ContainsSubstring("[parts]"));
 
   yaml = BASIC_YAML;
   yaml.replace(yaml.find("type: Pod"), 9, "type: ''");
-  CHECK(decode(yaml).name == "Test");
+  CHECK_THROWS_WITH(decode(yaml), ContainsSubstring("[parts[0].type]"));
 }
 
 TEST_CASE("Craft decoder locates malformed craft fields") {

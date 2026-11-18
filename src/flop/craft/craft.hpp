@@ -1,9 +1,12 @@
 #pragma once
 
+#include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "flop/craft/craft_config.hpp"
+#include "flop/craft/part.hpp"
 #include "flop/orbit/prediction/patched_conics.hpp"
 #include "flop/orbit/ref_frame.hpp"
 
@@ -12,11 +15,17 @@ namespace flop::craft {
 // owns one craft's orbit and prediction. parts and flight behavior follow later.
 class Craft {
 public:
-  Craft(CraftConfig config, const orbit::RefFrameManager &frames);
+  Craft(
+      CraftConfig config,
+      const orbit::RefFrameManager &frames,
+      std::vector<PartTypeConfig> part_types = {}
+  );
 
   [[nodiscard]] std::string_view name() const noexcept { return name_; }
   [[nodiscard]] const orbit::OrbitState &orbit_state() const noexcept { return orbit_state_; }
   [[nodiscard]] const orbit::OrbitPatchSegments &patches() const noexcept { return patches_; }
+  [[nodiscard]] std::span<const Part> parts() const noexcept { return parts_; }
+  [[nodiscard]] const Part &part(std::string_view id) const;
 
   // replace the owned prediction only after the requested interval is covered.
   void predict_patches(const orbit::RefFrameManager &frames, double begin_ut, double end_ut);
@@ -25,6 +34,7 @@ private:
   std::string name_;
   orbit::OrbitState orbit_state_;
   orbit::OrbitPatchSegments patches_;
+  std::vector<Part> parts_;
 };
 
 } // namespace flop::craft

@@ -18,6 +18,8 @@ add_library(flop_core STATIC
     src/flop/config/decode/body.cpp
     src/flop/config/decode/body_orbit.cpp
     src/flop/config/decode/craft.cpp
+    src/flop/config/decode/part.cpp
+    src/flop/config/decode/part_plugin.cpp
     src/flop/config/decode/resources.cpp
     src/flop/config/load.cpp
     src/flop/orbit/ref_frame.cpp
@@ -59,6 +61,7 @@ if(BUILD_TESTING)
         tests/config/body_decode_tests.cpp
         tests/config/body_orbit_decode_tests.cpp
         tests/config/craft_decode_tests.cpp
+        tests/config/part_decode_tests.cpp
         tests/config/resources_decode_tests.cpp
         tests/config/config_tests.cpp
     )
