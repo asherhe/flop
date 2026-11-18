@@ -129,8 +129,9 @@ UniversalPropagator::UniversalPropagator(double mu, const OrbitState &orbit) :
   }
 }
 
-std::optional<UniversalPropagator::PositionSample>
-UniversalPropagator::sample_position(double ut) const {
+std::optional<UniversalPropagator::PositionSample> UniversalPropagator::sample_position(
+    double ut
+) const {
   if (!std::isfinite(ut)) {
     throw std::invalid_argument("Invalid propagation time");
   }

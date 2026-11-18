@@ -132,8 +132,9 @@ StateVectors elliptic_state(double eccentricity, double mean_anomaly, double p, 
 
 } // namespace
 
-OrbitState
-state_at_epoch_from_elements(double mu, double epoch, OrbitalElements elements, FrameId frame_id) {
+OrbitState state_at_epoch_from_elements(
+    double mu, double epoch, OrbitalElements elements, FrameId frame_id
+) {
   const auto [momentum, eccentricity, longitude, mean] = elements;
   if (!std::isfinite(mu) || mu <= 0 || !std::isfinite(epoch) || !std::isfinite(momentum) ||
       momentum == 0 || !std::isfinite(eccentricity) || eccentricity < 0 ||

@@ -57,17 +57,39 @@ TEST_CASE("Celestial body supplies root and child frame definitions") {
 
 TEST_CASE("Celestial body rejects invalid physical and orbit config") {
   auto body = ROOT;
-  SECTION("empty name") { body.name.clear(); }
-  SECTION("zero radius") { body.radius_meters = 0; }
-  SECTION("nonfinite radius") { body.radius_meters = std::numeric_limits<double>::infinity(); }
-  SECTION("negative gravity") { body.surface_gravity_m_per_s2 = -1; }
-  SECTION("zero day") { body.day_length_sec = 0; }
-  SECTION("overflowing gravitational parameter") { body.radius_meters = 1e200; }
-  SECTION("overflowing mass") { body.radius_meters = 1e150; }
-  SECTION("empty parent") { body.orbit = BodyOrbitConfig{"", 4, 0, 0, 0, 0}; }
-  SECTION("nonpositive semimajor axis") { body.orbit = BodyOrbitConfig{"root", 0, 0, 0, 0, 0}; }
-  SECTION("unbound orbit") { body.orbit = BodyOrbitConfig{"root", 4, 1, 0, 0, 0}; }
-  SECTION("negative eccentricity") { body.orbit = BodyOrbitConfig{"root", 4, -1, 0, 0, 0}; }
+  SECTION("empty name") {
+    body.name.clear();
+  }
+  SECTION("zero radius") {
+    body.radius_meters = 0;
+  }
+  SECTION("nonfinite radius") {
+    body.radius_meters = std::numeric_limits<double>::infinity();
+  }
+  SECTION("negative gravity") {
+    body.surface_gravity_m_per_s2 = -1;
+  }
+  SECTION("zero day") {
+    body.day_length_sec = 0;
+  }
+  SECTION("overflowing gravitational parameter") {
+    body.radius_meters = 1e200;
+  }
+  SECTION("overflowing mass") {
+    body.radius_meters = 1e150;
+  }
+  SECTION("empty parent") {
+    body.orbit = BodyOrbitConfig{"", 4, 0, 0, 0, 0};
+  }
+  SECTION("nonpositive semimajor axis") {
+    body.orbit = BodyOrbitConfig{"root", 0, 0, 0, 0, 0};
+  }
+  SECTION("unbound orbit") {
+    body.orbit = BodyOrbitConfig{"root", 4, 1, 0, 0, 0};
+  }
+  SECTION("negative eccentricity") {
+    body.orbit = BodyOrbitConfig{"root", 4, -1, 0, 0, 0};
+  }
   SECTION("nonfinite angle") {
     body.orbit = BodyOrbitConfig{"root", 4, 0, std::numeric_limits<double>::quiet_NaN(), 0, 0};
   }
@@ -83,7 +105,9 @@ TEST_CASE("Celestial body checks parent gravity and derived orbit domain") {
   CHECK_THROWS_AS(root.ref_frame_definition(100), std::invalid_argument);
   CHECK_THROWS_AS(child.ref_frame_definition(), std::invalid_argument);
   CHECK_THROWS_AS(child.ref_frame_definition(0), std::invalid_argument);
-  CHECK_THROWS_AS(child.ref_frame_definition(std::numeric_limits<double>::infinity()), std::invalid_argument);
+  CHECK_THROWS_AS(
+      child.ref_frame_definition(std::numeric_limits<double>::infinity()), std::invalid_argument
+  );
   CHECK_THROWS_AS(CelestialBody(ROOT, 0), std::invalid_argument);
 
   auto large_orbit = CHILD;
