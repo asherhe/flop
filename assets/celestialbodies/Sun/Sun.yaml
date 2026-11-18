@@ -5,10 +5,10 @@ color: "#EDDC4F"
 
 # planetary info
 radius: 600000.0 # km
-surfaceGravity: 286 # m/s^2
-dayLength: 614.0 # hours
+surface_gravity: 286 # m/s^2
+day_length: 614.0 # hours
 
-surfaceMaterial:
+surface_material:
   path: assets/shared/materials/surfaceblank.mat
   properties:
     _Color:
@@ -21,7 +21,7 @@ orbit: false
 # atmospheric data, set to false if no atmosphere
 atmosphere: false # TODO, figure out how sun's atmosphere works
 
-mapIcon: body_sun
+map_icon: body_sun
 
-customDisplayPrefabs:
+custom_display_prefabs:
   - assets/celestialbodies/Sun/SunLensFlare.prefab

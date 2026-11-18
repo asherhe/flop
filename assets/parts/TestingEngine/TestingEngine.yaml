@@ -4,7 +4,7 @@ name: Testing Engine
 mass: 1.2 # t
 crossfeed: true
 
-attachmentNodes:
+attachment_nodes:
   - name: top
     pos: { x: 0.0, y: 0.75 }
   - name: bottom
@@ -24,15 +24,15 @@ plugins:
     isp: 1000 # ridiculously good isp for testing
     # thrust: 26.7 # kN
     thrust: 100 # better thrust for faster testing
-    thrustDir: { x: 0.0, y: 1.0 }
-    propellantRatio:
+    thrust_dir: { x: 0.0, y: 1.0 }
+    propellant_ratio:
       NTO: 1.5
       Hydrazine: 1.0
 
     plume:
-      nozzlePos: { x: 0.0, y: -0.75 }
-      nozzleSize: 1.0
-      spreadAngle: 0.0
+      nozzle_pos: { x: 0.0, y: -0.75 }
+      nozzle_size: 1.0
+      spread_angle: 0.0
 
       # below are particle settings
 
@@ -50,12 +50,12 @@ plugins:
       life:
         # gradient for particle color over its lifetime
         color:
-          colorKeys:
+          color_keys:
             0.00: "#FFFBBC"
             0.37: "#FFBE5F"
             0.66: "#A64D46"
             0.87: "#677A8F"
-          alphaKeys:
+          alpha_keys:
             0.00: 0.00
             0.10: 1.00
             0.81: 1.00
@@ -74,6 +74,6 @@ plugins:
       radius: 4.50
       falloff: 0.73
 
-      flickerFrequency: 12.8
-      flickerMin: 0.7
-      flickerMax: 1.9
+      flicker_frequency: 12.8
+      flicker_min: 0.7
+      flicker_max: 1.9

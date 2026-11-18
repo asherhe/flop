@@ -5,10 +5,10 @@ color: "#82cae7"
 
 # planetary info
 radius: 249.0 # km
-surfaceGravity: 0.6 # m/s^2
-dayLength: 10.0 # hours
+surface_gravity: 0.6 # m/s^2
+day_length: 10.0 # hours
 
-surfaceMaterial:
+surface_material:
   path: assets/shared/materials/surfaceblank.mat
   properties:
     _Color:
@@ -18,11 +18,11 @@ surfaceMaterial:
 # orbital info, set to false if there is no orbit (i.e. the Sun)
 orbit:
   parent: Discus
-  semimajorAxis: 4.0e5 # km
+  semimajor_axis: 4.0e5 # km
   eccentricity: 0.0011
-  longitudePeriapsis: 0.0 # deg
-  epochMeanAnom: 0.0 # deg
-  epochTime: 0.0 # s
+  longitude_periapsis: 0.0 # deg
+  epoch_mean_anom: 0.0 # deg
+  epoch_time: 0.0 # s
 
 # atmospheric data, set to false if no atmosphere
 atmosphere: false

@@ -4,7 +4,7 @@ name: Testing Command Pod
 mass: 0.8 # t
 crossfeed: true
 
-attachmentNodes:
+attachment_nodes:
   - name: top
     pos: { x: 0.0, y: 1.0 }
   - name: bottom
@@ -23,13 +23,13 @@ plugins:
           type: Texture2D
           value: assets/parts/TestingCommandPod/TestingCommandPod-Light.png
   LightPlugin:
-    lightPosition: { x: 0, y: -0.125 }
+    light_position: { x: 0, y: -0.125 }
     color: "#FFECB1"
     intensity: 0.13
-    innerRadius: 0.25
-    outerRadius: 1.68
+    inner_radius: 0.25
+    outer_radius: 1.68
     falloff: 0.89
   CommandPlugin:
-    autoSteerable: true
+    auto_steerable: true
   ReactionWheelPlugin:
     torque: 5 # kN m

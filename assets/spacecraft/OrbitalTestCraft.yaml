@@ -26,8 +26,8 @@ parts:
     attachments:
       - mode: Node
         node: bottom
-        atchPart: TestingTank_2 # attached part
-        atchNode: top # attachment node of attached part
+        atch_part: TestingTank_2 # attached part
+        atch_node: top # attachment node of attached part
 
     plugins:
       SpriteRendererPlugin:
@@ -48,12 +48,12 @@ parts:
     attachments:
       - mode: Node
         node: top
-        atchPart: TestingCommandPod_1
-        atchNode: bottom
+        atch_part: TestingCommandPod_1
+        atch_node: bottom
       - mode: Node
         node: bottom
-        atchPart: TestingEngine_3
-        atchNode: top
+        atch_part: TestingEngine_3
+        atch_node: top
 
     plugins:
       SpriteRendererPlugin:
@@ -78,8 +78,8 @@ parts:
     attachments:
       - mode: Node
         node: top
-        atchPart: TestingTank_2
-        atchNode: bottom
+        atch_part: TestingTank_2
+        atch_node: bottom
 
     plugins:
       SpriteRendererPlugin:

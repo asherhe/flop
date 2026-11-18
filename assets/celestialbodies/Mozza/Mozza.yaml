@@ -5,10 +5,10 @@ color: "#E3C481"
 
 # planetary info
 radius: 800.0 # km
-surfaceGravity: 2.5 # m/s^2
-dayLength: 24.0 # hours
+surface_gravity: 2.5 # m/s^2
+day_length: 24.0 # hours
 
-surfaceMaterial:
+surface_material:
   path: assets/shared/materials/surface.mat
   properties:
     _MainTex:
@@ -24,15 +24,15 @@ surfaceMaterial:
 # orbital info, set to false if there is no orbit (i.e. the Sun)
 orbit:
   parent: Hamswell
-  semimajorAxis: 1.88e5 # km
+  semimajor_axis: 1.88e5 # km
   eccentricity: 0.062
-  longitudePeriapsis: 126.0 # deg
-  epochMeanAnom: 102.0 # deg
-  epochTime: 0.0 # s
+  longitude_periapsis: 126.0 # deg
+  epoch_mean_anom: 102.0 # deg
+  epoch_time: 0.0 # s
 
 # atmospheric data, set to false if no atmosphere
 atmosphere: false
 
-planetShine:
+planet_shine:
   color: "#f0d995"
   intensity: 1
