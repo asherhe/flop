@@ -129,8 +129,7 @@ void Craft::step(double now_ut, double dt_sec) {
   const orbit::UniversalPropagator propagator(mu, orbit_state_);
   orbit::StateVectors state = propagator.state_at(now_ut);
 
-  const auto mass = resources_.mass_properties(parts_);
-  const bool vel_changed = newtonian_.step(mass, state, dt_sec);
+  const bool vel_changed = newtonian_.step(*this, state, dt_sec);
 
   // reseed if velocity change occurs
   if (vel_changed) {

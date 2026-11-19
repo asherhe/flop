@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <variant>
 
+#include "flop/craft/craft_context.hpp"
 #include "flop/craft/parts/part_plugin_config.hpp"
 #include "flop/craft/resource_config.hpp"
 #include "flop/craft/resource_registry.hpp"
@@ -88,7 +89,8 @@ CraftResources::CraftResources(std::span<const Part> parts, const world::Univers
   }
 }
 
-MassProperties CraftResources::mass_properties(std::span<const Part> parts) const {
+MassProperties CraftResources::mass_properties(const CraftContext &ctx) const {
+  const auto parts = ctx.parts();
   std::vector<double> part_mass_kg(parts.size(), 0.0);
   for (std::size_t index = 0; index < parts.size(); ++index) {
     part_mass_kg[index] = parts[index].dry_mass_kg;
@@ -125,11 +127,12 @@ MassProperties CraftResources::mass_properties(std::span<const Part> parts) cons
 }
 
 std::vector<std::size_t> CraftResources::reachable_containers(
-    std::span<const Part> parts,
+    const CraftContext &ctx,
     std::size_t source_part_index,
     std::string_view resource_id,
     Reach reach
 ) const {
+  const auto parts = ctx.parts();
   // containers_ indices whose owning part holds this resource and is enabled.
   const auto container_on_part = [&](std::size_t part_index) -> std::vector<std::size_t> {
     std::vector<std::size_t> found;
@@ -191,19 +194,18 @@ std::vector<std::size_t> CraftResources::reachable_containers(
 }
 
 double CraftResources::read(
-    std::span<const Part> parts, std::size_t source_part_index, std::string_view resource_id
+    const CraftContext &ctx, std::size_t source_part_index, std::string_view resource_id
 ) const {
   const auto reach = reach_for_flow(registry_->at(resource_id).flow);
   double available = 0.0;
-  for (const std::size_t index :
-       reachable_containers(parts, source_part_index, resource_id, reach)) {
+  for (const std::size_t index : reachable_containers(ctx, source_part_index, resource_id, reach)) {
     available += find_slot(containers_[index], resource_id)->amount_units;
   }
   return available;
 }
 
 double CraftResources::drain(
-    std::span<const Part> parts,
+    const CraftContext &ctx,
     std::size_t source_part_index,
     std::string_view resource_id,
     double requested_units
@@ -212,7 +214,7 @@ double CraftResources::drain(
     return 0.0;
   }
   const auto reach = reach_for_flow(registry_->at(resource_id).flow);
-  auto reachable = reachable_containers(parts, source_part_index, resource_id, reach);
+  auto reachable = reachable_containers(ctx, source_part_index, resource_id, reach);
 
   // group reachable containers by priority and drain higher priority first.
   std::ranges::sort(reachable, [&](std::size_t lhs, std::size_t rhs) {

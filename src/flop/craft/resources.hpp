@@ -14,6 +14,7 @@
 namespace flop::craft {
 
 class ResourceRegistry;
+class CraftContext;
 
 // mutable runtime state of one resource type inside one container.
 struct ResourceSlot {
@@ -65,13 +66,13 @@ public:
   // their contents. computed on demand each call; there is no cache yet. if
   // profiling later shows this on a hot path, drain operations can mark a dirty
   // flag instead.
-  [[nodiscard]] MassProperties mass_properties(std::span<const Part> parts) const;
+  [[nodiscard]] MassProperties mass_properties(const CraftContext &ctx) const;
 
   // the amount of resource available to a part, summed over every enabled
   // container the part can reach for that resource. the reach mode is taken
   // from the resource's registry flow. does not mutate any container.
   [[nodiscard]] double read(
-      std::span<const Part> parts, std::size_t source_part_index, std::string_view resource_id
+      const CraftContext &ctx, std::size_t source_part_index, std::string_view resource_id
   ) const;
 
   // drains a resource, choosing containers by priority and the resource's flow
@@ -80,7 +81,7 @@ public:
   // actual units delivered, in [0, requested]. amounts stay within
   // [0, capacity] and no division is performed against an empty group.
   double drain(
-      std::span<const Part> parts,
+      const CraftContext &ctx,
       std::size_t source_part_index,
       std::string_view resource_id,
       double requested_units
@@ -91,7 +92,7 @@ private:
   // returns indices into containers_. only enabled containers are reachable; a disabled container
   // holds its contents but cannot be drained
   [[nodiscard]] std::vector<std::size_t> reachable_containers(
-      std::span<const Part> parts,
+      const CraftContext &ctx,
       std::size_t source_part_index,
       std::string_view resource_id,
       Reach reach

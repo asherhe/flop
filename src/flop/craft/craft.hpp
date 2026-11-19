@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "flop/craft/craft_config.hpp"
+#include "flop/craft/craft_context.hpp"
 #include "flop/craft/newtonian.hpp"
 #include "flop/craft/parts/part.hpp"
 #include "flop/craft/resources.hpp"
@@ -16,7 +17,7 @@
 namespace flop::craft {
 
 // owns one craft's orbit and prediction. parts and flight behavior follow later.
-class Craft {
+class Craft : public CraftContext {
 public:
   Craft(
       CraftConfig config,
@@ -27,14 +28,18 @@ public:
   [[nodiscard]] std::string_view name() const noexcept { return name_; }
   [[nodiscard]] const orbit::OrbitState &orbit_state() const noexcept { return orbit_state_; }
   [[nodiscard]] const orbit::OrbitPatchSegments &patches() const noexcept { return patches_; }
-  [[nodiscard]] std::span<const Part> parts() const noexcept { return parts_; }
+  [[nodiscard]] std::span<const Part> parts() const noexcept override { return parts_; }
   [[nodiscard]] const Part &part(std::string_view id) const;
 
-  [[nodiscard]] const CraftResources &resources() const noexcept { return resources_; }
-  [[nodiscard]] CraftResources &resources() noexcept { return resources_; }
+  [[nodiscard]] const CraftResources &resources() const noexcept override { return resources_; }
+  [[nodiscard]] CraftResources &resources() noexcept override { return resources_; }
 
-  [[nodiscard]] const CraftNewtonian &newtonian() const noexcept { return newtonian_; }
-  [[nodiscard]] CraftNewtonian &newtonian() noexcept { return newtonian_; }
+  [[nodiscard]] const CraftNewtonian &newtonian() const noexcept override { return newtonian_; }
+  [[nodiscard]] CraftNewtonian &newtonian() noexcept override { return newtonian_; }
+
+  [[nodiscard]] MassProperties mass_properties() const override {
+    return resources_.mass_properties(*this);
+  }
 
   // advance Craft simulation. triggers PartPlugin steps and advances CraftNewtonian simulation
   void step(double now_ut, double dt_sec);

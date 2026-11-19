@@ -9,6 +9,7 @@
 namespace flop::craft {
 
 struct CraftAttitudeConfig;
+class CraftContext;
 
 // linear and rotational rigid-body state for one craft, integrated from forces
 // and torques accumulated over a step.
@@ -45,11 +46,12 @@ public:
   void apply_torque(double torque_newton_meters);
 
   // apply accumulated forces and torques, integrate motion, and clear
-  // accumulators. returns true iff the linear velocity was changed this step
-  // (a nonzero net force applied with positive mass); a coasting craft returns
-  // false, and a changed attitude alone does not count. the caller uses this to
-  // decide whether to re-seed the orbit.
-  bool step(const MassProperties &mass, orbit::StateVectors &state, double dt_sec);
+  // accumulators. takes one mass snapshot from the context at the start of the
+  // step and uses it throughout. returns true iff the linear velocity was
+  // changed this step (a nonzero net force applied with positive mass); a
+  // coasting craft returns false, and a changed attitude alone does not count.
+  // the caller uses this to decide whether to re-seed the orbit.
+  bool step(const CraftContext &ctx, orbit::StateVectors &state, double dt_sec);
 
 private:
   struct AppliedForce {

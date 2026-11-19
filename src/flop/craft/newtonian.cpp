@@ -1,6 +1,7 @@
 #include "flop/craft/newtonian.hpp"
 
 #include "flop/craft/craft_config.hpp"
+#include "flop/craft/craft_context.hpp"
 #include "flop/math/utils.hpp"
 
 namespace flop::craft {
@@ -17,7 +18,9 @@ void CraftNewtonian::apply_torque(double torque_newton_meters) {
   accumulated_torque_newton_meters_ += torque_newton_meters;
 }
 
-bool CraftNewtonian::step(const MassProperties &mass, orbit::StateVectors &state, double dt_sec) {
+bool CraftNewtonian::step(const CraftContext &ctx, orbit::StateVectors &state, double dt_sec) {
+  const auto mass = ctx.mass_properties();
+
   // resolve accumulated forces
   Vec2d net_force_N{};
   double net_torque_N_m = accumulated_torque_newton_meters_;

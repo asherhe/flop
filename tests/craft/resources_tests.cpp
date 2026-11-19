@@ -1,4 +1,5 @@
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -11,6 +12,7 @@
 #include "flop/craft/resource_config.hpp"
 #include "flop/craft/resources.hpp"
 
+#include "support/stub_craft_context.hpp"
 #include "support/stub_universe_context.hpp"
 
 namespace {
@@ -24,7 +26,15 @@ using flop::craft::ResourceConfig;
 using flop::craft::ResourceContainerConfig;
 using flop::craft::ResourceFlow;
 using flop::craft::ResourceSlot;
+using flop::testing::StubCraftContext;
 using flop::testing::StubUniverseContext;
+
+// a craft context exposing the given parts, as the resource queries read them.
+StubCraftContext craft_ctx(std::span<const Part> parts) {
+  StubCraftContext context;
+  context.with_parts(parts);
+  return context;
+}
 
 flop::orbit::RefFrameManager frames() {
   return flop::orbit::RefFrameManager(
@@ -172,7 +182,7 @@ TEST_CASE("CraftResources mass properties sum dry mass with no resources") {
   const auto ctx = context();
   const CraftResources resources(parts, ctx);
 
-  const auto mass = resources.mass_properties(parts);
+  const auto mass = resources.mass_properties(craft_ctx(parts));
   CHECK(mass.total_mass_kg == 1400);
   CHECK(mass.center_of_mass_meters.x == 0);
   // 600 kg at y = -2, 800 kg at y = 0  ->  -1200 / 1400
@@ -190,7 +200,7 @@ TEST_CASE("CraftResources mass properties include live resource mass") {
   const auto ctx = context();
   const CraftResources resources(parts, ctx);
 
-  const auto mass = resources.mass_properties(parts);
+  const auto mass = resources.mass_properties(craft_ctx(parts));
   // tank: 600 dry + 500 * 1 kg/unit = 1100 kg at y = -2; pod: 800 kg at y = 0
   CHECK(mass.total_mass_kg == Approx(1900));
   CHECK(mass.center_of_mass_meters.y == Approx(-2200.0 / 1900.0));
@@ -207,7 +217,7 @@ TEST_CASE("CraftResources mass properties count disabled container contents") {
   const CraftResources resources(parts, ctx);
 
   REQUIRE_FALSE(resources.containers().front().enabled);
-  const auto mass = resources.mass_properties(parts);
+  const auto mass = resources.mass_properties(craft_ctx(parts));
   // 600 dry + 100 units * 2 kg/unit = 800 kg, all at the single part's position
   CHECK(mass.total_mass_kg == Approx(800));
   CHECK(mass.center_of_mass_meters.y == Approx(-2));
@@ -218,7 +228,7 @@ TEST_CASE("CraftResources mass properties place a single part's COM at the part"
   const auto ctx = context();
   const CraftResources resources(parts, ctx);
 
-  const auto mass = resources.mass_properties(parts);
+  const auto mass = resources.mass_properties(craft_ctx(parts));
   CHECK(mass.total_mass_kg == 500);
   CHECK(mass.center_of_mass_meters.x == Approx(3));
   CHECK(mass.center_of_mass_meters.y == Approx(-4));
@@ -231,7 +241,7 @@ TEST_CASE("CraftResources mass properties handle a massless craft without dividi
   const auto ctx = context();
   const CraftResources resources(parts, ctx);
 
-  const auto mass = resources.mass_properties(parts);
+  const auto mass = resources.mass_properties(craft_ctx(parts));
   CHECK(mass.total_mass_kg == 0);
   CHECK(mass.center_of_mass_meters.x == 0);
   CHECK(mass.center_of_mass_meters.y == 0);
@@ -259,7 +269,7 @@ TEST_CASE(
 
   // reading NTO (stage flow) from the pod reaches tank_a and tank_b but not
   // tank_c, which sits behind the non-crossfeed wall.
-  CHECK(resources.read(parts, 0, "NTO") == 1000);
+  CHECK(resources.read(craft_ctx(parts), 0, "NTO") == 1000);
 }
 
 TEST_CASE("CraftResources None reach is limited to the source part") {
@@ -271,7 +281,7 @@ TEST_CASE("CraftResources None reach is limited to the source part") {
   const CraftResources resources(parts, ctx);
 
   // Ablator has None flow, so only the source part's own container is reached.
-  CHECK(resources.read(parts, 0, "Ablator") == 50);
+  CHECK(resources.read(craft_ctx(parts), 0, "Ablator") == 50);
 }
 
 TEST_CASE("CraftResources Craft reach spans every container regardless of attachment") {
@@ -283,8 +293,8 @@ TEST_CASE("CraftResources Craft reach spans every container regardless of attach
   const CraftResources resources(parts, ctx);
 
   // Electricity has Craft flow, so both containers are reachable from either.
-  CHECK(resources.read(parts, 0, "Electricity") == 75);
-  CHECK(resources.read(parts, 1, "Electricity") == 75);
+  CHECK(resources.read(craft_ctx(parts), 0, "Electricity") == 75);
+  CHECK(resources.read(craft_ctx(parts), 1, "Electricity") == 75);
 }
 
 TEST_CASE("CraftResources crossfeed traversal terminates on cyclic attachments") {
@@ -298,7 +308,7 @@ TEST_CASE("CraftResources crossfeed traversal terminates on cyclic attachments")
   const auto ctx = context();
   const CraftResources resources(parts, ctx);
 
-  CHECK(resources.read(parts, 0, "NTO") == 60);
+  CHECK(resources.read(craft_ctx(parts), 0, "NTO") == 60);
 }
 
 TEST_CASE("CraftResources drain delivers from a single reachable tank") {
@@ -306,8 +316,8 @@ TEST_CASE("CraftResources drain delivers from a single reachable tank") {
   const auto ctx = context();
   CraftResources resources(parts, ctx);
 
-  CHECK(resources.drain(parts, 0, "NTO", 150) == Approx(150));
-  CHECK(resources.read(parts, 0, "NTO") == Approx(250));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", 150) == Approx(150));
+  CHECK(resources.read(craft_ctx(parts), 0, "NTO") == Approx(250));
 }
 
 TEST_CASE("CraftResources drain never reports more than is available") {
@@ -315,10 +325,10 @@ TEST_CASE("CraftResources drain never reports more than is available") {
   const auto ctx = context();
   CraftResources resources(parts, ctx);
 
-  CHECK(resources.drain(parts, 0, "NTO", 500) == Approx(200));
-  CHECK(resources.read(parts, 0, "NTO") == Approx(0));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", 500) == Approx(200));
+  CHECK(resources.read(craft_ctx(parts), 0, "NTO") == Approx(0));
   // a second drain on the empty tank delivers nothing.
-  CHECK(resources.drain(parts, 0, "NTO", 10) == Approx(0));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", 10) == Approx(0));
 }
 
 TEST_CASE("CraftResources drain empties higher-priority containers first") {
@@ -330,7 +340,7 @@ TEST_CASE("CraftResources drain empties higher-priority containers first") {
   CraftResources resources(parts, ctx);
 
   // draining 300 should empty the high-priority tank and leave the low one full.
-  CHECK(resources.drain(parts, 0, "NTO", 300) == Approx(300));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", 300) == Approx(300));
   const auto &containers = resources.containers();
   const auto high_amount = containers[0].slots.front().amount_units;
   const auto low_amount = containers[1].slots.front().amount_units;
@@ -349,7 +359,7 @@ TEST_CASE("CraftResources drain splits an equal-priority group by current conten
   CraftResources resources(parts, ctx);
 
   // group has 400 units; draining 200 takes half of each tank's contents.
-  CHECK(resources.drain(parts, 0, "NTO", 200) == Approx(200));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", 200) == Approx(200));
   const auto &containers = resources.containers();
   CHECK(containers[0].slots.front().amount_units == Approx(150));
   CHECK(containers[1].slots.front().amount_units == Approx(50));
@@ -363,8 +373,8 @@ TEST_CASE("CraftResources drain on empty tanks delivers zero without dividing by
   const auto ctx = context();
   CraftResources resources(parts, ctx);
 
-  CHECK(resources.drain(parts, 0, "NTO", 100) == Approx(0));
-  CHECK(resources.read(parts, 0, "NTO") == Approx(0));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", 100) == Approx(0));
+  CHECK(resources.read(craft_ctx(parts), 0, "NTO") == Approx(0));
 }
 
 TEST_CASE("CraftResources drain of a non-positive request delivers zero") {
@@ -372,9 +382,9 @@ TEST_CASE("CraftResources drain of a non-positive request delivers zero") {
   const auto ctx = context();
   CraftResources resources(parts, ctx);
 
-  CHECK(resources.drain(parts, 0, "NTO", 0) == Approx(0));
-  CHECK(resources.drain(parts, 0, "NTO", -5) == Approx(0));
-  CHECK(resources.read(parts, 0, "NTO") == Approx(400));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", 0) == Approx(0));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", -5) == Approx(0));
+  CHECK(resources.read(craft_ctx(parts), 0, "NTO") == Approx(400));
 }
 
 TEST_CASE("CraftResources skips disabled containers when reading and draining") {
@@ -386,8 +396,8 @@ TEST_CASE("CraftResources skips disabled containers when reading and draining") 
   CraftResources resources(parts, ctx);
 
   // the disabled tank's 500 units are not reachable.
-  CHECK(resources.read(parts, 0, "NTO") == Approx(200));
-  CHECK(resources.drain(parts, 0, "NTO", 1000) == Approx(200));
+  CHECK(resources.read(craft_ctx(parts), 0, "NTO") == Approx(200));
+  CHECK(resources.drain(craft_ctx(parts), 0, "NTO", 1000) == Approx(200));
   // the disabled tank still holds its contents (and its mass).
   CHECK(resources.containers()[1].slots.front().amount_units == Approx(500));
 }
