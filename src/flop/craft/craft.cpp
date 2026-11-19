@@ -129,6 +129,13 @@ const Part &Craft::part(std::string_view id) const {
   return *found;
 }
 
+Part &Craft::part(std::string_view id) {
+  const auto found = std::ranges::find(parts_, id, &Part::id);
+  if (found == parts_.end())
+    throw std::invalid_argument("Unknown craft part: " + std::string(id));
+  return *found;
+}
+
 const orbit::UniversalPropagator &Craft::propagator() {
   if (!propagator_.has_value()) {
     const double mu =
@@ -146,6 +153,8 @@ void Craft::reseed_orbit(double now_ut, const orbit::StateVectors &state) {
 }
 
 void Craft::step(double now_ut, double dt_sec) {
+  orbit::StateVectors state = propagator().state_at(now_ut);
+
   // control plugins produce the shared control state before any actuator reads
   // it; actuation plugins then accumulate forces and torques for this step.
   for (const auto phase : {plugin::TickPhase::control, plugin::TickPhase::actuation}) {
@@ -154,7 +163,6 @@ void Craft::step(double now_ut, double dt_sec) {
     }
   }
 
-  orbit::StateVectors state = propagator().state_at(now_ut);
   const bool vel_changed = newtonian_.step(*this, state, dt_sec);
   // a burn changed the linear velocity, so install a new seed at now_ut.
   // coasting keeps the analytical seed exact and reuses the cached propagator.
