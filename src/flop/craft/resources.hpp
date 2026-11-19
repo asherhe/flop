@@ -13,7 +13,9 @@
 namespace flop::craft {
 
 class ResourceRegistry;
+namespace plugin {
 class ResourcePlugin;
+} // namespace plugin
 class CraftContext;
 
 // describes the permitted degree of resource flow within a craft.
@@ -72,7 +74,7 @@ private:
   // the enabled resource containers that can supply a resource to the source
   // part, following the resource's reach rules. a disabled container holds its
   // contents (they count toward mass) but is not reachable for read or drain.
-  [[nodiscard]] std::vector<ResourcePlugin *> reachable_containers(
+  [[nodiscard]] std::vector<plugin::ResourcePlugin *> reachable_containers(
       const CraftContext &ctx,
       std::size_t source_part_index,
       std::string_view resource_id,

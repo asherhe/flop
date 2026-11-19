@@ -8,7 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/craft/parts/part.hpp"
-#include "flop/craft/parts/part_plugin_config.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 #include "flop/craft/plugins/resource_plugin.hpp"
 #include "flop/craft/resource_type_config.hpp"
 #include "flop/craft/resources.hpp"
@@ -20,11 +20,11 @@ namespace {
 using Catch::Approx;
 using flop::craft::CraftResources;
 using flop::craft::Part;
-using flop::craft::PartPluginConfig;
-using flop::craft::ResourceConfig;
+using flop::craft::plugin::PartPluginConfig;
+using flop::craft::plugin::ResourceConfig;
 using flop::craft::ResourceFlow;
-using flop::craft::ResourcePlugin;
-using flop::craft::ResourceSlot;
+using flop::craft::plugin::ResourcePlugin;
+using flop::craft::plugin::ResourceSlot;
 using flop::testing::StubCraftContext;
 using flop::testing::StubUniverseContext;
 

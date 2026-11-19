@@ -8,9 +8,12 @@
 #include "flop/craft/plugins/part_plugin.hpp"
 
 namespace flop::craft {
+class ResourceRegistry;
+} // namespace flop::craft
+
+namespace flop::craft::plugin {
 
 struct ResourceConfig;
-class ResourceRegistry;
 
 // mutable runtime quantity of one resource type inside one container.
 struct ResourceSlot {
@@ -41,4 +44,4 @@ private:
   std::vector<ResourceSlot> slots_;
 };
 
-} // namespace flop::craft
+} // namespace flop::craft::plugin

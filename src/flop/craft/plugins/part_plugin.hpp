@@ -7,8 +7,10 @@
 // the presentation layer when it exists.
 
 namespace flop::craft {
-
 class CraftContext;
+} // namespace flop::craft
+
+namespace flop::craft::plugin {
 
 class PartPlugin {
 public:
@@ -32,4 +34,4 @@ private:
   bool enabled_;
 };
 
-} // namespace flop::craft
+} // namespace flop::craft::plugin

@@ -5,7 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include "flop/craft/parts/part_plugin_config.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 #include "flop/craft/plugins/behavior_plugins.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 #include "flop/craft/plugins/part_plugin_factory.hpp"
@@ -15,24 +15,24 @@
 
 namespace {
 using Catch::Matchers::ContainsSubstring;
-using flop::craft::CommandConfig;
-using flop::craft::CommandPlugin;
-using flop::craft::EngineConfig;
-using flop::craft::EnginePlugin;
-using flop::craft::LightConfig;
-using flop::craft::LightPlugin;
-using flop::craft::make_plugin;
-using flop::craft::PartPlugin;
-using flop::craft::PartPluginConfig;
-using flop::craft::ReactionWheelConfig;
-using flop::craft::ReactionWheelPlugin;
-using flop::craft::ResourceConfig;
+using flop::craft::plugin::CommandConfig;
+using flop::craft::plugin::CommandPlugin;
+using flop::craft::plugin::EngineConfig;
+using flop::craft::plugin::EnginePlugin;
+using flop::craft::plugin::LightConfig;
+using flop::craft::plugin::LightPlugin;
+using flop::craft::plugin::make_plugin;
+using flop::craft::plugin::PartPlugin;
+using flop::craft::plugin::PartPluginConfig;
+using flop::craft::plugin::ReactionWheelConfig;
+using flop::craft::plugin::ReactionWheelPlugin;
+using flop::craft::plugin::ResourceConfig;
 using flop::craft::ResourceFlow;
-using flop::craft::ResourcePlugin;
+using flop::craft::plugin::ResourcePlugin;
 using flop::craft::ResourceRegistry;
-using flop::craft::ResourceSlot;
-using flop::craft::SpritePlugin;
-using flop::craft::SpriteRendererConfig;
+using flop::craft::plugin::ResourceSlot;
+using flop::craft::plugin::SpritePlugin;
+using flop::craft::plugin::SpriteRendererConfig;
 
 ResourceRegistry registry() {
   return ResourceRegistry(

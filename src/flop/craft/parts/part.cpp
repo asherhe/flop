@@ -14,7 +14,7 @@ void Part::install_plugins(const ResourceRegistry &registry) {
   installed_plugins_.clear();
   installed_plugins_.reserve(plugins.size());
   for (const auto &plugin_config : plugins) {
-    installed_plugins_.push_back(make_plugin(plugin_config, registry));
+    installed_plugins_.push_back(plugin::make_plugin(plugin_config, registry));
   }
 }
 

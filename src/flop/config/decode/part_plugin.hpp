@@ -12,12 +12,12 @@
 #include <vector>
 
 #include "flop/config/load.hpp"
-#include "flop/craft/parts/part_plugin_config.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 
 namespace flop::config {
 
-[[nodiscard]] craft::PartPluginConfig decode_part_plugin(std::string name, const ConfigView &value);
-void apply_part_plugin_fields(craft::PartPluginConfig &config, const ConfigView &value);
+[[nodiscard]] craft::plugin::PartPluginConfig decode_part_plugin(std::string name, const ConfigView &value);
+void apply_part_plugin_fields(craft::plugin::PartPluginConfig &config, const ConfigView &value);
 
 namespace detail {
 
@@ -75,8 +75,8 @@ inline Vec2d decode_vec(const ConfigView &field) {
   return {field.required("x").as<double>(), field.required("y").as<double>()};
 }
 
-inline craft::MaterialPropertyConfig decode_material_property(const ConfigView &value) {
-  craft::MaterialPropertyConfig result;
+inline craft::plugin::MaterialPropertyConfig decode_material_property(const ConfigView &value) {
+  craft::plugin::MaterialPropertyConfig result;
   MapReader reader(value, PluginReadMode::create);
   reader.assign("type", result.type, &ConfigView::nonempty_string, PluginRequired::on_create);
   reader.assign("value", result.value, &ConfigView::nonempty_string, PluginRequired::on_create);
@@ -84,12 +84,12 @@ inline craft::MaterialPropertyConfig decode_material_property(const ConfigView &
   return result;
 }
 
-inline craft::MaterialConfig decode_material(const ConfigView &value) {
-  craft::MaterialConfig result;
+inline craft::plugin::MaterialConfig decode_material(const ConfigView &value) {
+  craft::plugin::MaterialConfig result;
   MapReader reader(value, PluginReadMode::create);
   reader.assign("path", result.path, &ConfigView::nonempty_string, PluginRequired::on_create);
   reader.assign("properties", result.properties, [](const ConfigView &field) {
-    std::map<std::string, craft::MaterialPropertyConfig> properties;
+    std::map<std::string, craft::plugin::MaterialPropertyConfig> properties;
     for (const auto &entry : field.entries())
       properties.emplace(entry.key, decode_material_property(entry.value));
     return properties;
@@ -98,14 +98,14 @@ inline craft::MaterialConfig decode_material(const ConfigView &value) {
   return result;
 }
 
-inline void apply_fields(craft::CommandConfig &command, MapReader &reader) {
+inline void apply_fields(craft::plugin::CommandConfig &command, MapReader &reader) {
   reader.assign("auto_steerable", command.auto_steerable, &ConfigView::as<bool>);
   reader.assign("Kp", command.kp, &ConfigView::as<double>);
   reader.assign("Ki", command.ki, &ConfigView::as<double>);
   reader.assign("Kd", command.kd, &ConfigView::as<double>);
 }
 
-inline void apply_fields(craft::ReactionWheelConfig &wheel, MapReader &reader) {
+inline void apply_fields(craft::plugin::ReactionWheelConfig &wheel, MapReader &reader) {
   reader.assign(
       "torque",
       wheel.torque_newton_meters,
@@ -114,7 +114,7 @@ inline void apply_fields(craft::ReactionWheelConfig &wheel, MapReader &reader) {
   );
 }
 
-inline void apply_fields(craft::EngineConfig &engine, MapReader &reader) {
+inline void apply_fields(craft::plugin::EngineConfig &engine, MapReader &reader) {
   reader.assign("isp", engine.isp_sec, &ConfigView::positive_double, PluginRequired::on_create);
   reader.assign(
       "thrust",
@@ -130,7 +130,7 @@ inline void apply_fields(craft::EngineConfig &engine, MapReader &reader) {
   reader.ignore_mapping("light");
 }
 
-inline void apply_fields(craft::ResourceConfig &container, MapReader &reader) {
+inline void apply_fields(craft::plugin::ResourceConfig &container, MapReader &reader) {
   reader.assign(
       "max_amount", container.max_amount_units, decode_map<double>, PluginRequired::on_create
   );
@@ -138,12 +138,12 @@ inline void apply_fields(craft::ResourceConfig &container, MapReader &reader) {
   reader.assign("priority", container.priority, decode_map<int>);
 }
 
-inline void apply_fields(craft::SpriteRendererConfig &sprite, MapReader &reader) {
+inline void apply_fields(craft::plugin::SpriteRendererConfig &sprite, MapReader &reader) {
   reader.assign("sprite", sprite.sprite, &ConfigView::nonempty_string, PluginRequired::on_create);
   reader.assign("material", sprite.material, decode_material, PluginRequired::on_create);
 }
 
-inline void apply_fields(craft::LightConfig &light, MapReader &reader) {
+inline void apply_fields(craft::plugin::LightConfig &light, MapReader &reader) {
   reader.assign(
       "light_position", light.light_position_meters, decode_vec, PluginRequired::on_create
   );
@@ -159,7 +159,7 @@ inline void apply_fields(craft::LightConfig &light, MapReader &reader) {
 }
 
 inline void apply_fields(
-    craft::PartPluginConfig &config, const ConfigView &value, PluginReadMode mode
+    craft::plugin::PartPluginConfig &config, const ConfigView &value, PluginReadMode mode
 ) {
   MapReader reader(value, mode);
   reader.assign("enabled", config.enabled, &ConfigView::as<bool>);
@@ -169,20 +169,20 @@ inline void apply_fields(
 
 } // namespace detail
 
-inline craft::PartPluginConfig decode_part_plugin(std::string name, const ConfigView &value) {
-  craft::PartPluginConfig result{std::move(name)};
+inline craft::plugin::PartPluginConfig decode_part_plugin(std::string name, const ConfigView &value) {
+  craft::plugin::PartPluginConfig result{std::move(name)};
   if (result.name == "CommandPlugin") {
-    result.values = craft::CommandConfig{};
+    result.values = craft::plugin::CommandConfig{};
   } else if (result.name == "ReactionWheelPlugin") {
-    result.values = craft::ReactionWheelConfig{};
+    result.values = craft::plugin::ReactionWheelConfig{};
   } else if (result.name == "EnginePlugin") {
-    result.values = craft::EngineConfig{};
+    result.values = craft::plugin::EngineConfig{};
   } else if (result.name == "ResourceContainerPlugin") {
-    result.values = craft::ResourceConfig{};
+    result.values = craft::plugin::ResourceConfig{};
   } else if (result.name == "SpriteRendererPlugin") {
-    result.values = craft::SpriteRendererConfig{};
+    result.values = craft::plugin::SpriteRendererConfig{};
   } else if (result.name == "LightPlugin") {
-    result.values = craft::LightConfig{};
+    result.values = craft::plugin::LightConfig{};
   } else {
     value.fail(value.mark(), "Unknown part plugin");
   }
@@ -190,7 +190,7 @@ inline craft::PartPluginConfig decode_part_plugin(std::string name, const Config
   return result;
 }
 
-inline void apply_part_plugin_fields(craft::PartPluginConfig &config, const ConfigView &value) {
+inline void apply_part_plugin_fields(craft::plugin::PartPluginConfig &config, const ConfigView &value) {
   detail::apply_fields(config, value, detail::PluginReadMode::override);
 }
 

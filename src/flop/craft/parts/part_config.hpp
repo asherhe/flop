@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "flop/craft/parts/part_plugin_config.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 #include "flop/math/vec2.hpp"
 
 namespace flop::craft {
@@ -19,7 +19,7 @@ struct PartTypeConfig {
   double mass_kg;
   bool crossfeed;
   std::vector<AttachmentNodeConfig> attachment_nodes;
-  std::vector<PartPluginConfig> plugins;
+  std::vector<plugin::PartPluginConfig> plugins;
 };
 
 struct PartAttachmentConfig {
@@ -36,7 +36,7 @@ struct PartConfig {
   Vec2d position_meters;
   double angle_rad;
   std::vector<PartAttachmentConfig> attachments;
-  std::vector<PartPluginConfig> plugins;
+  std::vector<plugin::PartPluginConfig> plugins;
 };
 
 } // namespace flop::craft

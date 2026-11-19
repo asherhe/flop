@@ -9,7 +9,9 @@
 
 namespace flop::craft {
 
+namespace plugin {
 class PartPlugin;
+} // namespace plugin
 class CraftContext;
 class ResourceRegistry;
 
@@ -36,7 +38,7 @@ public:
   bool crossfeed;
   std::vector<AttachmentNodeConfig> attachment_nodes;
   std::vector<PartAttachmentConfig> attachments;
-  std::vector<PartPluginConfig> plugins;
+  std::vector<plugin::PartPluginConfig> plugins;
 
   // build the runtime plugin objects from this part's authored plugin
   // configuration. the registry validates resource containers.
@@ -45,12 +47,12 @@ public:
   // advance this part by one simulation step, ticking its enabled plugins.
   void step(CraftContext &ctx, double dt_sec);
 
-  [[nodiscard]] std::span<const std::unique_ptr<PartPlugin>> installed_plugins() const noexcept {
+  [[nodiscard]] std::span<const std::unique_ptr<plugin::PartPlugin>> installed_plugins() const noexcept {
     return installed_plugins_;
   }
 
 private:
-  std::vector<std::unique_ptr<PartPlugin>> installed_plugins_;
+  std::vector<std::unique_ptr<plugin::PartPlugin>> installed_plugins_;
 };
 
 } // namespace flop::craft

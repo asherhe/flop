@@ -3,10 +3,13 @@
 #include <memory>
 
 namespace flop::craft {
+class ResourceRegistry;
+} // namespace flop::craft
+
+namespace flop::craft::plugin {
 
 struct PartPluginConfig;
 class PartPlugin;
-class ResourceRegistry;
 
 // construct the runtime plugin for one configured plugin, selecting the type
 // from the configuration variant and seeding its enabled flag. the registry is
@@ -15,4 +18,4 @@ class ResourceRegistry;
     const PartPluginConfig &config, const ResourceRegistry &registry
 );
 
-} // namespace flop::craft
+} // namespace flop::craft::plugin

@@ -37,9 +37,9 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   REQUIRE(engine.attachment_nodes.size() == 2);
   CHECK(engine.attachment_nodes[0].position_meters.y == 0.75);
   const auto sprite =
-      std::ranges::find(pod.plugins, "SpriteRendererPlugin", &flop::craft::PartPluginConfig::name);
+      std::ranges::find(pod.plugins, "SpriteRendererPlugin", &flop::craft::plugin::PartPluginConfig::name);
   REQUIRE(sprite != pod.plugins.end());
-  const auto &sprite_config = std::get<flop::craft::SpriteRendererConfig>(sprite->values);
+  const auto &sprite_config = std::get<flop::craft::plugin::SpriteRendererConfig>(sprite->values);
   CHECK(sprite_config.sprite == "assets/parts/TestingCommandPod/TestingCommandPod.png");
   CHECK(sprite_config.material.path == "assets/shared/materials/part.mat");
   CHECK(sprite_config.material.properties.at("_EmissionTex").type == "Texture2D");
@@ -48,9 +48,9 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
       "assets/parts/TestingCommandPod/TestingCommandPod-Light.png"
   );
   const auto light =
-      std::ranges::find(pod.plugins, "LightPlugin", &flop::craft::PartPluginConfig::name);
+      std::ranges::find(pod.plugins, "LightPlugin", &flop::craft::plugin::PartPluginConfig::name);
   REQUIRE(light != pod.plugins.end());
-  const auto &light_config = std::get<flop::craft::LightConfig>(light->values);
+  const auto &light_config = std::get<flop::craft::plugin::LightConfig>(light->values);
   CHECK(light_config.light_position_meters.y == -0.125);
   CHECK(light_config.color == "#FFECB1");
   CHECK(light_config.intensity == 0.13);
@@ -63,21 +63,21 @@ TEST_CASE("Visual plugin overrides update their own config types") {
   const AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
   const auto pod = load_part_type(resolver, "TestingCommandPod");
   auto sprite =
-      *std::ranges::find(pod.plugins, "SpriteRendererPlugin", &flop::craft::PartPluginConfig::name);
-  auto light = *std::ranges::find(pod.plugins, "LightPlugin", &flop::craft::PartPluginConfig::name);
+      *std::ranges::find(pod.plugins, "SpriteRendererPlugin", &flop::craft::plugin::PartPluginConfig::name);
+  auto light = *std::ranges::find(pod.plugins, "LightPlugin", &flop::craft::plugin::PartPluginConfig::name);
   flop::config::apply_part_plugin_fields(
       sprite, ConfigView(YAML::Load("sprite: replacement.png"), "assets/spacecraft/test.yaml")
   );
   flop::config::apply_part_plugin_fields(
       light, ConfigView(YAML::Load("intensity: 2"), "assets/spacecraft/test.yaml")
   );
-  CHECK(std::get<flop::craft::SpriteRendererConfig>(sprite.values).sprite == "replacement.png");
+  CHECK(std::get<flop::craft::plugin::SpriteRendererConfig>(sprite.values).sprite == "replacement.png");
   CHECK(
-      std::get<flop::craft::SpriteRendererConfig>(sprite.values).material.path ==
+      std::get<flop::craft::plugin::SpriteRendererConfig>(sprite.values).material.path ==
       "assets/shared/materials/part.mat"
   );
-  CHECK(std::get<flop::craft::LightConfig>(light.values).intensity == 2);
-  CHECK(std::get<flop::craft::LightConfig>(light.values).color == "#FFECB1");
+  CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).intensity == 2);
+  CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).color == "#FFECB1");
 }
 
 TEST_CASE("Part type decoder reports invalid mass at the authored field") {
@@ -135,7 +135,7 @@ TEST_CASE("Engine definitions require every field and overrides retain omitted v
   flop::config::apply_part_plugin_fields(
       plugin, ConfigView(YAML::Load("thrust: 7"), "assets/spacecraft/test.yaml")
   );
-  const auto &engine = std::get<flop::craft::EngineConfig>(plugin.values);
+  const auto &engine = std::get<flop::craft::plugin::EngineConfig>(plugin.values);
   CHECK(engine.isp_sec == 200);
   CHECK(engine.thrust_newtons == 7000);
   CHECK(engine.thrust_direction.y == 1);
@@ -168,10 +168,10 @@ TEST_CASE("Shipped craft assembles its three decoded part types") {
   CHECK(craft.part("TestingTank_2").attachments.size() == 2);
   const auto &tank_plugins = craft.part("TestingTank_2").plugins;
   const auto tank_plugin = std::ranges::find(
-      tank_plugins, "ResourceContainerPlugin", &flop::craft::PartPluginConfig::name
+      tank_plugins, "ResourceContainerPlugin", &flop::craft::plugin::PartPluginConfig::name
   );
   REQUIRE(tank_plugin != tank_plugins.end());
-  const auto &tank_state = std::get<flop::craft::ResourceConfig>(tank_plugin->values);
+  const auto &tank_state = std::get<flop::craft::plugin::ResourceConfig>(tank_plugin->values);
   CHECK(tank_state.max_amount_units.at("NTO") == 3600);
   CHECK(tank_state.amount_units.at("NTO") == 3600);
   CHECK(tank_state.priority.at("Hydrazine") == 0);
@@ -192,7 +192,7 @@ TEST_CASE("Craft plugin fields override matching part type fields") {
   auto placement = ConfigDecoder<flop::craft::PartConfig>::decode(part_view);
   placement.plugins = pod.plugins;
   auto wheel_config = std::ranges::find(
-      placement.plugins, "ReactionWheelPlugin", &flop::craft::PartPluginConfig::name
+      placement.plugins, "ReactionWheelPlugin", &flop::craft::plugin::PartPluginConfig::name
   );
   REQUIRE(wheel_config != placement.plugins.end());
   flop::config::apply_part_plugin_fields(
@@ -211,8 +211,8 @@ TEST_CASE("Craft plugin fields override matching part type fields") {
   const flop::craft::Craft craft(config, universe, {pod});
   const auto &plugins = craft.part("pod_1").plugins;
   const auto wheel =
-      std::ranges::find(plugins, "ReactionWheelPlugin", &flop::craft::PartPluginConfig::name);
+      std::ranges::find(plugins, "ReactionWheelPlugin", &flop::craft::plugin::PartPluginConfig::name);
   REQUIRE(wheel != plugins.end());
   CHECK_FALSE(wheel->enabled);
-  CHECK(std::get<flop::craft::ReactionWheelConfig>(wheel->values).torque_newton_meters == 7000);
+  CHECK(std::get<flop::craft::plugin::ReactionWheelConfig>(wheel->values).torque_newton_meters == 7000);
 }

@@ -6,7 +6,7 @@
 
 #include "flop/math/vec2.hpp"
 
-namespace flop::craft {
+namespace flop::craft::plugin {
 
 struct CommandConfig {
   bool auto_steerable{};
@@ -68,4 +68,4 @@ struct PartPluginConfig {
   PluginValues values;
 };
 
-} // namespace flop::craft
+} // namespace flop::craft::plugin

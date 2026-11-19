@@ -98,7 +98,7 @@ TEST_CASE("Craft exposes runtime resource state from installed container plugins
        {{"top", "pod_1", "bottom"}},
        {{"ResourceContainerPlugin",
          true,
-         flop::craft::ResourceConfig{{{"NTO", 3600}}, {{"NTO", 1200}}, {{"NTO", 1}}}}}},
+         flop::craft::plugin::ResourceConfig{{{"NTO", 3600}}, {{"NTO", 1200}}, {{"NTO", 1}}}}}},
   };
   std::vector<flop::craft::PartTypeConfig> types{
       {"Pod", "Pod", 800, true, {{"bottom", {0, -1}}}},
@@ -111,7 +111,7 @@ TEST_CASE("Craft exposes runtime resource state from installed container plugins
 
   const auto &tank_plugins = craft.part("tank_2").installed_plugins();
   REQUIRE(tank_plugins.size() == 1);
-  const auto *container = dynamic_cast<const flop::craft::ResourcePlugin *>(tank_plugins[0].get());
+  const auto *container = dynamic_cast<const flop::craft::plugin::ResourcePlugin *>(tank_plugins[0].get());
   REQUIRE(container != nullptr);
   REQUIRE(container->slots().size() == 1);
   CHECK(container->slots().front().resource_id == "NTO");
@@ -120,9 +120,9 @@ TEST_CASE("Craft exposes runtime resource state from installed container plugins
 }
 
 TEST_CASE("Craft builds runtime plugin objects for each installed plugin") {
-  using flop::craft::EnginePlugin;
+  using flop::craft::plugin::EnginePlugin;
   using flop::craft::ResourceFlow;
-  using flop::craft::ResourcePlugin;
+  using flop::craft::plugin::ResourcePlugin;
   auto config = basic_config();
   config.plugins_resolved = true;
   config.parts = {
@@ -133,10 +133,10 @@ TEST_CASE("Craft builds runtime plugin objects for each installed plugin") {
        {0, -2},
        0,
        {},
-       {{"EnginePlugin", true, flop::craft::EngineConfig{}},
+       {{"EnginePlugin", true, flop::craft::plugin::EngineConfig{}},
         {"ResourceContainerPlugin",
          false,
-         flop::craft::ResourceConfig{{{"NTO", 3600}}, {{"NTO", 1200}}, {}}}}},
+         flop::craft::plugin::ResourceConfig{{{"NTO", 3600}}, {{"NTO", 1200}}, {}}}}},
   };
   std::vector<flop::craft::PartTypeConfig> types{
       {"Pod", "Pod", 800, true, {{"bottom", {0, -1}}}},

@@ -49,7 +49,7 @@ MassProperties CraftResources::mass_properties(const CraftContext &ctx) const {
     part_mass_kg[index] = parts[index].dry_mass_kg;
     // add the live resource mass held on this part. disabled containers still
     // hold their contents, so they are included here.
-    for (const auto *container : containers_on<const Part, const ResourcePlugin>(parts[index])) {
+    for (const auto *container : containers_on<const Part, const plugin::ResourcePlugin>(parts[index])) {
       for (const auto &slot : container->slots()) {
         part_mass_kg[index] += slot.amount_units * registry_->at(slot.resource_id).kg_per_unit;
       }
@@ -77,7 +77,7 @@ MassProperties CraftResources::mass_properties(const CraftContext &ctx) const {
   return {total_mass_kg, center_of_mass, moment_of_inertia_kg_m2};
 }
 
-std::vector<ResourcePlugin *> CraftResources::reachable_containers(
+std::vector<plugin::ResourcePlugin *> CraftResources::reachable_containers(
     const CraftContext &ctx,
     std::size_t source_part_index,
     std::string_view resource_id,
@@ -86,8 +86,8 @@ std::vector<ResourcePlugin *> CraftResources::reachable_containers(
   const auto parts = ctx.parts();
   // the enabled containers on one part that hold this resource.
   const auto containers_on_part = [&](std::size_t part_index) {
-    std::vector<ResourcePlugin *> found;
-    for (auto *container : containers_on<const Part, ResourcePlugin>(parts[part_index])) {
+    std::vector<plugin::ResourcePlugin *> found;
+    for (auto *container : containers_on<const Part, plugin::ResourcePlugin>(parts[part_index])) {
       if (container->enabled() && container->find_slot(resource_id) != nullptr) {
         found.push_back(container);
       }
@@ -95,7 +95,7 @@ std::vector<ResourcePlugin *> CraftResources::reachable_containers(
     return found;
   };
 
-  std::vector<ResourcePlugin *> containers;
+  std::vector<plugin::ResourcePlugin *> containers;
   switch (reach) {
   case Reach::none: {
     // can only be used by the part it's in.
@@ -167,7 +167,7 @@ double CraftResources::drain(
   auto reachable = reachable_containers(ctx, source_part_index, resource_id, reach);
 
   // group reachable containers by priority and drain higher priority first.
-  std::ranges::sort(reachable, [&](const ResourcePlugin *lhs, const ResourcePlugin *rhs) {
+  std::ranges::sort(reachable, [&](const plugin::ResourcePlugin *lhs, const plugin::ResourcePlugin *rhs) {
     return lhs->find_slot(resource_id)->priority > rhs->find_slot(resource_id)->priority;
   });
 
@@ -190,7 +190,7 @@ double CraftResources::drain(
       // the group holds something, so this never divides by zero.
       const double fraction = drain_amount / group_amount;
       for (std::size_t i = group_begin; i < group_end; ++i) {
-        ResourceSlot *slot = reachable[i]->find_slot(resource_id);
+        plugin::ResourceSlot *slot = reachable[i]->find_slot(resource_id);
         const double taken = std::min(slot->amount_units, slot->amount_units * fraction);
         slot->amount_units -= taken;
         delivered += taken;

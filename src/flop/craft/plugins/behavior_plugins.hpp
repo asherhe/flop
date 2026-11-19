@@ -2,10 +2,10 @@
 
 #include <utility>
 
-#include "flop/craft/parts/part_plugin_config.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 
-namespace flop::craft {
+namespace flop::craft::plugin {
 
 // stub behavior plugins. each is constructed from its configuration and holds
 // it for the behavior that lands in a later stage; tick is a no-op for now.
@@ -74,4 +74,4 @@ private:
   LightConfig config_;
 };
 
-} // namespace flop::craft
+} // namespace flop::craft::plugin

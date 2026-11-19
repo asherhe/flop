@@ -2,12 +2,12 @@
 
 #include <variant>
 
-#include "flop/craft/parts/part_plugin_config.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 #include "flop/craft/plugins/behavior_plugins.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 #include "flop/craft/plugins/resource_plugin.hpp"
 
-namespace flop::craft {
+namespace flop::craft::plugin {
 
 std::unique_ptr<PartPlugin> make_plugin(
     const PartPluginConfig &config, const ResourceRegistry &registry
@@ -34,4 +34,4 @@ std::unique_ptr<PartPlugin> make_plugin(
   );
 }
 
-} // namespace flop::craft
+} // namespace flop::craft::plugin

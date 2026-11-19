@@ -5,10 +5,10 @@
 #include <map>
 #include <stdexcept>
 
-#include "flop/craft/parts/part_plugin_config.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 #include "flop/craft/resource_registry.hpp"
 
-namespace flop::craft {
+namespace flop::craft::plugin {
 namespace {
 
 double lookup_or_zero(const std::map<std::string, double> &values, const std::string &key) {
@@ -56,4 +56,4 @@ ResourceSlot *ResourcePlugin::find_slot(std::string_view resource_id) {
   return found == slots_.end() ? nullptr : &*found;
 }
 
-} // namespace flop::craft
+} // namespace flop::craft::plugin

@@ -72,7 +72,7 @@ template <> struct ConfigDecoder<craft::CraftConfig> {
     part.plugins = type->plugins;
     for (const auto &entry : parts.at(index).required("plugins").entries()) {
       const auto plugin =
-          std::ranges::find(part.plugins, entry.key, &craft::PartPluginConfig::name);
+          std::ranges::find(part.plugins, entry.key, &craft::plugin::PartPluginConfig::name);
       if (plugin == part.plugins.end())
         entry.value.fail(entry.value.mark(), "Unknown plugin override");
       apply_part_plugin_fields(*plugin, entry.value);
