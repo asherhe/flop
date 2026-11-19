@@ -8,6 +8,7 @@
 
 #include "flop/craft/craft_config.hpp"
 #include "flop/craft/craft_context.hpp"
+#include "flop/craft/control.hpp"
 #include "flop/craft/newtonian.hpp"
 #include "flop/craft/parts/part.hpp"
 #include "flop/craft/resources.hpp"
@@ -32,6 +33,9 @@ public:
   [[nodiscard]] const orbit::OrbitPatchSegments &patches() const noexcept { return patches_; }
   [[nodiscard]] std::span<const Part> parts() const noexcept override { return parts_; }
   [[nodiscard]] const Part &part(std::string_view id) const;
+
+  [[nodiscard]] const CraftControl &control() const noexcept override { return control_; }
+  [[nodiscard]] CraftControl &control() noexcept override { return control_; }
 
   [[nodiscard]] const CraftResources &resources() const noexcept override { return resources_; }
   [[nodiscard]] CraftResources &resources() noexcept override { return resources_; }
@@ -64,6 +68,7 @@ private:
   orbit::OrbitState orbit_state_;
   orbit::OrbitPatchSegments patches_;
   std::vector<Part> parts_;
+  CraftControl control_;
   CraftResources resources_;
   CraftNewtonian newtonian_;
   // propagator for the current orbit seed. empty until first used or after a

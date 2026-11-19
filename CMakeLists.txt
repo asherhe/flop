@@ -40,6 +40,7 @@ target_link_libraries(flop_core PUBLIC yaml-cpp::yaml-cpp)
 
 if(BUILD_TESTING)
     add_executable(flop_tests
+        tests/craft/control_tests.cpp
         tests/craft/craft_tests.cpp
         tests/craft/newtonian_tests.cpp
         tests/craft/part_plugin_tests.cpp

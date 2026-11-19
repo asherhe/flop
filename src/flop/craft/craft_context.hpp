@@ -14,6 +14,7 @@ namespace flop::craft {
 
 struct Part;
 struct MassProperties;
+class CraftControl;
 class CraftResources;
 class CraftNewtonian;
 
@@ -27,6 +28,11 @@ public:
   virtual ~CraftContext() = default;
 
   [[nodiscard]] virtual std::span<const Part> parts() const = 0;
+
+  // persistent control channel: the command plugin writes throttle/steering,
+  // the actuators read them within the same step.
+  [[nodiscard]] virtual const CraftControl &control() const = 0;
+  [[nodiscard]] virtual CraftControl &control() = 0;
 
   [[nodiscard]] virtual const CraftResources &resources() const = 0;
   [[nodiscard]] virtual CraftResources &resources() = 0;

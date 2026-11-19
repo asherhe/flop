@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "flop/craft/craft_context.hpp"
+#include "flop/craft/control.hpp"
 #include "flop/craft/newtonian.hpp"
 #include "flop/craft/parts/part.hpp"
 #include "flop/craft/resources.hpp"
@@ -21,6 +22,10 @@ public:
   StubCraftContext &with_parts(std::span<const craft::Part> parts) {
     parts_ = parts;
     has_parts_ = true;
+    return *this;
+  }
+  StubCraftContext &with_control(craft::CraftControl &control) {
+    control_ = &control;
     return *this;
   }
   StubCraftContext &with_resources(craft::CraftResources &resources) {
@@ -44,6 +49,9 @@ public:
     return parts_;
   }
 
+  [[nodiscard]] const craft::CraftControl &control() const override { return require_control(); }
+  [[nodiscard]] craft::CraftControl &control() override { return require_control(); }
+
   [[nodiscard]] const craft::CraftResources &resources() const override {
     return require_resources();
   }
@@ -62,6 +70,12 @@ public:
   }
 
 private:
+  [[nodiscard]] craft::CraftControl &require_control() const {
+    if (control_ == nullptr) {
+      throw std::logic_error("StubCraftContext::control() queried without control set");
+    }
+    return *control_;
+  }
   [[nodiscard]] craft::CraftResources &require_resources() const {
     if (resources_ == nullptr) {
       throw std::logic_error("StubCraftContext::resources() queried without resources set");
@@ -77,6 +91,7 @@ private:
 
   std::span<const craft::Part> parts_{};
   bool has_parts_{false};
+  craft::CraftControl *control_{nullptr};
   craft::CraftResources *resources_{nullptr};
   craft::CraftNewtonian *newtonian_{nullptr};
   craft::MassProperties mass_{};
