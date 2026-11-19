@@ -26,14 +26,14 @@ MassProperties mass(double total_mass_kg, double inertia_kg_m2, Vec2d com = {}) 
 TEST_CASE("CraftNewtonian starts from the configured attitude") {
   const CraftAttitudeConfig attitude{std::numbers::pi / 2, 10};
   const CraftNewtonian newtonian(attitude);
-  CHECK(newtonian.angle_radians() == Approx(std::numbers::pi / 2));
+  CHECK(newtonian.angle_rad() == Approx(std::numbers::pi / 2));
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(10));
   CHECK(newtonian.angular_velocity_rad_per_s() == 0);
 }
 
 TEST_CASE("CraftNewtonian wraps the configured angle into [0, 2pi)") {
   const CraftNewtonian newtonian(CraftAttitudeConfig{-std::numbers::pi / 2, 0});
-  CHECK(newtonian.angle_radians() == Approx(3 * std::numbers::pi / 2));
+  CHECK(newtonian.angle_rad() == Approx(3 * std::numbers::pi / 2));
 }
 
 TEST_CASE("CraftNewtonian force through the center of mass only accelerates") {
@@ -48,7 +48,7 @@ TEST_CASE("CraftNewtonian force through the center of mass only accelerates") {
   CHECK(state.velocity.y == Approx(0));
   // no arm, so no torque and no rotation.
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(0));
-  CHECK(newtonian.angle_radians() == Approx(0));
+  CHECK(newtonian.angle_rad() == Approx(0));
 }
 
 TEST_CASE("CraftNewtonian off-center force produces torque about the center of mass") {
@@ -60,7 +60,7 @@ TEST_CASE("CraftNewtonian off-center force produces torque about the center of m
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(-20));
   // angular velocity = L / I = -20 / 40 = -0.5 rad/s; angle wraps negative.
   CHECK(newtonian.angular_velocity_rad_per_s() == Approx(-0.5));
-  CHECK(newtonian.angle_radians() == Approx(2 * std::numbers::pi - 0.5));
+  CHECK(newtonian.angle_rad() == Approx(2 * std::numbers::pi - 0.5));
   // the force rotates with the (now nonzero) attitude, so only its magnitude is
   // fixed: |dv| = |F|/m * dt = 10/100 * 1.
   CHECK(state.velocity.length() == Approx(0.1));
@@ -73,7 +73,7 @@ TEST_CASE("CraftNewtonian torque arm uses the snapshot center of mass") {
   newtonian.apply_force({10, 0}, {0, 2});
   newtonian.step(mass(100, 40, {0, 2}), state, 1.0);
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(0));
-  CHECK(newtonian.angle_radians() == Approx(0));
+  CHECK(newtonian.angle_rad() == Approx(0));
   // no rotation, so the +x force stays +x in the frame.
   CHECK(state.velocity.x == Approx(0.1));
   CHECK(state.velocity.y == Approx(0));
@@ -89,7 +89,7 @@ TEST_CASE("CraftNewtonian applies a pure torque without linear motion") {
   // L = torque * dt = 8 * 0.5 = 4; omega = 4 / 4 = 1 rad/s; angle = 1 * 0.5 = 0.5
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(4));
   CHECK(newtonian.angular_velocity_rad_per_s() == Approx(1));
-  CHECK(newtonian.angle_radians() == Approx(0.5));
+  CHECK(newtonian.angle_rad() == Approx(0.5));
 }
 
 TEST_CASE("CraftNewtonian with zero mass and inertia produces no motion or NaN") {
@@ -104,7 +104,7 @@ TEST_CASE("CraftNewtonian with zero mass and inertia produces no motion or NaN")
   CHECK(newtonian.angular_velocity_rad_per_s() == 0);
   // no inertia means no integration of spin this step.
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(5));
-  CHECK(newtonian.angle_radians() == Approx(0));
+  CHECK(newtonian.angle_rad() == Approx(0));
 }
 
 TEST_CASE("CraftNewtonian accumulates several forces before a step") {

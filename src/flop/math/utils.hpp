@@ -10,9 +10,9 @@ namespace flop {
 }
 
 // wrap an angle into [0, 2*pi).
-[[nodiscard]] inline double wrap_angle(double angle_radians) {
+[[nodiscard]] inline double wrap_angle(double angle_rad) {
   constexpr double TWO_PI = 2.0 * std::numbers::pi;
-  double wrapped = std::fmod(angle_radians, TWO_PI);
+  double wrapped = std::fmod(angle_rad, TWO_PI);
   if (wrapped < 0.0) {
     wrapped += TWO_PI;
   }

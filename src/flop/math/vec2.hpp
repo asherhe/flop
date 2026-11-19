@@ -48,9 +48,9 @@ struct Vec2d {
 
   double length() const { return std::hypot(x, y); }
 
-  Vec2d rotate(double angle_radians) const {
-    const double sine = std::sin(angle_radians);
-    const double cosine = std::cos(angle_radians);
+  Vec2d rotate(double angle_rad) const {
+    const double sine = std::sin(angle_rad);
+    const double cosine = std::cos(angle_rad);
     return {cosine * x - sine * y, sine * x + cosine * y};
   }
 };

@@ -26,7 +26,7 @@ public:
   explicit CraftNewtonian(const CraftAttitudeConfig &attitude);
 
   // angle of the craft's local +x axis counterclockwise from the frame +x axis.
-  [[nodiscard]] double angle_radians() const noexcept { return angle_radians_; }
+  [[nodiscard]] double angle_rad() const noexcept { return angle_rad_; }
   // spin angular momentum about the center of mass, in kg*m^2/s.
   [[nodiscard]] double angular_momentum_kg_m2_per_s() const noexcept {
     return angular_momentum_kg_m2_per_s_;
@@ -57,7 +57,7 @@ private:
     Vec2d craft_position_meters;
   };
 
-  double angle_radians_{};
+  double angle_rad_{};
   double angular_momentum_kg_m2_per_s_{};
   double angular_velocity_rad_per_s_{};
   std::vector<AppliedForce> accumulated_forces_;

@@ -22,8 +22,8 @@ CelestialBody::CelestialBody(
     const auto &orbit = *config_.orbit;
     if (orbit.parent_name.empty() || !positive_finite(orbit.semimajor_axis_meters) ||
         !std::isfinite(orbit.eccentricity) || orbit.eccentricity < 0 || orbit.eccentricity >= 1 ||
-        !std::isfinite(orbit.longitude_periapsis_radians) ||
-        !std::isfinite(orbit.epoch_mean_anomaly_radians) || !std::isfinite(orbit.epoch_sec)) {
+        !std::isfinite(orbit.longitude_periapsis_rad) ||
+        !std::isfinite(orbit.epoch_mean_anomaly_rad) || !std::isfinite(orbit.epoch_sec)) {
       throw std::invalid_argument("Invalid celestial body orbit values");
     }
   }
@@ -70,8 +70,8 @@ orbit::RefFrameDefinition CelestialBody::ref_frame_definition(
       {
           h,
           orbit.eccentricity,
-          orbit.longitude_periapsis_radians,
-          orbit.epoch_mean_anomaly_radians,
+          orbit.longitude_periapsis_rad,
+          orbit.epoch_mean_anomaly_rad,
       }
   );
   return {config_.name, gravitational_parameter_, orbit.parent_name, seed, soi};

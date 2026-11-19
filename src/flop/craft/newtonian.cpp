@@ -6,7 +6,7 @@
 namespace flop::craft {
 
 CraftNewtonian::CraftNewtonian(const CraftAttitudeConfig &attitude) :
-    angle_radians_(wrap_angle(attitude.angle_radians)),
+    angle_rad_(wrap_angle(attitude.angle_rad)),
     angular_momentum_kg_m2_per_s_(attitude.angular_momentum_kg_m2_per_s) {}
 
 void CraftNewtonian::apply_force(Vec2d force_newtons, Vec2d craft_position_meters) {
@@ -31,7 +31,7 @@ bool CraftNewtonian::step(const MassProperties &mass, orbit::StateVectors &state
   if (mass.moment_of_inertia_kg_m2 > 0.0) {
     angular_momentum_kg_m2_per_s_ += net_torque_N_m * dt_sec;
     angular_velocity_rad_per_s_ = angular_momentum_kg_m2_per_s_ / mass.moment_of_inertia_kg_m2;
-    angle_radians_ = wrap_angle(angle_radians_ + angular_velocity_rad_per_s_ * dt_sec);
+    angle_rad_ = wrap_angle(angle_rad_ + angular_velocity_rad_per_s_ * dt_sec);
   } else {
     angular_velocity_rad_per_s_ = 0.0;
   }
@@ -40,7 +40,7 @@ bool CraftNewtonian::step(const MassProperties &mass, orbit::StateVectors &state
   // forces are accumulated in craft space so they need to be converted to world space
   const bool velocity_changed = mass.total_mass_kg > 0.0 && net_force_N != Vec2d{};
   if (velocity_changed) {
-    const Vec2d frame_force_N = net_force_N.rotate(angle_radians_);
+    const Vec2d frame_force_N = net_force_N.rotate(angle_rad_);
     state.velocity += frame_force_N / mass.total_mass_kg * dt_sec;
   }
 

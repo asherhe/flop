@@ -130,12 +130,12 @@ TEST_CASE("Craft step integrates attitude from the configured spin") {
   const flop::testing::StubUniverseContext context(frames());
   flop::craft::Craft craft(config, context, types);
 
-  const double before = craft.newtonian().angle_radians();
+  const double before = craft.newtonian().angle_rad();
   craft.step(0, 1.0);
   // equal masses at y = +/-1 about the com at the origin: I = 800+800 = 1600.
   // omega = L / I = 1600 / 1600 = 1 rad/s, so the angle advances by 1 rad.
   CHECK(craft.newtonian().angular_velocity_rad_per_s() == Catch::Approx(1));
-  CHECK(craft.newtonian().angle_radians() == Catch::Approx(before + 1));
+  CHECK(craft.newtonian().angle_rad() == Catch::Approx(before + 1));
 }
 
 TEST_CASE("Craft step preserves the analytical seed while coasting") {

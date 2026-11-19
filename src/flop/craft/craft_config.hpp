@@ -12,14 +12,14 @@ struct CraftOrbitConfig {
   std::string parent_name;
   double specific_angular_momentum_m2_per_s;
   double eccentricity;
-  double longitude_periapsis_radians;
-  double epoch_mean_anomaly_radians;
+  double longitude_periapsis_rad;
+  double epoch_mean_anomaly_rad;
   double epoch_sec;
 };
 
 // initial attitude only - changing attitude belongs to CraftNewtonian.
 struct CraftAttitudeConfig {
-  double angle_radians;
+  double angle_rad;
   double angular_momentum_kg_m2_per_s;
 };
 

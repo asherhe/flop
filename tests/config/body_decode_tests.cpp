@@ -47,8 +47,8 @@ TEST_CASE("Body config decoding converts authored units into owning SI values") 
   REQUIRE(child.orbit.has_value());
   CHECK(child.orbit->parent_name == "Sun");
   CHECK(child.orbit->semimajor_axis_meters == 9.2e10);
-  CHECK(child.orbit->longitude_periapsis_radians == Approx(std::numbers::pi / 2));
-  CHECK(child.orbit->epoch_mean_anomaly_radians == Approx(std::numbers::pi));
+  CHECK(child.orbit->longitude_periapsis_rad == Approx(std::numbers::pi / 2));
+  CHECK(child.orbit->epoch_mean_anomaly_rad == Approx(std::numbers::pi));
   CHECK(child.orbit->epoch_sec == 17);
 }
 

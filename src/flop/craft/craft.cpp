@@ -21,8 +21,8 @@ Craft::Craft(
       !std::isfinite(orbit_config.specific_angular_momentum_m2_per_s) ||
       orbit_config.specific_angular_momentum_m2_per_s == 0 ||
       !std::isfinite(orbit_config.eccentricity) || orbit_config.eccentricity < 0 ||
-      !std::isfinite(orbit_config.longitude_periapsis_radians) ||
-      !std::isfinite(orbit_config.epoch_mean_anomaly_radians) ||
+      !std::isfinite(orbit_config.longitude_periapsis_rad) ||
+      !std::isfinite(orbit_config.epoch_mean_anomaly_rad) ||
       !std::isfinite(orbit_config.epoch_sec)) {
     throw std::invalid_argument("Invalid craft configuration");
   }
@@ -34,8 +34,8 @@ Craft::Craft(
       {
           orbit_config.specific_angular_momentum_m2_per_s,
           orbit_config.eccentricity,
-          orbit_config.longitude_periapsis_radians,
-          orbit_config.epoch_mean_anomaly_radians,
+          orbit_config.longitude_periapsis_rad,
+          orbit_config.epoch_mean_anomaly_rad,
       },
       frame_id
   );
@@ -66,7 +66,7 @@ Craft::Craft(
       throw std::invalid_argument("Unknown part type: " + placement.type_id);
     if (std::ranges::find(parts_, placement.id, &Part::id) != parts_.end())
       throw std::invalid_argument("Duplicate craft part ID: " + placement.id);
-    if (!is_finite(placement.position_meters) || !std::isfinite(placement.angle_radians))
+    if (!is_finite(placement.position_meters) || !std::isfinite(placement.angle_rad))
       throw std::invalid_argument("Invalid part placement");
     if (!config.plugins_resolved && !type->plugins.empty())
       throw std::invalid_argument("Craft plugins must be resolved by the config loader");
@@ -76,7 +76,7 @@ Craft::Craft(
          placement.id,
          placement.name,
          placement.position_meters,
-         placement.angle_radians,
+         placement.angle_rad,
          type->mass_kg,
          type->crossfeed,
          type->attachment_nodes,

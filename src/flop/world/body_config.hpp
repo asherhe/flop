@@ -10,8 +10,8 @@ struct BodyOrbitConfig {
   std::string parent_name;
   double semimajor_axis_meters;
   double eccentricity;
-  double longitude_periapsis_radians;
-  double epoch_mean_anomaly_radians;
+  double longitude_periapsis_rad;
+  double epoch_mean_anomaly_rad;
   double epoch_sec;
 };
 

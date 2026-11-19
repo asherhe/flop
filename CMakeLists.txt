@@ -17,12 +17,6 @@ add_library(flop_core STATIC
     src/flop/craft/resources.cpp
     src/flop/craft/resource_registry.cpp
     src/flop/config/asset_path.cpp
-    src/flop/config/decode/body.cpp
-    src/flop/config/decode/body_orbit.cpp
-    src/flop/config/decode/craft.cpp
-    src/flop/config/decode/part.cpp
-    src/flop/config/decode/part_plugin.cpp
-    src/flop/config/decode/resources.cpp
     src/flop/config/load.cpp
     src/flop/orbit/ref_frame.cpp
     src/flop/orbit/state.cpp

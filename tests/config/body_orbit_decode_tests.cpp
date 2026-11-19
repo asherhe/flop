@@ -32,8 +32,8 @@ TEST_CASE("Body orbit decoder converts authored elements independently") {
   CHECK(orbit.parent_name == "Sun");
   CHECK(orbit.semimajor_axis_meters == 9.2e10);
   CHECK(orbit.eccentricity == 0.015);
-  CHECK(orbit.longitude_periapsis_radians == Approx(std::numbers::pi / 2));
-  CHECK(orbit.epoch_mean_anomaly_radians == Approx(std::numbers::pi));
+  CHECK(orbit.longitude_periapsis_rad == Approx(std::numbers::pi / 2));
+  CHECK(orbit.epoch_mean_anomaly_rad == Approx(std::numbers::pi));
   CHECK(orbit.epoch_sec == 17);
 }
 

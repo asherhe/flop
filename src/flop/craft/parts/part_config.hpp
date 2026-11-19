@@ -34,7 +34,7 @@ struct PartConfig {
   std::string id;
   std::string name;
   Vec2d position_meters;
-  double angle_radians;
+  double angle_rad;
   std::vector<PartAttachmentConfig> attachments;
   std::vector<PartPluginConfig> plugins;
 };

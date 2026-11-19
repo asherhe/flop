@@ -13,7 +13,7 @@ struct Part {
   std::string id;
   std::string name;
   Vec2d position_meters;
-  double angle_radians;
+  double angle_rad;
   double dry_mass_kg;
   bool crossfeed;
   std::vector<AttachmentNodeConfig> attachment_nodes;

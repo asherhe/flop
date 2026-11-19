@@ -42,10 +42,10 @@ TEST_CASE("Shipped craft decodes installed part geometry and attachments") {
   CHECK(config.orbit.parent_name == "Hamswell");
   CHECK(config.orbit.specific_angular_momentum_m2_per_s == 1.73e10);
   CHECK(config.orbit.eccentricity == Approx(0.08));
-  CHECK(config.orbit.longitude_periapsis_radians == Approx(1));
-  CHECK(config.orbit.epoch_mean_anomaly_radians == Approx(1));
+  CHECK(config.orbit.longitude_periapsis_rad == Approx(1));
+  CHECK(config.orbit.epoch_mean_anomaly_rad == Approx(1));
   CHECK(config.orbit.epoch_sec == 0);
-  CHECK(config.initial_attitude.angle_radians == Approx(2.7));
+  CHECK(config.initial_attitude.angle_rad == Approx(2.7));
   CHECK(config.initial_attitude.angular_momentum_kg_m2_per_s == -1000);
   REQUIRE(config.parts.size() == 3);
   CHECK(config.parts[1].id == "TestingTank_2");
