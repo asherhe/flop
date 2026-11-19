@@ -24,3 +24,24 @@ block()
   FetchContent_MakeAvailable(yaml-cpp)
 endblock()
 
+
+if(FLOP_BUILD_GAME)
+    block()
+        set(SDL_VIDEO ON)
+        set(SDL_GPU ON)
+        set(SDL_SHARED ON)
+        set(SDL_STATIC OFF)
+
+        set(SDL_TEST_LIBRARY OFF)
+        set(SDL_TESTS OFF)
+        set(SDL_INSTALL OFF)
+
+        FetchContent_Declare(
+            SDL3
+            URL https://github.com/libsdl-org/SDL/releases/download/release-3.4.20/SDL3-3.4.20.tar.gz
+            URL_HASH SHA256=f3bb06f55bed9557227a700af2ea62e49497ebdf58037732a731a5fb3ef8581f
+        )
+        FetchContent_MakeAvailable(SDL3)
+    endblock()
+endif()
+

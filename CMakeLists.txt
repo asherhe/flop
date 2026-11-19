@@ -1,15 +1,11 @@
 cmake_minimum_required(VERSION 3.25)
-project(flop LANGUAGES CXX)
+project(flop LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(FLOP_BUILD_GAME "Build the desktop game" OFF)
-if(FLOP_BUILD_GAME)
-    message(FATAL_ERROR
-        "FLOP_BUILD_GAME requires the desktop game target. Use OFF for the headless build.")
-endif()
 
 add_library(flop_core STATIC
     src/flop/craft/craft.cpp
@@ -81,3 +77,22 @@ if(BUILD_TESTING)
         FLOP_TEST_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets")
     catch_discover_tests(flop_config_tests)
 endif()
+
+if(FLOP_BUILD_GAME)
+    add_executable(flop
+        src/flop/app/main.cpp
+    )
+
+    target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)
+
+    # package SDL3.dll alongside flop.exe on Windows.
+    if(WIN32)
+        add_custom_command(TARGET flop POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "$<TARGET_FILE:SDL3::SDL3-shared>"
+                "$<TARGET_FILE_DIR:flop>"
+            VERBATIM
+        )
+    endif()
+endif()
+
