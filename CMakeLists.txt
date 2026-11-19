@@ -49,6 +49,7 @@ if(BUILD_TESTING)
         tests/craft/actuator_tests.cpp
         tests/craft/control_tests.cpp
         tests/craft/craft_tests.cpp
+        tests/craft/headless_simulation_tests.cpp
         tests/craft/newtonian_tests.cpp
         tests/craft/part_plugin_tests.cpp
         tests/craft/resources_tests.cpp
