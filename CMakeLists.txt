@@ -18,6 +18,7 @@ add_library(flop_core STATIC
     src/flop/craft/resource_registry.cpp
     src/flop/craft/parts/part.cpp
     src/flop/craft/plugins/part_plugin_factory.cpp
+    src/flop/craft/plugins/engine_plugin.cpp
     src/flop/craft/plugins/resource_plugin.cpp
     src/flop/config/asset_path.cpp
     src/flop/config/load.cpp
@@ -40,6 +41,7 @@ target_link_libraries(flop_core PUBLIC yaml-cpp::yaml-cpp)
 
 if(BUILD_TESTING)
     add_executable(flop_tests
+        tests/craft/actuator_tests.cpp
         tests/craft/control_tests.cpp
         tests/craft/craft_tests.cpp
         tests/craft/newtonian_tests.cpp

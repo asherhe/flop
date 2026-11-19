@@ -4,6 +4,8 @@
 
 #include "flop/craft/control.hpp"
 #include "flop/craft/craft_context.hpp"
+#include "flop/craft/newtonian.hpp"
+#include "flop/craft/plugins/engine_plugin.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 #include "flop/craft/plugins/part_plugin_config.hpp"
 
@@ -14,7 +16,6 @@ namespace flop::craft::plugin {
 // steering level straight through, both clamped by the control channel.
 // autosteer is not modeled yet. a single command pod drives the craft;
 // arbitration between multiple pods is a later addition.
-
 class CommandPlugin : public PartPlugin {
 public:
   CommandPlugin(CommandConfig config, bool enabled) :
@@ -43,25 +44,20 @@ private:
   double steering_input_{};
 };
 
-class EnginePlugin : public PartPlugin {
-public:
-  EnginePlugin(EngineConfig config, bool enabled) :
-      PartPlugin(enabled), config_(std::move(config)) {}
-
-  void tick(CraftContext & /*ctx*/, double /*dt_sec*/) override {}
-
-  [[nodiscard]] const EngineConfig &config() const noexcept { return config_; }
-
-private:
-  EngineConfig config_;
-};
-
+// converts steering commands into torque about the craft's center of mass. it
+// reads the shared steering level and applies its rated torque scaled by that
+// level, so a steering command of magnitude one applies full rated torque.
 class ReactionWheelPlugin : public PartPlugin {
 public:
   ReactionWheelPlugin(ReactionWheelConfig config, bool enabled) :
       PartPlugin(enabled), config_(config) {}
 
-  void tick(CraftContext & /*ctx*/, double /*dt_sec*/) override {}
+  void tick(CraftContext &ctx, double /*dt_sec*/) override {
+    const double steering = ctx.control().steering();
+    if (steering != 0.0) {
+      ctx.newtonian().apply_torque(config_.torque_newton_meters * steering);
+    }
+  }
 
   [[nodiscard]] const ReactionWheelConfig &config() const noexcept { return config_; }
 
@@ -69,6 +65,7 @@ private:
   ReactionWheelConfig config_;
 };
 
+// render-only in the full game; a no-op in the headless simulation.
 class SpritePlugin : public PartPlugin {
 public:
   SpritePlugin(SpriteRendererConfig config, bool enabled) :
@@ -82,6 +79,7 @@ private:
   SpriteRendererConfig config_;
 };
 
+// render-only in the full game; a no-op in the headless simulation.
 class LightPlugin : public PartPlugin {
 public:
   LightPlugin(LightConfig config, bool enabled) : PartPlugin(enabled), config_(std::move(config)) {}

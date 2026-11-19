@@ -150,13 +150,13 @@ using flop::craft::plugin::TickPhase;
 } // namespace
 
 TEST_CASE("PartPlugin reports the actuation phase by default") {
-  const EnginePlugin engine(EngineConfig{}, true);
-  CHECK(engine.tick_phase() == TickPhase::actuation);
+  const ReactionWheelPlugin wheel(ReactionWheelConfig{}, true);
+  CHECK(wheel.tick_phase() == TickPhase::actuation);
 }
 
 TEST_CASE("PartPlugin carries the owning part index bound at install") {
-  EnginePlugin engine(EngineConfig{}, true);
-  CHECK(engine.part_index() == 0);
-  engine.set_part_index(3);
-  CHECK(engine.part_index() == 3);
+  ReactionWheelPlugin wheel(ReactionWheelConfig{}, true);
+  CHECK(wheel.part_index() == 0);
+  wheel.set_part_index(3);
+  CHECK(wheel.part_index() == 3);
 }
