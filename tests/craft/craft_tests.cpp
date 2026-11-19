@@ -200,3 +200,20 @@ TEST_CASE("Craft step preserves the analytical seed while coasting") {
   CHECK(craft.orbit_state().state.position == seed_before.state.position);
   CHECK(craft.orbit_state().state.velocity == seed_before.state.velocity);
 }
+
+TEST_CASE("Craft step reuses the cached propagator across coasting steps") {
+  auto config = basic_config();
+  const flop::testing::StubUniverseContext context(frames());
+  flop::craft::Craft craft(config, context, basic_types());
+
+  const auto seed_before = craft.orbit_state();
+
+  // many coasting steps at advancing UT: the seed must stay fixed throughout, so
+  // the cached propagator built from it is reused rather than rebuilt per step.
+  for (double ut = 10; ut <= 600; ut += 10) {
+    craft.step(ut, 1.0);
+  }
+  CHECK(craft.orbit_state().epoch == seed_before.epoch);
+  CHECK(craft.orbit_state().state.position == seed_before.state.position);
+  CHECK(craft.orbit_state().state.velocity == seed_before.state.velocity);
+}

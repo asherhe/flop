@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -11,6 +12,7 @@
 #include "flop/craft/parts/part.hpp"
 #include "flop/craft/resources.hpp"
 #include "flop/orbit/prediction/patched_conics.hpp"
+#include "flop/orbit/propagators/universal.hpp"
 #include "flop/orbit/ref_frame.hpp"
 #include "flop/world/universe_context.hpp"
 
@@ -48,6 +50,15 @@ public:
   void predict_patches(const orbit::RefFrameManager &frames, double begin_ut, double end_ut);
 
 private:
+  // propagate the current orbit seed to `ut`, reusing a cached propagator built
+  // from the seed. the cache is rebuilt lazily after reseed_orbit invalidates it.
+  [[nodiscard]] const orbit::UniversalPropagator &propagator();
+
+  // install a new orbit seed at `now_ut` and invalidate every orbit-derived
+  // cache. the only place orbit_state_ is reassigned during stepping, so the
+  // propagator cache cannot outlive the seed it was built from.
+  void reseed_orbit(double now_ut, const orbit::StateVectors &state);
+
   const world::UniverseContext *context_;
   std::string name_;
   orbit::OrbitState orbit_state_;
@@ -55,6 +66,9 @@ private:
   std::vector<Part> parts_;
   CraftResources resources_;
   CraftNewtonian newtonian_;
+  // propagator for the current orbit seed. empty until first used or after a
+  // reseed; when present it is built from the current orbit_state_.
+  std::optional<orbit::UniversalPropagator> propagator_;
 };
 
 } // namespace flop::craft

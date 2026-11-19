@@ -128,12 +128,24 @@ const Part &Craft::part(std::string_view id) const {
   return *found;
 }
 
-void Craft::step(double now_ut, double dt_sec) {
-  const auto &frames = context_->reference_frames();
-  const double mu = frames.frame(orbit_state_.frame_id).gravitational_parameter;
+const orbit::UniversalPropagator &Craft::propagator() {
+  if (!propagator_.has_value()) {
+    const double mu =
+        context_->reference_frames().frame(orbit_state_.frame_id).gravitational_parameter;
+    propagator_.emplace(mu, orbit_state_);
+  }
+  return *propagator_;
+}
 
-  const orbit::UniversalPropagator propagator(mu, orbit_state_);
-  orbit::StateVectors state = propagator.state_at(now_ut);
+void Craft::reseed_orbit(double now_ut, const orbit::StateVectors &state) {
+  orbit_state_ = {now_ut, state, orbit_state_.frame_id};
+  // the cached propagator was built from the previous seed; drop it so the next
+  // propagate rebuilds from the new one.
+  propagator_.reset();
+}
+
+void Craft::step(double now_ut, double dt_sec) {
+  orbit::StateVectors state = propagator().state_at(now_ut);
 
   for (auto &part : parts_) {
     part.step(*this, dt_sec);
@@ -141,12 +153,15 @@ void Craft::step(double now_ut, double dt_sec) {
 
   const bool vel_changed = newtonian_.step(*this, state, dt_sec);
 
-  // reseed if velocity change occurs
+  // a burn changed the linear velocity, so install a new seed at now_ut.
+  // coasting keeps the analytical seed exact and reuses the cached propagator.
   if (vel_changed) {
-    orbit_state_ = {now_ut, state, orbit_state_.frame_id};
+    reseed_orbit(now_ut, state);
   }
 }
 
+// replaces patches_ only; independent of the step propagator cache, which tracks
+// orbit_state_. this does not reseed the orbit.
 void Craft::predict_patches(const orbit::RefFrameManager &frames, double begin_ut, double end_ut) {
   auto prediction = orbit::build_patches(frames, orbit_state_, begin_ut, end_ut);
   if (!prediction.endpoint_resolved || prediction.searched_through < end_ut) {
