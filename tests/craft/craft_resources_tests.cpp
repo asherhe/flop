@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
@@ -13,6 +14,7 @@
 #include "support/stub_universe_context.hpp"
 
 namespace {
+using Catch::Approx;
 using Catch::Matchers::ContainsSubstring;
 using flop::craft::ContainerState;
 using flop::craft::CraftResources;
@@ -33,7 +35,10 @@ flop::orbit::RefFrameManager frames() {
 StubUniverseContext context() {
   return StubUniverseContext(
       frames(),
-      {{"NTO", "N2O4", 1.0, ResourceFlow::stage}, {"Fuel", "Hydrazine", 2.0, ResourceFlow::stage}}
+      {{"NTO", "N2O4", 1.0, ResourceFlow::stage},
+       {"Fuel", "Hydrazine", 2.0, ResourceFlow::stage},
+       {"Ablator", "Ablator", 1.0, ResourceFlow::none},
+       {"Electricity", "EC", 0.001, ResourceFlow::craft}}
   );
 }
 
@@ -45,8 +50,15 @@ Part tank(std::string id, ResourceContainerConfig config, bool enabled = true) {
   Part part;
   part.type_id = "Tank";
   part.id = std::move(id);
+  part.crossfeed = true;
   part.plugins.push_back(container_plugin(std::move(config), enabled));
   return part;
+}
+
+// a two-way attachment between two parts, so crossfeed traversal reaches both.
+void attach(Part &a, Part &b) {
+  a.attachments.push_back({"node_" + b.id, b.id, "node_" + a.id});
+  b.attachments.push_back({"node_" + a.id, a.id, "node_" + b.id});
 }
 
 const ResourceSlot &slot(const ContainerState &container, std::string_view resource_id) {
@@ -137,4 +149,245 @@ TEST_CASE("CraftResources ignores parts without container plugins") {
   const auto ctx = context();
   const CraftResources resources(parts, ctx);
   CHECK(resources.containers().empty());
+}
+
+namespace {
+
+Part dry_part(std::string id, double dry_mass_kg, flop::Vec2d position) {
+  Part part;
+  part.type_id = "Part";
+  part.id = std::move(id);
+  part.dry_mass_kg = dry_mass_kg;
+  part.position_meters = position;
+  return part;
+}
+
+} // namespace
+
+TEST_CASE("CraftResources mass properties sum dry mass with no resources") {
+  const std::vector<Part> parts{
+      dry_part("pod_1", 800, {0, 0}),
+      dry_part("tank_2", 600, {0, -2}),
+  };
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  const auto mass = resources.mass_properties(parts);
+  CHECK(mass.total_mass_kg == 1400);
+  CHECK(mass.center_of_mass_meters.x == 0);
+  // 600 kg at y = -2, 800 kg at y = 0  ->  -1200 / 1400
+  CHECK(mass.center_of_mass_meters.y == Approx(-1200.0 / 1400.0));
+  // point-mass inertia about the com: 800*(6/7)^2 + 600*(8/7)^2 = 67200/49
+  CHECK(mass.moment_of_inertia_kg_m2 == Approx(67200.0 / 49.0));
+}
+
+TEST_CASE("CraftResources mass properties include live resource mass") {
+  // NTO is 1 kg/unit, Fuel is 2 kg/unit in the test registry.
+  Part pod = dry_part("pod_1", 800, {0, 0});
+  Part tank = dry_part("tank_2", 600, {0, -2});
+  tank.plugins.push_back(container_plugin({{{"NTO", 3600}}, {{"NTO", 500}}, {}}));
+  const std::vector<Part> parts{pod, tank};
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  const auto mass = resources.mass_properties(parts);
+  // tank: 600 dry + 500 * 1 kg/unit = 1100 kg at y = -2; pod: 800 kg at y = 0
+  CHECK(mass.total_mass_kg == Approx(1900));
+  CHECK(mass.center_of_mass_meters.y == Approx(-2200.0 / 1900.0));
+  // inertia uses the resource-augmented masses:
+  // 800*(22/19)^2 + 1100*(16/19)^2 = 668800/361
+  CHECK(mass.moment_of_inertia_kg_m2 == Approx(668800.0 / 361.0));
+}
+
+TEST_CASE("CraftResources mass properties count disabled container contents") {
+  Part tank = dry_part("tank_1", 600, {0, -2});
+  tank.plugins.push_back(container_plugin({{{"Fuel", 1000}}, {{"Fuel", 100}}, {}}, false));
+  const std::vector<Part> parts{tank};
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  REQUIRE_FALSE(resources.containers().front().enabled);
+  const auto mass = resources.mass_properties(parts);
+  // 600 dry + 100 units * 2 kg/unit = 800 kg, all at the single part's position
+  CHECK(mass.total_mass_kg == Approx(800));
+  CHECK(mass.center_of_mass_meters.y == Approx(-2));
+}
+
+TEST_CASE("CraftResources mass properties place a single part's COM at the part") {
+  const std::vector<Part> parts{dry_part("solo", 500, {3, -4})};
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  const auto mass = resources.mass_properties(parts);
+  CHECK(mass.total_mass_kg == 500);
+  CHECK(mass.center_of_mass_meters.x == Approx(3));
+  CHECK(mass.center_of_mass_meters.y == Approx(-4));
+  // a single point mass sits on the com, so the point-mass inertia is zero.
+  CHECK(mass.moment_of_inertia_kg_m2 == Approx(0));
+}
+
+TEST_CASE("CraftResources mass properties handle a massless craft without dividing by zero") {
+  const std::vector<Part> parts{dry_part("ghost", 0, {5, 5})};
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  const auto mass = resources.mass_properties(parts);
+  CHECK(mass.total_mass_kg == 0);
+  CHECK(mass.center_of_mass_meters.x == 0);
+  CHECK(mass.center_of_mass_meters.y == 0);
+  CHECK(mass.moment_of_inertia_kg_m2 == 0);
+}
+
+TEST_CASE(
+    "CraftResources crossfeed read reaches connected tanks and stops at non-crossfeed parts"
+) {
+  // pod - tank_a - tank_b, all crossfeed; tank_c attached past a non-crossfeed wall.
+  Part pod = dry_part("pod", 800, {0, 0});
+  pod.crossfeed = true;
+  Part tank_a = tank("tank_a", {{{"NTO", 1000}}, {{"NTO", 400}}, {}});
+  Part tank_b = tank("tank_b", {{{"NTO", 1000}}, {{"NTO", 600}}, {}});
+  Part wall = dry_part("wall", 100, {0, -3});
+  wall.crossfeed = false;
+  Part tank_c = tank("tank_c", {{{"NTO", 1000}}, {{"NTO", 999}}, {}});
+  attach(pod, tank_a);
+  attach(tank_a, tank_b);
+  attach(tank_b, wall);
+  attach(wall, tank_c);
+  const std::vector<Part> parts{pod, tank_a, tank_b, wall, tank_c};
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  // reading NTO (stage flow) from the pod reaches tank_a and tank_b but not
+  // tank_c, which sits behind the non-crossfeed wall.
+  CHECK(resources.read(parts, 0, "NTO") == 1000);
+}
+
+TEST_CASE("CraftResources None reach is limited to the source part") {
+  Part source = tank("source", {{{"Ablator", 50}}, {{"Ablator", 50}}, {}});
+  Part other = tank("other", {{{"Ablator", 50}}, {{"Ablator", 50}}, {}});
+  attach(source, other);
+  const std::vector<Part> parts{source, other};
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  // Ablator has None flow, so only the source part's own container is reached.
+  CHECK(resources.read(parts, 0, "Ablator") == 50);
+}
+
+TEST_CASE("CraftResources Craft reach spans every container regardless of attachment") {
+  Part a = tank("a", {{{"Electricity", 100}}, {{"Electricity", 30}}, {}});
+  Part b = tank("b", {{{"Electricity", 100}}, {{"Electricity", 45}}, {}});
+  // no attachments between a and b at all.
+  const std::vector<Part> parts{a, b};
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  // Electricity has Craft flow, so both containers are reachable from either.
+  CHECK(resources.read(parts, 0, "Electricity") == 75);
+  CHECK(resources.read(parts, 1, "Electricity") == 75);
+}
+
+TEST_CASE("CraftResources crossfeed traversal terminates on cyclic attachments") {
+  Part a = tank("a", {{{"NTO", 100}}, {{"NTO", 10}}, {}});
+  Part b = tank("b", {{{"NTO", 100}}, {{"NTO", 20}}, {}});
+  Part c = tank("c", {{{"NTO", 100}}, {{"NTO", 30}}, {}});
+  attach(a, b);
+  attach(b, c);
+  attach(c, a); // closes the loop
+  const std::vector<Part> parts{a, b, c};
+  const auto ctx = context();
+  const CraftResources resources(parts, ctx);
+
+  CHECK(resources.read(parts, 0, "NTO") == 60);
+}
+
+TEST_CASE("CraftResources drain delivers from a single reachable tank") {
+  std::vector<Part> parts{tank("tank", {{{"NTO", 1000}}, {{"NTO", 400}}, {}})};
+  const auto ctx = context();
+  CraftResources resources(parts, ctx);
+
+  CHECK(resources.drain(parts, 0, "NTO", 150) == Approx(150));
+  CHECK(resources.read(parts, 0, "NTO") == Approx(250));
+}
+
+TEST_CASE("CraftResources drain never reports more than is available") {
+  std::vector<Part> parts{tank("tank", {{{"NTO", 1000}}, {{"NTO", 200}}, {}})};
+  const auto ctx = context();
+  CraftResources resources(parts, ctx);
+
+  CHECK(resources.drain(parts, 0, "NTO", 500) == Approx(200));
+  CHECK(resources.read(parts, 0, "NTO") == Approx(0));
+  // a second drain on the empty tank delivers nothing.
+  CHECK(resources.drain(parts, 0, "NTO", 10) == Approx(0));
+}
+
+TEST_CASE("CraftResources drain empties higher-priority containers first") {
+  Part high = tank("high", {{{"NTO", 1000}}, {{"NTO", 300}}, {{"NTO", 5}}});
+  Part low = tank("low", {{{"NTO", 1000}}, {{"NTO", 300}}, {{"NTO", 1}}});
+  attach(high, low);
+  std::vector<Part> parts{high, low};
+  const auto ctx = context();
+  CraftResources resources(parts, ctx);
+
+  // draining 300 should empty the high-priority tank and leave the low one full.
+  CHECK(resources.drain(parts, 0, "NTO", 300) == Approx(300));
+  const auto &containers = resources.containers();
+  const auto high_amount = containers[0].slots.front().amount_units;
+  const auto low_amount = containers[1].slots.front().amount_units;
+  CHECK(high_amount == Approx(0));
+  CHECK(low_amount == Approx(300));
+}
+
+TEST_CASE("CraftResources drain splits an equal-priority group by current contents") {
+  // two equal-priority tanks with different fill levels share a drain in
+  // proportion to how full each is.
+  Part a = tank("a", {{{"NTO", 1000}}, {{"NTO", 300}}, {{"NTO", 2}}});
+  Part b = tank("b", {{{"NTO", 1000}}, {{"NTO", 100}}, {{"NTO", 2}}});
+  attach(a, b);
+  std::vector<Part> parts{a, b};
+  const auto ctx = context();
+  CraftResources resources(parts, ctx);
+
+  // group has 400 units; draining 200 takes half of each tank's contents.
+  CHECK(resources.drain(parts, 0, "NTO", 200) == Approx(200));
+  const auto &containers = resources.containers();
+  CHECK(containers[0].slots.front().amount_units == Approx(150));
+  CHECK(containers[1].slots.front().amount_units == Approx(50));
+}
+
+TEST_CASE("CraftResources drain on empty tanks delivers zero without dividing by zero") {
+  Part a = tank("a", {{{"NTO", 1000}}, {}, {{"NTO", 1}}});
+  Part b = tank("b", {{{"NTO", 1000}}, {}, {{"NTO", 1}}});
+  attach(a, b);
+  std::vector<Part> parts{a, b};
+  const auto ctx = context();
+  CraftResources resources(parts, ctx);
+
+  CHECK(resources.drain(parts, 0, "NTO", 100) == Approx(0));
+  CHECK(resources.read(parts, 0, "NTO") == Approx(0));
+}
+
+TEST_CASE("CraftResources drain of a non-positive request delivers zero") {
+  std::vector<Part> parts{tank("tank", {{{"NTO", 1000}}, {{"NTO", 400}}, {}})};
+  const auto ctx = context();
+  CraftResources resources(parts, ctx);
+
+  CHECK(resources.drain(parts, 0, "NTO", 0) == Approx(0));
+  CHECK(resources.drain(parts, 0, "NTO", -5) == Approx(0));
+  CHECK(resources.read(parts, 0, "NTO") == Approx(400));
+}
+
+TEST_CASE("CraftResources skips disabled containers when reading and draining") {
+  Part on = tank("on", {{{"NTO", 1000}}, {{"NTO", 200}}, {}});
+  Part off = tank("off", {{{"NTO", 1000}}, {{"NTO", 500}}, {}}, false);
+  attach(on, off);
+  std::vector<Part> parts{on, off};
+  const auto ctx = context();
+  CraftResources resources(parts, ctx);
+
+  // the disabled tank's 500 units are not reachable.
+  CHECK(resources.read(parts, 0, "NTO") == Approx(200));
+  CHECK(resources.drain(parts, 0, "NTO", 1000) == Approx(200));
+  // the disabled tank still holds its contents (and its mass).
+  CHECK(resources.containers()[1].slots.front().amount_units == Approx(500));
 }
