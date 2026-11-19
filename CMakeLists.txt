@@ -50,6 +50,7 @@ if(BUILD_TESTING)
         tests/orbit/patched_conics_tests.cpp
         tests/orbit/propagation_tests.cpp
         tests/orbit/reference_frame_tests.cpp
+        tests/orbit/state_tests.cpp
         tests/world/celestial_body_tests.cpp
         tests/world/universe_tests.cpp
     )

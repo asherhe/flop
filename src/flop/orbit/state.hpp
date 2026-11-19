@@ -12,9 +12,17 @@ struct StateVectors {
   Vec2d position;
   Vec2d velocity;
 
-  // exact component-wise equality, not a tolerant compare; use Approx or an
-  // epsilon where floating-point rounding is a concern.
+  // exact component-wise equality, not a tolerant compare; use approx where
+  // floating-point rounding is a concern.
   friend constexpr bool operator==(const StateVectors &, const StateVectors &) = default;
+
+  // tolerant compare of both vectors, using Vec2d::approx for position and velocity.
+  bool approx(
+      const StateVectors &other, double rel_tolerance = 1e-9, double abs_floor = 1e-12
+  ) const {
+    return position.approx(other.position, rel_tolerance, abs_floor) &&
+           velocity.approx(other.velocity, rel_tolerance, abs_floor);
+  }
 };
 
 // represents a particular orbit around a reference center, given its cartesian

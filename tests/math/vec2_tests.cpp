@@ -105,3 +105,54 @@ TEST_CASE("Vector rotation follows the sign of the angle in radians", "[math]") 
   CHECK_THAT(clockwise.x, WithinAbs(3.0, TOLERANCE));
   CHECK_THAT(clockwise.y, WithinAbs(-2.0, TOLERANCE));
 }
+
+TEST_CASE("Approx accepts equal vectors and rejects a NaN component", "[math]") {
+  const Vec2d value{3.0, -4.0};
+  CHECK(value.approx(value));
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  CHECK_FALSE(value.approx({nan, -4.0}));
+  CHECK_FALSE(value.approx({3.0, nan}));
+}
+
+TEST_CASE("Approx uses the absolute floor for values near zero", "[math]") {
+  const Vec2d origin{};
+  CHECK(origin.approx({5e-13, -5e-13}));
+  CHECK_FALSE(origin.approx({2e-12, 0.0}));
+  CHECK_FALSE(origin.approx({0.0, -2e-12}));
+  // the floor is applied per component, so a small error in one component is still checked.
+  CHECK_FALSE(origin.approx({5e-13, 2e-12}));
+}
+
+TEST_CASE("Approx scales the default relative tolerance with large magnitudes", "[math]") {
+  const Vec2d value{1e9, -1e9};
+  CHECK(value.approx({1e9 + 0.5, -1e9 - 0.5}));
+  CHECK_FALSE(value.approx({1e9 + 2.0, -1e9}));
+  CHECK_FALSE(value.approx({1e9, -1e9 - 2.0}));
+  // the relative term uses the larger magnitude of the pair, so the check is symmetric.
+  CHECK(Vec2d{1e9 + 0.5, 0}.approx({1e9, 0}));
+  CHECK(Vec2d{1e9, 0}.approx({1e9 + 0.5, 0}));
+}
+
+TEST_CASE("Approx requires every component to pass", "[math]") {
+  const Vec2d value{4.0, 0.0};
+  CHECK(value.approx({4.0, 0.0}));
+  CHECK_FALSE(value.approx({4.0, 1e-6}));
+  CHECK_FALSE(value.approx({4.001, 0.0}));
+}
+
+TEST_CASE("Approx takes caller tolerances in place of the defaults", "[math]") {
+  const Vec2d value{4.0, 0.0};
+  // 1e-3 absolute error in y fails the default floor but passes a looser caller floor.
+  CHECK_FALSE(value.approx({4.0, 1e-3}));
+  CHECK(value.approx({4.0, 1e-3}, 1e-9, 1e-2));
+  // a 1e-6 relative error at magnitude 4 fails the default but passes a 1e-5 relative tolerance.
+  CHECK_FALSE(value.approx({4.0 + 4e-6, 0.0}));
+  CHECK(value.approx({4.0 + 4e-6, 0.0}, 1e-5));
+}
+
+TEST_CASE("Approx does not change exact equality", "[math]") {
+  const Vec2d value{1.0, 2.0};
+  const Vec2d nearby{1.0 + 1e-13, 2.0};
+  CHECK(value.approx(nearby));
+  CHECK(value != nearby);
+}

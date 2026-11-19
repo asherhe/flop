@@ -128,9 +128,8 @@ TEST_CASE("Periapsis at zero mean anomaly is valid for all conics") {
     CAPTURE(e);
     const auto seed = state_at_epoch_from_elements(10, 42, {4, e, 0, 0});
     CHECK(seed.frame_id == FrameId{});
-    CHECK(seed.state.position.x == Approx(1.6 / (1 + e)));
+    CHECK(seed.state.position.approx({1.6 / (1 + e), 0}));
     CHECK(seed.state.velocity.y == Approx(2.5 * (1 + e)));
-    CHECK(seed.state.position.y == Approx(0).margin(1e-14));
   }
   CHECK_THROWS_AS(state_at_epoch_from_elements(0, 0, {1, 0, 0, 0}), std::invalid_argument);
 }

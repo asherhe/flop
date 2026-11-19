@@ -91,10 +91,7 @@ TEST_CASE("Universe body motion queries use the supplied UT") {
   CHECK(root.position.length() == 0);
   CHECK(root.velocity.length() == 0);
   const auto child = universe.body_state("child", quarter_turn);
-  CHECK(child.position.x == Approx(0).margin(1e-12));
-  CHECK(child.position.y == Approx(4));
-  CHECK(child.velocity.x == Approx(-5));
-  CHECK(child.velocity.y == Approx(0).margin(1e-12));
+  CHECK(child.approx({{0, 4}, {-5, 0}}));
   CHECK(universe.ut_sec() == 0);
   CHECK_THROWS_AS(
       universe.body_state("child", std::numeric_limits<double>::infinity()), std::invalid_argument
@@ -194,8 +191,7 @@ TEST_CASE("Sun and Hamswell form a deterministic typed scenario") {
   };
   Universe universe({hamswell, sun});
   const auto at_epoch = universe.body_state("Hamswell", 0);
-  CHECK(at_epoch.position.x == Approx(9.2e10 * (1 - 0.015)));
-  CHECK(at_epoch.position.y == Approx(0));
+  CHECK(at_epoch.position.approx({9.2e10 * (1 - 0.015), 0}));
   CHECK(at_epoch.velocity.y > 0);
   const auto later = universe.body_state("Hamswell", 3600);
   CHECK(later.position.y > 0);

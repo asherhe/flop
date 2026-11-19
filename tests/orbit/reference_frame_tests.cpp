@@ -4,14 +4,12 @@
 #include <numbers>
 #include <stdexcept>
 
-#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/orbit/ref_frame.hpp"
 
 namespace {
 
-using Catch::Approx;
 using flop::orbit::FrameId;
 using flop::orbit::OrbitState;
 using flop::orbit::RefFrameDefinition;
@@ -30,10 +28,7 @@ TEST_CASE("Moving frame offsets use the parent's gravity and the requested UT") 
   const double quarter_turn = 100 + 4 * std::numbers::pi / 10;
   const auto forward = frames.offset(region_id, root_id, quarter_turn);
   const auto reverse = frames.offset(root_id, region_id, quarter_turn);
-  CHECK(forward.position.x == Approx(0).margin(1e-12));
-  CHECK(forward.position.y == Approx(4));
-  CHECK(forward.velocity.x == Approx(-5));
-  CHECK(forward.velocity.y == Approx(0).margin(1e-12));
+  CHECK(forward.approx({{0, 4}, {-5, 0}}));
   CHECK((reverse.position + forward.position).length() == 0);
   CHECK((reverse.velocity + forward.velocity).length() == 0);
 

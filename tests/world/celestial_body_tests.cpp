@@ -57,8 +57,7 @@ TEST_CASE("Celestial body supplies root and child frame definitions") {
   CHECK(*child_frame.parent_name == "root");
   REQUIRE(child_frame.orbit_about_parent.has_value());
   CHECK(child_frame.orbit_about_parent->epoch == 100);
-  CHECK(child_frame.orbit_about_parent->state.position.x == Approx(4));
-  CHECK(child_frame.orbit_about_parent->state.position.y == Approx(0));
+  CHECK(child_frame.orbit_about_parent->state.position.approx({4, 0}));
   CHECK(child_frame.orbit_about_parent->state.velocity.y == Approx(5));
   CHECK(child_frame.sphere_of_influence_radius == Approx(4 * std::pow(4.0 / 100, 0.4)));
 }

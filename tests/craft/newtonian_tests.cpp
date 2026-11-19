@@ -49,8 +49,7 @@ TEST_CASE("CraftNewtonian force through the center of mass only accelerates") {
   newtonian.apply_force({200, 0}, {0, 0});
   CHECK(newtonian.step(ctx(100, 50), state, 2.0));
   // dv = F/m * dt = 200/100 * 2 = 4 m/s
-  CHECK(state.velocity.x == Approx(4));
-  CHECK(state.velocity.y == Approx(0));
+  CHECK(state.velocity.approx({4, 0}));
   // no arm, so no torque and no rotation.
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(0));
   CHECK(newtonian.angle_rad() == Approx(0));
@@ -80,8 +79,7 @@ TEST_CASE("CraftNewtonian torque arm uses the snapshot center of mass") {
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(0));
   CHECK(newtonian.angle_rad() == Approx(0));
   // no rotation, so the +x force stays +x in the frame.
-  CHECK(state.velocity.x == Approx(0.1));
-  CHECK(state.velocity.y == Approx(0));
+  CHECK(state.velocity.approx({0.1, 0}));
 }
 
 TEST_CASE("CraftNewtonian applies a pure torque without linear motion") {
@@ -89,8 +87,7 @@ TEST_CASE("CraftNewtonian applies a pure torque without linear motion") {
   StateVectors state{};
   newtonian.apply_torque(8);
   CHECK_FALSE(newtonian.step(ctx(100, 4), state, 0.5));
-  CHECK(state.velocity.x == Approx(0));
-  CHECK(state.velocity.y == Approx(0));
+  CHECK(state.velocity.approx({0, 0}));
   // L = torque * dt = 8 * 0.5 = 4; omega = 4 / 4 = 1 rad/s; angle = 1 * 0.5 = 0.5
   CHECK(newtonian.angular_momentum_kg_m2_per_s() == Approx(4));
   CHECK(newtonian.angular_velocity_rad_per_s() == Approx(1));
@@ -118,8 +115,7 @@ TEST_CASE("CraftNewtonian accumulates several forces before a step") {
   newtonian.apply_force({10, 0}, {0, 0});
   newtonian.apply_force({0, 20}, {0, 0});
   newtonian.step(ctx(10, 100), state, 1.0);
-  CHECK(state.velocity.x == Approx(1)); // 10/10
-  CHECK(state.velocity.y == Approx(2)); // 20/10
+  CHECK(state.velocity.approx({1, 2})); // 10/10, 20/10
 }
 
 TEST_CASE("CraftNewtonian step clears accumulators") {
@@ -130,8 +126,7 @@ TEST_CASE("CraftNewtonian step clears accumulators") {
   const Vec2d after_first = state.velocity;
   // a second step with nothing accumulated changes nothing and reports no change.
   CHECK_FALSE(newtonian.step(ctx(10, 100), state, 1.0));
-  CHECK(state.velocity.x == Approx(after_first.x));
-  CHECK(state.velocity.y == Approx(after_first.y));
+  CHECK(state.velocity.approx(after_first));
 }
 
 TEST_CASE("CraftNewtonian gives a lighter craft more acceleration for the same force") {
