@@ -3,16 +3,10 @@
   "configurePresets": [
     {
       "name": "headless",
-      "displayName": "Windows GCC headless",
+      "displayName": "Headless",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      },
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "g++",
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "BUILD_TESTING": true,

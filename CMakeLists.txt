@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31.8)
+cmake_minimum_required(VERSION 3.25)
 project(flop LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -40,6 +40,11 @@ include(cmake/dependencies.cmake)
 target_link_libraries(flop_core PUBLIC yaml-cpp::yaml-cpp)
 
 if(BUILD_TESTING)
+    if(NOT COMMAND catch_discover_tests AND DEFINED catch2_SOURCE_DIR)
+        list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
+    endif()
+    include(Catch)
+
     add_executable(flop_tests
         tests/craft/actuator_tests.cpp
         tests/craft/control_tests.cpp
@@ -59,9 +64,6 @@ if(BUILD_TESTING)
     )
     target_link_libraries(flop_tests PRIVATE flop_core Catch2::Catch2WithMain)
     target_include_directories(flop_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
-
-    list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
-    include(Catch)
     catch_discover_tests(flop_tests)
 
     add_executable(flop_config_tests
@@ -73,8 +75,8 @@ if(BUILD_TESTING)
         tests/config/config_tests.cpp
     )
     target_link_libraries(flop_config_tests PRIVATE flop_core Catch2::Catch2WithMain)
+    target_include_directories(flop_config_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
     target_compile_definitions(flop_config_tests PRIVATE
         FLOP_TEST_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets")
     catch_discover_tests(flop_config_tests)
 endif()
-
