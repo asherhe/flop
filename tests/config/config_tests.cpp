@@ -1,13 +1,27 @@
+#include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <limits>
 #include <map>
+#include <memory>
 #include <random>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <vector>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <winioctl.h>
+#endif
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
@@ -19,6 +33,91 @@ namespace {
 namespace fs = std::filesystem;
 using namespace flop::config;
 using Catch::Matchers::ContainsSubstring;
+
+// creates a directory link that resolves to target. on Windows this is a directory junction,
+// which needs no special privilege. elsewhere it is a directory symbolic link.
+std::error_code create_directory_link(const fs::path &target, const fs::path &link) {
+#ifdef _WIN32
+  const fs::path absolute_target = fs::absolute(target);
+  if (!CreateDirectoryW(link.c_str(), nullptr)) {
+    return {static_cast<int>(GetLastError()), std::system_category()};
+  }
+  const HANDLE handle = CreateFileW(
+      link.c_str(),
+      GENERIC_WRITE,
+      0,
+      nullptr,
+      OPEN_EXISTING,
+      FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+      nullptr
+  );
+  if (handle == INVALID_HANDLE_VALUE) {
+    const std::error_code error(static_cast<int>(GetLastError()), std::system_category());
+    RemoveDirectoryW(link.c_str());
+    return error;
+  }
+  std::unique_ptr<void, decltype(&CloseHandle)> guard(handle, &CloseHandle);
+
+  // a mount point reparse buffer holds the NT substitute name, then the display name, each
+  // null-terminated.
+  const std::wstring print_name = absolute_target.wstring();
+  const std::wstring substitute_name = L"\\??\\" + print_name;
+  const auto name_bytes = [](const std::wstring &name) { return name.size() * sizeof(wchar_t); };
+  // the mount point layout of REPARSE_DATA_BUFFER. the MinGW headers do not declare that type.
+  struct MountPointReparseData {
+    ULONG ReparseTag;
+    USHORT ReparseDataLength;
+    USHORT Reserved;
+    USHORT SubstituteNameOffset;
+    USHORT SubstituteNameLength;
+    USHORT PrintNameOffset;
+    USHORT PrintNameLength;
+    WCHAR PathBuffer[1];
+  };
+  // the header before the mount point fields is the reparse tag and data length.
+  constexpr std::size_t HEADER_BYTES = offsetof(MountPointReparseData, SubstituteNameOffset);
+  const std::size_t path_bytes =
+      name_bytes(substitute_name) + sizeof(wchar_t) + name_bytes(print_name) + sizeof(wchar_t);
+  std::vector<unsigned char> buffer(offsetof(MountPointReparseData, PathBuffer) + path_bytes);
+  auto *data = reinterpret_cast<MountPointReparseData *>(buffer.data());
+  data->ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
+  data->ReparseDataLength = static_cast<USHORT>(buffer.size() - HEADER_BYTES);
+  data->SubstituteNameOffset = 0;
+  data->SubstituteNameLength = static_cast<USHORT>(name_bytes(substitute_name));
+  data->PrintNameOffset = static_cast<USHORT>(data->SubstituteNameLength + sizeof(wchar_t));
+  data->PrintNameLength = static_cast<USHORT>(name_bytes(print_name));
+  std::memcpy(
+      data->PathBuffer, substitute_name.c_str(), name_bytes(substitute_name) + sizeof(wchar_t)
+  );
+  std::memcpy(
+      data->PathBuffer + substitute_name.size() + 1,
+      print_name.c_str(),
+      name_bytes(print_name) + sizeof(wchar_t)
+  );
+
+  DWORD returned = 0;
+  if (!DeviceIoControl(
+          handle,
+          FSCTL_SET_REPARSE_POINT,
+          data,
+          static_cast<DWORD>(buffer.size()),
+          nullptr,
+          0,
+          &returned,
+          nullptr
+      )) {
+    const std::error_code error(static_cast<int>(GetLastError()), std::system_category());
+    guard.reset();
+    RemoveDirectoryW(link.c_str());
+    return error;
+  }
+  return {};
+#else
+  std::error_code error;
+  fs::create_directory_symlink(target, link, error);
+  return error;
+#endif
+}
 
 struct TestConfig {
   std::string name;
@@ -342,10 +441,9 @@ TEST_CASE("Asset resolution rejects links outside the asset root") {
   const auto outside = temp.path() / "assets-outside";
   fs::create_directory(root);
   write_file(outside / "config.yaml", "- outside\n");
-  std::error_code error;
-  fs::create_directory_symlink(outside, root / "External", error);
+  const std::error_code error = create_directory_link(outside, root / "External");
   if (error) {
-    SKIP("Cannot create a directory symlink: " << error.message());
+    SKIP("Cannot create a directory link: " << error.message());
   }
 
   const AssetResolver resolver(root);
