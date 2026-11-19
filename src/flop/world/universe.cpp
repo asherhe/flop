@@ -87,7 +87,7 @@ Universe::Universe(
 
 Universe::Universe(
     std::vector<BodyConfig> configs,
-    std::vector<craft::ResourceConfig> resource_configs,
+    std::vector<craft::ResourceTypeConfig> resource_configs,
     double initial_ut_sec,
     double gravitational_constant
 ) :

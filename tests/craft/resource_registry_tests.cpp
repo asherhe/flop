@@ -8,13 +8,13 @@
 
 namespace {
 using Catch::Matchers::ContainsSubstring;
-using flop::craft::ResourceConfig;
 using flop::craft::ResourceFlow;
 using flop::craft::ResourceRegistry;
+using flop::craft::ResourceTypeConfig;
 } // namespace
 
 TEST_CASE("Resource registry owns resource types and exposes read-only lookup") {
-  std::vector<ResourceConfig> configs{{"NTO", "N2O4", 1.0, ResourceFlow::stage}};
+  std::vector<ResourceTypeConfig> configs{{"NTO", "N2O4", 1.0, ResourceFlow::stage}};
   const ResourceRegistry registry(configs);
   configs.front().name = "changed";
   CHECK(registry.at("NTO").name == "N2O4");
@@ -26,10 +26,12 @@ TEST_CASE("Resource registry owns resource types and exposes read-only lookup") 
 
 TEST_CASE("Resource registry rejects duplicate IDs and invalid mass conversion") {
   CHECK_THROWS_WITH(
-      ResourceRegistry({{"NTO", "N2O4", 1, ResourceFlow::stage},
-                     {"NTO", "duplicate", 1, ResourceFlow::none}}),
+      ResourceRegistry(
+          {{"NTO", "N2O4", 1, ResourceFlow::stage}, {"NTO", "duplicate", 1, ResourceFlow::none}}
+      ),
       ContainsSubstring("Duplicate resource ID")
   );
-  CHECK_THROWS_AS(ResourceRegistry({{"NTO", "N2O4", 0, ResourceFlow::stage}}),
-                  std::invalid_argument);
+  CHECK_THROWS_AS(
+      ResourceRegistry({{"NTO", "N2O4", 0, ResourceFlow::stage}}), std::invalid_argument
+  );
 }

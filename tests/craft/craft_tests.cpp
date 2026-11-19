@@ -95,7 +95,7 @@ TEST_CASE("Craft exposes runtime resource state from installed container plugins
        {{"top", "pod_1", "bottom"}},
        {{"ResourceContainerPlugin",
          true,
-         flop::craft::ResourceContainerConfig{{{"NTO", 3600}}, {{"NTO", 1200}}, {{"NTO", 1}}}}}},
+         flop::craft::ResourceConfig{{{"NTO", 3600}}, {{"NTO", 1200}}, {{"NTO", 1}}}}}},
   };
   std::vector<flop::craft::PartTypeConfig> types{
       {"Pod", "Pod", 800, true, {{"bottom", {0, -1}}}},

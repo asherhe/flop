@@ -6,8 +6,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include "flop/config/decode/resources.hpp"
 #include "flop/config/decode/body.hpp"
+#include "flop/config/decode/resources.hpp"
 #include "flop/world/universe.hpp"
 
 namespace {
@@ -17,11 +17,11 @@ using flop::config::AssetResolver;
 using flop::config::ConfigDecoder;
 using flop::config::ConfigView;
 using flop::config::load_config;
-using flop::craft::ResourceConfig;
 using flop::craft::ResourceFlow;
+using flop::craft::ResourceTypeConfig;
 
-std::vector<ResourceConfig> decode(std::string source) {
-  return ConfigDecoder<std::vector<ResourceConfig>>::decode(
+std::vector<ResourceTypeConfig> decode(std::string source) {
+  return ConfigDecoder<std::vector<ResourceTypeConfig>>::decode(
       ConfigView(YAML::Load(source), "assets/resources.yaml")
   );
 }
@@ -30,9 +30,8 @@ std::vector<ResourceConfig> decode(std::string source) {
 
 TEST_CASE("Shipped resource types decode into owning configurations") {
   const AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
-  const auto resources = load_config<std::vector<ResourceConfig>>(
-      resolver, AssetPath("assets/resources.yaml")
-  );
+  const auto resources =
+      load_config<std::vector<ResourceTypeConfig>>(resolver, AssetPath("assets/resources.yaml"));
   REQUIRE(resources.size() == 2);
   CHECK(resources[0].id == "Hydrazine");
   CHECK(resources[0].kg_per_unit == 1);
@@ -58,8 +57,10 @@ TEST_CASE("Resource decoder identifies invalid fields at their YAML locations") 
       ContainsSubstring("[[0].flow]")
   );
   CHECK_THROWS_WITH(
-      decode("- {type: Fuel, name: Fuel, density: 1, flow: None}\n"
-             "- {type: Fuel, name: Fuel, density: 1, flow: Craft}\n"),
+      decode(
+          "- {type: Fuel, name: Fuel, density: 1, flow: None}\n"
+          "- {type: Fuel, name: Fuel, density: 1, flow: Craft}\n"
+      ),
       ContainsSubstring("[[1].type]")
   );
 }

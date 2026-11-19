@@ -9,7 +9,7 @@
 
 #include "flop/craft/parts/part.hpp"
 #include "flop/craft/parts/part_plugin_config.hpp"
-#include "flop/craft/resource_config.hpp"
+#include "flop/craft/resource_type_config.hpp"
 #include "flop/craft/resources.hpp"
 
 #include "support/stub_craft_context.hpp"
@@ -23,9 +23,9 @@ using flop::craft::CraftResources;
 using flop::craft::Part;
 using flop::craft::PartPluginConfig;
 using flop::craft::ResourceConfig;
-using flop::craft::ResourceContainerConfig;
 using flop::craft::ResourceFlow;
 using flop::craft::ResourceSlot;
+using flop::craft::ResourceTypeConfig;
 using flop::testing::StubCraftContext;
 using flop::testing::StubUniverseContext;
 
@@ -52,11 +52,11 @@ StubUniverseContext context() {
   );
 }
 
-PartPluginConfig container_plugin(ResourceContainerConfig config, bool enabled = true) {
+PartPluginConfig container_plugin(ResourceConfig config, bool enabled = true) {
   return {"ResourceContainerPlugin", enabled, std::move(config)};
 }
 
-Part tank(std::string id, ResourceContainerConfig config, bool enabled = true) {
+Part tank(std::string id, ResourceConfig config, bool enabled = true) {
   Part part;
   part.type_id = "Tank";
   part.id = std::move(id);

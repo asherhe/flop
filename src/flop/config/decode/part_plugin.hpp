@@ -130,7 +130,7 @@ inline void apply_fields(craft::EngineConfig &engine, MapReader &reader) {
   reader.ignore_mapping("light");
 }
 
-inline void apply_fields(craft::ResourceContainerConfig &container, MapReader &reader) {
+inline void apply_fields(craft::ResourceConfig &container, MapReader &reader) {
   reader.assign(
       "max_amount", container.max_amount_units, decode_map<double>, PluginRequired::on_create
   );
@@ -178,7 +178,7 @@ inline craft::PartPluginConfig decode_part_plugin(std::string name, const Config
   } else if (result.name == "EnginePlugin") {
     result.values = craft::EngineConfig{};
   } else if (result.name == "ResourceContainerPlugin") {
-    result.values = craft::ResourceContainerConfig{};
+    result.values = craft::ResourceConfig{};
   } else if (result.name == "SpriteRendererPlugin") {
     result.values = craft::SpriteRendererConfig{};
   } else if (result.name == "LightPlugin") {

@@ -21,7 +21,7 @@ public:
   );
   Universe(
       std::vector<BodyConfig> configs,
-      std::vector<craft::ResourceConfig> resource_configs,
+      std::vector<craft::ResourceTypeConfig> resource_configs,
       double initial_ut_sec = 0,
       double gravitational_constant = 6.67430e-11
   );

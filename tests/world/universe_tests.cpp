@@ -41,7 +41,7 @@ TEST_CASE("Universe owns finite UT, gravity, and a nonempty body hierarchy") {
 
 TEST_CASE("Universe initializes and owns the shared resource registry") {
   using flop::craft::ResourceFlow;
-  std::vector<flop::craft::ResourceConfig> resource_configs{
+  std::vector<flop::craft::ResourceTypeConfig> resource_configs{
       {"NTO", "N2O4", 1.0, ResourceFlow::stage}
   };
   const Universe universe({ROOT}, resource_configs);

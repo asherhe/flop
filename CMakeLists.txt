@@ -16,6 +16,8 @@ add_library(flop_core STATIC
     src/flop/craft/newtonian.cpp
     src/flop/craft/resources.cpp
     src/flop/craft/resource_registry.cpp
+    src/flop/craft/plugins/part_plugin_factory.cpp
+    src/flop/craft/plugins/resource_plugin.cpp
     src/flop/config/asset_path.cpp
     src/flop/config/load.cpp
     src/flop/orbit/ref_frame.cpp
@@ -39,6 +41,7 @@ if(BUILD_TESTING)
     add_executable(flop_tests
         tests/craft/craft_tests.cpp
         tests/craft/newtonian_tests.cpp
+        tests/craft/part_plugin_tests.cpp
         tests/craft/resources_tests.cpp
         tests/craft/resource_registry_tests.cpp
         tests/math/vec2_tests.cpp

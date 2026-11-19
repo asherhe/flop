@@ -24,7 +24,7 @@ struct EngineConfig {
   std::map<std::string, double> propellant_ratio;
 };
 
-struct ResourceContainerConfig {
+struct ResourceConfig {
   std::map<std::string, double> max_amount_units;
   std::map<std::string, double> amount_units;
   std::map<std::string, int> priority;
@@ -58,7 +58,7 @@ using PluginValues = std::variant<
     CommandConfig,
     ReactionWheelConfig,
     EngineConfig,
-    ResourceContainerConfig,
+    ResourceConfig,
     SpriteRendererConfig,
     LightConfig>;
 

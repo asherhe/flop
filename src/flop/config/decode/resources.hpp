@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "flop/config/load.hpp"
-#include "flop/craft/resource_config.hpp"
+#include "flop/craft/resource_type_config.hpp"
 
 namespace flop::config {
 
@@ -24,13 +24,13 @@ inline craft::ResourceFlow decode_resource_flow(const ConfigView &field) {
 
 } // namespace detail
 
-template <> struct ConfigDecoder<std::vector<craft::ResourceConfig>> {
-  [[nodiscard]] static std::vector<craft::ResourceConfig> decode(const ConfigView &document) {
-    std::vector<craft::ResourceConfig> result;
+template <> struct ConfigDecoder<std::vector<craft::ResourceTypeConfig>> {
+  [[nodiscard]] static std::vector<craft::ResourceTypeConfig> decode(const ConfigView &document) {
+    std::vector<craft::ResourceTypeConfig> result;
     for (const auto &entry : document.sequence()) {
       const auto id = entry.required("type");
       auto resource_id = id.nonempty_string();
-      if (std::ranges::find(result, resource_id, &craft::ResourceConfig::id) != result.end()) {
+      if (std::ranges::find(result, resource_id, &craft::ResourceTypeConfig::id) != result.end()) {
         id.fail(id.mark(), "Duplicate resource ID");
       }
       result.push_back({

@@ -150,7 +150,7 @@ TEST_CASE("Shipped craft assembles its three decoded part types") {
   const auto hamswell = load_config<flop::world::BodyConfig>(
       resolver, AssetPath("assets/celestialbodies/Hamswell/Hamswell.yaml")
   );
-  const auto resources = load_config<std::vector<flop::craft::ResourceConfig>>(
+  const auto resources = load_config<std::vector<flop::craft::ResourceTypeConfig>>(
       resolver, AssetPath("assets/resources.yaml")
   );
   const flop::world::Universe universe({sun, hamswell}, resources);
@@ -171,7 +171,7 @@ TEST_CASE("Shipped craft assembles its three decoded part types") {
       tank_plugins, "ResourceContainerPlugin", &flop::craft::PartPluginConfig::name
   );
   REQUIRE(tank_plugin != tank_plugins.end());
-  const auto &tank_state = std::get<flop::craft::ResourceContainerConfig>(tank_plugin->values);
+  const auto &tank_state = std::get<flop::craft::ResourceConfig>(tank_plugin->values);
   CHECK(tank_state.max_amount_units.at("NTO") == 3600);
   CHECK(tank_state.amount_units.at("NTO") == 3600);
   CHECK(tank_state.priority.at("Hydrazine") == 0);

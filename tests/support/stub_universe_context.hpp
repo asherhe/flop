@@ -15,7 +15,7 @@ namespace flop::testing {
 class StubUniverseContext : public world::UniverseContext {
 public:
   explicit StubUniverseContext(
-      orbit::RefFrameManager frames, std::vector<craft::ResourceConfig> resources = {}
+      orbit::RefFrameManager frames, std::vector<craft::ResourceTypeConfig> resources = {}
   ) : frames_(std::move(frames)), resources_(std::move(resources)) {}
 
   [[nodiscard]] const craft::ResourceRegistry &resources() const override { return resources_; }

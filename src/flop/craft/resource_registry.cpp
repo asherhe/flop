@@ -9,13 +9,13 @@
 
 namespace flop::craft {
 
-ResourceRegistry::ResourceRegistry(std::vector<ResourceConfig> resources) :
+ResourceRegistry::ResourceRegistry(std::vector<ResourceTypeConfig> resources) :
     resources_(std::move(resources)) {
   for (auto entry = resources_.begin(); entry != resources_.end(); ++entry) {
     if (entry->id.empty() || entry->name.empty() || !positive_finite(entry->kg_per_unit)) {
       throw std::invalid_argument("Invalid resource type");
     }
-    if (std::find_if(resources_.begin(), entry, [&](const ResourceConfig &prior) {
+    if (std::find_if(resources_.begin(), entry, [&](const ResourceTypeConfig &prior) {
           return prior.id == entry->id;
         }) != entry) {
       throw std::invalid_argument("Duplicate resource ID: " + entry->id);
@@ -23,8 +23,8 @@ ResourceRegistry::ResourceRegistry(std::vector<ResourceConfig> resources) :
   }
 }
 
-const ResourceConfig &ResourceRegistry::at(std::string_view id) const {
-  const auto found = std::ranges::find(resources_, id, &ResourceConfig::id);
+const ResourceTypeConfig &ResourceRegistry::at(std::string_view id) const {
+  const auto found = std::ranges::find(resources_, id, &ResourceTypeConfig::id);
   if (found == resources_.end()) {
     throw std::invalid_argument("Unknown resource ID: " + std::string(id));
   }

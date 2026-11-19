@@ -9,8 +9,8 @@
 
 #include "flop/craft/craft_context.hpp"
 #include "flop/craft/parts/part_plugin_config.hpp"
-#include "flop/craft/resource_config.hpp"
 #include "flop/craft/resource_registry.hpp"
+#include "flop/craft/resource_type_config.hpp"
 
 namespace flop::craft {
 namespace {
@@ -52,7 +52,7 @@ ResourceSlot *find_slot(ContainerState &container, std::string_view resource_id)
 ContainerState build_container(
     std::size_t part_index,
     const PartPluginConfig &plugin,
-    const ResourceContainerConfig &config,
+    const ResourceConfig &config,
     const ResourceRegistry &registry
 ) {
   ContainerState state{part_index, plugin.enabled, {}};
@@ -82,7 +82,7 @@ CraftResources::CraftResources(std::span<const Part> parts, const world::Univers
   const auto &registry = *registry_;
   for (std::size_t part_index = 0; part_index < parts.size(); ++part_index) {
     for (const auto &plugin : parts[part_index].plugins) {
-      if (const auto *config = std::get_if<ResourceContainerConfig>(&plugin.values)) {
+      if (const auto *config = std::get_if<ResourceConfig>(&plugin.values)) {
         containers_.push_back(build_container(part_index, plugin, *config, registry));
       }
     }
