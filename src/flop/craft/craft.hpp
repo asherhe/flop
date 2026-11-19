@@ -6,9 +6,9 @@
 #include <vector>
 
 #include "flop/craft/craft_config.hpp"
-#include "flop/craft/craft_newtonian.hpp"
-#include "flop/craft/craft_resources.hpp"
-#include "flop/craft/part.hpp"
+#include "flop/craft/newtonian.hpp"
+#include "flop/craft/parts/part.hpp"
+#include "flop/craft/resources.hpp"
 #include "flop/orbit/prediction/patched_conics.hpp"
 #include "flop/orbit/ref_frame.hpp"
 #include "flop/world/universe_context.hpp"

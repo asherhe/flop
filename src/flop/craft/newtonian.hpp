@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "flop/craft/craft_resources.hpp"
+#include "flop/craft/resources.hpp"
 #include "flop/math/vec2.hpp"
 #include "flop/orbit/state.hpp"
 

@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "flop/craft/part.hpp"
+#include "flop/craft/parts/part.hpp"
 #include "flop/math/vec2.hpp"
 #include "flop/world/universe_context.hpp"
 

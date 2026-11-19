@@ -1,4 +1,4 @@
-#include "flop/craft/craft_resources.hpp"
+#include "flop/craft/resources.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -7,7 +7,7 @@
 #include <unordered_set>
 #include <variant>
 
-#include "flop/craft/part_plugin_config.hpp"
+#include "flop/craft/parts/part_plugin_config.hpp"
 #include "flop/craft/resource_config.hpp"
 #include "flop/craft/resource_registry.hpp"
 

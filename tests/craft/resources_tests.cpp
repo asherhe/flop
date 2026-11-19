@@ -6,10 +6,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include "flop/craft/craft_resources.hpp"
-#include "flop/craft/part.hpp"
-#include "flop/craft/part_plugin_config.hpp"
+#include "flop/craft/parts/part.hpp"
+#include "flop/craft/parts/part_plugin_config.hpp"
 #include "flop/craft/resource_config.hpp"
+#include "flop/craft/resources.hpp"
 
 #include "support/stub_universe_context.hpp"
 

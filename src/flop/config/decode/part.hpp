@@ -1,7 +1,7 @@
 #pragma once
 
 #include "flop/config/load.hpp"
-#include "flop/craft/part_config.hpp"
+#include "flop/craft/parts/part_config.hpp"
 
 namespace flop::config {
 

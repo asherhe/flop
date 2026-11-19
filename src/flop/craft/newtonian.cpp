@@ -1,4 +1,4 @@
-#include "flop/craft/craft_newtonian.hpp"
+#include "flop/craft/newtonian.hpp"
 
 #include "flop/craft/craft_config.hpp"
 #include "flop/math/utils.hpp"
