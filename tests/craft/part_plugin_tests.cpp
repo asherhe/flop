@@ -5,9 +5,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include "flop/craft/plugins/part_plugin_config.hpp"
 #include "flop/craft/plugins/behavior_plugins.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 #include "flop/craft/plugins/part_plugin_factory.hpp"
 #include "flop/craft/plugins/resource_plugin.hpp"
 #include "flop/craft/resource_registry.hpp"
@@ -15,6 +15,8 @@
 
 namespace {
 using Catch::Matchers::ContainsSubstring;
+using flop::craft::ResourceFlow;
+using flop::craft::ResourceRegistry;
 using flop::craft::plugin::CommandConfig;
 using flop::craft::plugin::CommandPlugin;
 using flop::craft::plugin::EngineConfig;
@@ -27,9 +29,7 @@ using flop::craft::plugin::PartPluginConfig;
 using flop::craft::plugin::ReactionWheelConfig;
 using flop::craft::plugin::ReactionWheelPlugin;
 using flop::craft::plugin::ResourceConfig;
-using flop::craft::ResourceFlow;
 using flop::craft::plugin::ResourcePlugin;
-using flop::craft::ResourceRegistry;
 using flop::craft::plugin::ResourceSlot;
 using flop::craft::plugin::SpritePlugin;
 using flop::craft::plugin::SpriteRendererConfig;
@@ -143,4 +143,20 @@ TEST_CASE("make_plugin propagates resource container validation errors") {
       make_plugin({"ResourceContainer", true, ResourceConfig{{{"Xenon", 10}}, {}, {}}}, reg),
       ContainsSubstring("Unknown resource ID")
   );
+}
+
+namespace {
+using flop::craft::plugin::TickPhase;
+} // namespace
+
+TEST_CASE("PartPlugin reports the actuation phase by default") {
+  const EnginePlugin engine(EngineConfig{}, true);
+  CHECK(engine.tick_phase() == TickPhase::actuation);
+}
+
+TEST_CASE("PartPlugin carries the owning part index bound at install") {
+  EnginePlugin engine(EngineConfig{}, true);
+  CHECK(engine.part_index() == 0);
+  engine.set_part_index(3);
+  CHECK(engine.part_index() == 3);
 }

@@ -2,25 +2,45 @@
 
 #include <utility>
 
-#include "flop/craft/plugins/part_plugin_config.hpp"
+#include "flop/craft/control.hpp"
+#include "flop/craft/craft_context.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
+#include "flop/craft/plugins/part_plugin_config.hpp"
 
 namespace flop::craft::plugin {
 
-// stub behavior plugins. each is constructed from its configuration and holds
-// it for the behavior that lands in a later stage; tick is a no-op for now.
+// the command pod: the sole writer of the craft's control state. it integrates
+// the pilot's throttle rate into the persistent throttle and passes the
+// steering level straight through, both clamped by the control channel.
+// autosteer is not modeled yet. a single command pod drives the craft;
+// arbitration between multiple pods is a later addition.
 
 class CommandPlugin : public PartPlugin {
 public:
   CommandPlugin(CommandConfig config, bool enabled) :
       PartPlugin(enabled), config_(std::move(config)) {}
 
-  void tick(CraftContext & /*ctx*/, double /*dt_sec*/) override {}
+  void tick(CraftContext &ctx, double dt_sec) override {
+    ctx.control().integrate_throttle(throttle_input_ * dt_sec);
+    ctx.control().set_steering(steering_input_);
+  }
+
+  [[nodiscard]] TickPhase tick_phase() const noexcept override { return TickPhase::control; }
+
+  // the pilot's requested throttle rate (per second) and steering level. the
+  // throttle rate integrates into the persistent throttle each step; the
+  // steering level is applied instantaneously.
+  void set_throttle_input(double throttle_input) noexcept { throttle_input_ = throttle_input; }
+  void set_steering_input(double steering_input) noexcept { steering_input_ = steering_input; }
+  [[nodiscard]] double throttle_input() const noexcept { return throttle_input_; }
+  [[nodiscard]] double steering_input() const noexcept { return steering_input_; }
 
   [[nodiscard]] const CommandConfig &config() const noexcept { return config_; }
 
 private:
   CommandConfig config_;
+  double throttle_input_{};
+  double steering_input_{};
 };
 
 class EnginePlugin : public PartPlugin {

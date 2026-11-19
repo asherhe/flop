@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "flop/craft/plugins/part_plugin.hpp"
 #include "flop/math/utils.hpp"
 #include "flop/orbit/propagators/universal.hpp"
 
@@ -110,9 +111,9 @@ Craft::Craft(
   }
 
   // built once parts_ is fully validated: each part builds its own runtime
-  // plugin objects from its authored plugin configuration.
-  for (auto &part : parts_) {
-    part.install_plugins(context.resources());
+  // plugin objects from its authored plugin configuration, bound to its index.
+  for (std::size_t index = 0; index < parts_.size(); ++index) {
+    parts_[index].install_plugins(context.resources(), index);
   }
 
   // resource state reads the installed container plugins and the shared
@@ -145,14 +146,16 @@ void Craft::reseed_orbit(double now_ut, const orbit::StateVectors &state) {
 }
 
 void Craft::step(double now_ut, double dt_sec) {
-  orbit::StateVectors state = propagator().state_at(now_ut);
-
-  for (auto &part : parts_) {
-    part.step(*this, dt_sec);
+  // control plugins produce the shared control state before any actuator reads
+  // it; actuation plugins then accumulate forces and torques for this step.
+  for (const auto phase : {plugin::TickPhase::control, plugin::TickPhase::actuation}) {
+    for (auto &part : parts_) {
+      part.step_phase(*this, dt_sec, phase);
+    }
   }
 
+  orbit::StateVectors state = propagator().state_at(now_ut);
   const bool vel_changed = newtonian_.step(*this, state, dt_sec);
-
   // a burn changed the linear velocity, so install a new seed at now_ut.
   // coasting keeps the analytical seed exact and reuses the cached propagator.
   if (vel_changed) {

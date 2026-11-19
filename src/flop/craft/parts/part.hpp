@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <span>
 #include <string>
@@ -11,6 +13,7 @@ namespace flop::craft {
 
 namespace plugin {
 class PartPlugin;
+enum class TickPhase : std::uint8_t;
 } // namespace plugin
 class CraftContext;
 class ResourceRegistry;
@@ -41,13 +44,22 @@ public:
   std::vector<plugin::PartPluginConfig> plugins;
 
   // build the runtime plugin objects from this part's authored plugin
-  // configuration. the registry validates resource containers.
-  void install_plugins(const ResourceRegistry &registry);
+  // configuration, binding each to this part's index within its craft. the
+  // registry validates resource containers.
+  void install_plugins(const ResourceRegistry &registry, std::size_t part_index);
 
-  // advance this part by one simulation step, ticking its enabled plugins.
-  void step(CraftContext &ctx, double dt_sec);
+  // advance this part by one simulation step, ticking the enabled plugins whose
+  // tick phase matches. the craft drives each phase across all parts in turn.
+  void step_phase(CraftContext &ctx, double dt_sec, plugin::TickPhase phase);
 
-  [[nodiscard]] std::span<const std::unique_ptr<plugin::PartPlugin>> installed_plugins() const noexcept {
+  [[nodiscard]] std::span<const std::unique_ptr<plugin::PartPlugin>>
+  installed_plugins() const noexcept {
+    return installed_plugins_;
+  }
+
+  // mutable view of the installed plugins, for callers that drive a plugin's
+  // own inputs (e.g. a command plugin's throttle/steering).
+  [[nodiscard]] std::span<const std::unique_ptr<plugin::PartPlugin>> installed_plugins() noexcept {
     return installed_plugins_;
   }
 

@@ -20,9 +20,9 @@ namespace {
 using Catch::Approx;
 using flop::craft::CraftResources;
 using flop::craft::Part;
+using flop::craft::ResourceFlow;
 using flop::craft::plugin::PartPluginConfig;
 using flop::craft::plugin::ResourceConfig;
-using flop::craft::ResourceFlow;
 using flop::craft::plugin::ResourcePlugin;
 using flop::craft::plugin::ResourceSlot;
 using flop::testing::StubCraftContext;
@@ -80,8 +80,8 @@ std::vector<Part> assemble(const StubUniverseContext &universe, Parts &&...parts
   std::vector<Part> result;
   result.reserve(sizeof...(parts));
   (result.push_back(std::forward<Parts>(parts)), ...);
-  for (auto &part : result) {
-    part.install_plugins(universe.resources());
+  for (std::size_t index = 0; index < result.size(); ++index) {
+    result[index].install_plugins(universe.resources(), index);
   }
   return result;
 }
