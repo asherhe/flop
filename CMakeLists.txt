@@ -13,6 +13,7 @@ endif()
 
 add_library(flop_core STATIC
     src/flop/craft/craft.cpp
+    src/flop/craft/craft_newtonian.cpp
     src/flop/craft/craft_resources.cpp
     src/flop/craft/resource_registry.cpp
     src/flop/config/asset_path.cpp
@@ -43,6 +44,7 @@ target_link_libraries(flop_core PUBLIC yaml-cpp::yaml-cpp)
 if(BUILD_TESTING)
     add_executable(flop_tests
         tests/craft/craft_tests.cpp
+        tests/craft/craft_newtonian_tests.cpp
         tests/craft/craft_resources_tests.cpp
         tests/craft/resource_registry_tests.cpp
         tests/math/vec2_tests.cpp

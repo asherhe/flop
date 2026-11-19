@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "flop/math/utils.hpp"
+#include "flop/orbit/propagators/universal.hpp"
 
 namespace flop::craft {
 Craft::Craft(
@@ -111,6 +112,7 @@ Craft::Craft(
   // built last, once parts_ is fully validated: resource state reads the
   // installed container plugins and the shared resource registry.
   resources_ = CraftResources(parts_, context);
+  newtonian_ = CraftNewtonian(config.initial_attitude);
 }
 
 const Part &Craft::part(std::string_view id) const {
@@ -118,6 +120,22 @@ const Part &Craft::part(std::string_view id) const {
   if (found == parts_.end())
     throw std::invalid_argument("Unknown craft part: " + std::string(id));
   return *found;
+}
+
+void Craft::step(double now_ut, double dt_sec) {
+  const auto &frames = context_->reference_frames();
+  const double mu = frames.frame(orbit_state_.frame_id).gravitational_parameter;
+
+  const orbit::UniversalPropagator propagator(mu, orbit_state_);
+  orbit::StateVectors state = propagator.state_at(now_ut);
+
+  const auto mass = resources_.mass_properties(parts_);
+  const bool vel_changed = newtonian_.step(mass, state, dt_sec);
+
+  // reseed if velocity change occurs
+  if (vel_changed) {
+    orbit_state_ = {now_ut, state, orbit_state_.frame_id};
+  }
 }
 
 void Craft::predict_patches(const orbit::RefFrameManager &frames, double begin_ut, double end_ut) {

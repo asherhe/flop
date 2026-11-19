@@ -8,6 +8,10 @@ struct Vec2d {
   double x{};
   double y{};
 
+  // exact component-wise equality, not a tolerant compare; use Approx or an epsilon where rounding
+  // is a concern.
+  friend constexpr bool operator==(Vec2d, Vec2d) = default;
+
   constexpr Vec2d operator-() const { return {-x, -y}; }
 
   constexpr Vec2d &operator+=(Vec2d other) {

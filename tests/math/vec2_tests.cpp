@@ -23,6 +23,15 @@ TEST_CASE("A default-constructed vector has zero components", "[math]") {
   check_components(value, {0.0, 0.0});
 }
 
+TEST_CASE("Vectors compare equal exactly by component", "[math]") {
+  CHECK(Vec2d{1.5, -2.0} == Vec2d{1.5, -2.0});
+  CHECK(Vec2d{1.5, -2.0} != Vec2d{1.5, -2.25});
+  CHECK(Vec2d{1.5, -2.0} != Vec2d{1.25, -2.0});
+  // adding exact zero leaves a vector equal to itself.
+  const Vec2d value{3.0, 4.0};
+  CHECK(value + Vec2d{0.0, 0.0} == value);
+}
+
 TEST_CASE("Vector addition and subtraction operate componentwise", "[math]") {
   const Vec2d a{2.0, -4.0};
   const Vec2d b{-6.0, 1.0};

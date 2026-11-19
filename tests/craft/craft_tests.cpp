@@ -1,6 +1,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/craft/craft.hpp"
@@ -112,4 +113,43 @@ TEST_CASE("Craft exposes runtime resource state from installed container plugins
   CHECK(container.slots.front().resource_id == "NTO");
   CHECK(container.slots.front().amount_units == 1200);
   CHECK(container.slots.front().max_amount_units == 3600);
+}
+
+TEST_CASE("Craft step integrates attitude from the configured spin") {
+  auto config = basic_config();
+  // give the craft an initial spin; two separated parts give it a real inertia.
+  config.initial_attitude = {0, 1600};
+  config.parts = {
+      {"Pod", "pod_1", "Pod", {0, 1}, 0, {{"bottom", "tank_2", "top"}}, {}},
+      {"Tank", "tank_2", "Tank", {0, -1}, 0, {{"top", "pod_1", "bottom"}}, {}},
+  };
+  std::vector<flop::craft::PartTypeConfig> types{
+      {"Pod", "Pod", 800, true, {{"bottom", {0, -1}}}},
+      {"Tank", "Tank", 800, true, {{"top", {0, 1}}}},
+  };
+  const flop::testing::StubUniverseContext context(frames());
+  flop::craft::Craft craft(config, context, types);
+
+  const double before = craft.newtonian().angle_radians();
+  craft.step(0, 1.0);
+  // equal masses at y = +/-1 about the com at the origin: I = 800+800 = 1600.
+  // omega = L / I = 1600 / 1600 = 1 rad/s, so the angle advances by 1 rad.
+  CHECK(craft.newtonian().angular_velocity_rad_per_s() == Catch::Approx(1));
+  CHECK(craft.newtonian().angle_radians() == Catch::Approx(before + 1));
+}
+
+TEST_CASE("Craft step preserves the analytical seed while coasting") {
+  auto config = basic_config();
+  const flop::testing::StubUniverseContext context(frames());
+  flop::craft::Craft craft(config, context, basic_types());
+
+  const auto seed_before = craft.orbit_state();
+  REQUIRE(seed_before.epoch == 0);
+
+  // no force is applied, so the craft coasts: the seed must be left untouched so
+  // that later sampling stays exact rather than drifting through re-seeds.
+  craft.step(120, 1.0);
+  CHECK(craft.orbit_state().epoch == 0);
+  CHECK(craft.orbit_state().state.position == seed_before.state.position);
+  CHECK(craft.orbit_state().state.velocity == seed_before.state.velocity);
 }

@@ -11,6 +11,10 @@ namespace flop::orbit {
 struct StateVectors {
   Vec2d position;
   Vec2d velocity;
+
+  // exact component-wise equality, not a tolerant compare; use Approx or an
+  // epsilon where floating-point rounding is a concern.
+  friend constexpr bool operator==(const StateVectors &, const StateVectors &) = default;
 };
 
 // represents a particular orbit around a reference center, given its cartesian
