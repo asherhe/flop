@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -14,25 +13,8 @@
 namespace flop::craft {
 
 class ResourceRegistry;
+class ResourcePlugin;
 class CraftContext;
-
-// mutable runtime state of one resource type inside one container.
-struct ResourceSlot {
-  std::string resource_id;
-  double amount_units;
-  double max_amount_units;
-  int priority;
-};
-
-// mutable runtime state of a single installed resource container plugin.
-struct ContainerState {
-  // index of the owning part within the craft's parts span.
-  std::size_t part_index;
-  // whether the owning plugin is enabled. a disabled container still holds its
-  // contents (they count toward mass) but is not drawn from.
-  bool enabled;
-  std::vector<ResourceSlot> slots;
-};
 
 // describes the permitted degree of resource flow within a craft.
 //   - None can only be used by the part it's in (e.g. solid fuel, ablator)
@@ -51,15 +33,14 @@ struct MassProperties {
   double moment_of_inertia_kg_m2;
 };
 
-// internal table of resource quantities in a Craft
+// read-only interface over the resource containers a craft's parts own. holds
+// no container storage of its own: each ResourcePlugin owns its tank slots, and
+// this aggregates across parts reached through the craft context.
 class CraftResources {
 public:
   CraftResources() = default;
 
-  // scan parts for ResourceContainerPlugins to initialize resource tracking
   CraftResources(std::span<const Part> parts, const world::UniverseContext &context);
-
-  [[nodiscard]] std::span<const ContainerState> containers() const noexcept { return containers_; }
 
   // total mass, center of mass, and rotational inertia from installed dry mass
   // plus the live resource quantities. disabled containers still contribute
@@ -88,10 +69,10 @@ public:
   );
 
 private:
-  // get all reachable containers for a given resource, based on Reach rules
-  // returns indices into containers_. only enabled containers are reachable; a disabled container
-  // holds its contents but cannot be drained
-  [[nodiscard]] std::vector<std::size_t> reachable_containers(
+  // the enabled resource containers that can supply a resource to the source
+  // part, following the resource's reach rules. a disabled container holds its
+  // contents (they count toward mass) but is not reachable for read or drain.
+  [[nodiscard]] std::vector<ResourcePlugin *> reachable_containers(
       const CraftContext &ctx,
       std::size_t source_part_index,
       std::string_view resource_id,
@@ -101,7 +82,6 @@ private:
   // universal resource registry, used for kg_per_unit.
   // null only for a default-constructed instance.
   const ResourceRegistry *registry_{nullptr};
-  std::vector<ContainerState> containers_;
 };
 
 } // namespace flop::craft

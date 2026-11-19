@@ -71,18 +71,18 @@ Craft::Craft(
     if (!config.plugins_resolved && !type->plugins.empty())
       throw std::invalid_argument("Craft plugins must be resolved by the config loader");
     auto plugins = config.plugins_resolved ? placement.plugins : type->plugins;
-    parts_.push_back(
-        {placement.type_id,
-         placement.id,
-         placement.name,
-         placement.position_meters,
-         placement.angle_rad,
-         type->mass_kg,
-         type->crossfeed,
-         type->attachment_nodes,
-         placement.attachments,
-         std::move(plugins)}
-    );
+    Part part;
+    part.type_id = placement.type_id;
+    part.id = placement.id;
+    part.name = placement.name;
+    part.position_meters = placement.position_meters;
+    part.angle_rad = placement.angle_rad;
+    part.dry_mass_kg = type->mass_kg;
+    part.crossfeed = type->crossfeed;
+    part.attachment_nodes = type->attachment_nodes;
+    part.attachments = placement.attachments;
+    part.plugins = std::move(plugins);
+    parts_.push_back(std::move(part));
   }
   for (const auto &part : parts_) {
     std::vector<std::string_view> occupied_nodes;
@@ -109,8 +109,14 @@ Craft::Craft(
     }
   }
 
-  // built last, once parts_ is fully validated: resource state reads the
-  // installed container plugins and the shared resource registry.
+  // built once parts_ is fully validated: each part builds its own runtime
+  // plugin objects from its authored plugin configuration.
+  for (auto &part : parts_) {
+    part.install_plugins(context.resources());
+  }
+
+  // resource state reads the installed container plugins and the shared
+  // resource registry.
   resources_ = CraftResources(parts_, context);
   newtonian_ = CraftNewtonian(config.initial_attitude);
 }
@@ -128,6 +134,10 @@ void Craft::step(double now_ut, double dt_sec) {
 
   const orbit::UniversalPropagator propagator(mu, orbit_state_);
   orbit::StateVectors state = propagator.state_at(now_ut);
+
+  for (auto &part : parts_) {
+    part.step(*this, dt_sec);
+  }
 
   const bool vel_changed = newtonian_.step(*this, state, dt_sec);
 

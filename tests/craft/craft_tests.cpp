@@ -5,6 +5,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/craft/craft.hpp"
+#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/part_plugin.hpp"
+#include "flop/craft/plugins/resource_plugin.hpp"
 
 #include "support/stub_universe_context.hpp"
 
@@ -106,13 +109,57 @@ TEST_CASE("Craft exposes runtime resource state from installed container plugins
   );
   const flop::craft::Craft craft(config, context, types);
 
-  REQUIRE(craft.resources().containers().size() == 1);
-  const auto &container = craft.resources().containers().front();
-  CHECK(craft.parts()[container.part_index].id == "tank_2");
-  REQUIRE(container.slots.size() == 1);
-  CHECK(container.slots.front().resource_id == "NTO");
-  CHECK(container.slots.front().amount_units == 1200);
-  CHECK(container.slots.front().max_amount_units == 3600);
+  const auto &tank_plugins = craft.part("tank_2").installed_plugins();
+  REQUIRE(tank_plugins.size() == 1);
+  const auto *container = dynamic_cast<const flop::craft::ResourcePlugin *>(tank_plugins[0].get());
+  REQUIRE(container != nullptr);
+  REQUIRE(container->slots().size() == 1);
+  CHECK(container->slots().front().resource_id == "NTO");
+  CHECK(container->slots().front().amount_units == 1200);
+  CHECK(container->slots().front().max_amount_units == 3600);
+}
+
+TEST_CASE("Craft builds runtime plugin objects for each installed plugin") {
+  using flop::craft::EnginePlugin;
+  using flop::craft::ResourceFlow;
+  using flop::craft::ResourcePlugin;
+  auto config = basic_config();
+  config.plugins_resolved = true;
+  config.parts = {
+      {"Pod", "pod_1", "Pod", {0, 0}, 0, {}, {}},
+      {"Tank",
+       "tank_2",
+       "Tank",
+       {0, -2},
+       0,
+       {},
+       {{"EnginePlugin", true, flop::craft::EngineConfig{}},
+        {"ResourceContainerPlugin",
+         false,
+         flop::craft::ResourceConfig{{{"NTO", 3600}}, {{"NTO", 1200}}, {}}}}},
+  };
+  std::vector<flop::craft::PartTypeConfig> types{
+      {"Pod", "Pod", 800, true, {{"bottom", {0, -1}}}},
+      {"Tank", "Tank", 600, true, {{"top", {0, 1}}}},
+  };
+  const flop::testing::StubUniverseContext context(
+      frames(), {{"NTO", "N2O4", 1.0, ResourceFlow::stage}}
+  );
+  const flop::craft::Craft craft(config, context, types);
+
+  CHECK(craft.part("pod_1").installed_plugins().empty());
+  const auto &tank_plugins = craft.part("tank_2").installed_plugins();
+  REQUIRE(tank_plugins.size() == 2);
+  auto *engine = dynamic_cast<EnginePlugin *>(tank_plugins[0].get());
+  REQUIRE(engine != nullptr);
+  CHECK(engine->enabled());
+  auto *container = dynamic_cast<ResourcePlugin *>(tank_plugins[1].get());
+  REQUIRE(container != nullptr);
+  // the configured enabled flag is carried onto the runtime plugin.
+  CHECK_FALSE(container->enabled());
+  REQUIRE(container->slots().size() == 1);
+  CHECK(container->slots().front().resource_id == "NTO");
+  CHECK(container->slots().front().amount_units == 1200);
 }
 
 TEST_CASE("Craft step integrates attitude from the configured spin") {
