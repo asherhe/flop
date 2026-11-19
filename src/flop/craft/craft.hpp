@@ -6,7 +6,7 @@
 #include <string_view>
 #include <vector>
 
-#include "flop/craft/craft_config.hpp"
+#include "flop/craft/config.hpp"
 #include "flop/craft/craft_context.hpp"
 #include "flop/craft/control.hpp"
 #include "flop/craft/newtonian.hpp"

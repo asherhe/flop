@@ -8,7 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/craft/parts/part.hpp"
-#include "flop/craft/plugins/part_plugin_config.hpp"
+#include "flop/craft/plugins/config.hpp"
 #include "flop/craft/plugins/resource_plugin.hpp"
 #include "flop/craft/resource_type_config.hpp"
 #include "flop/craft/resources.hpp"

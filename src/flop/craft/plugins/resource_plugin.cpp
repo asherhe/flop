@@ -5,7 +5,7 @@
 #include <map>
 #include <stdexcept>
 
-#include "flop/craft/plugins/part_plugin_config.hpp"
+#include "flop/craft/plugins/config.hpp"
 #include "flop/craft/resource_registry.hpp"
 
 namespace flop::craft::plugin {

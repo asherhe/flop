@@ -7,7 +7,7 @@
 #include "flop/craft/newtonian.hpp"
 #include "flop/craft/plugins/engine_plugin.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
-#include "flop/craft/plugins/part_plugin_config.hpp"
+#include "flop/craft/plugins/config.hpp"
 
 namespace flop::craft::plugin {
 

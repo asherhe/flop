@@ -6,7 +6,7 @@
 
 #include "flop/config/decode/part_plugin.hpp"
 #include "flop/config/load.hpp"
-#include "flop/craft/parts/part_config.hpp"
+#include "flop/craft/parts/config.hpp"
 
 namespace flop::config {
 

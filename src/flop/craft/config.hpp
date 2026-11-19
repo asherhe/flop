@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "flop/craft/parts/part_config.hpp"
+#include "flop/craft/parts/config.hpp"
 
 namespace flop::craft {
 

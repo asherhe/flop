@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "flop/config/load.hpp"
-#include "flop/craft/plugins/part_plugin_config.hpp"
+#include "flop/craft/plugins/config.hpp"
 
 namespace flop::config {
 

@@ -3,7 +3,7 @@
 #include <utility>
 
 #include "flop/craft/plugins/part_plugin.hpp"
-#include "flop/craft/plugins/part_plugin_factory.hpp"
+#include "flop/craft/plugins/plugin_factory.hpp"
 
 namespace flop::craft {
 

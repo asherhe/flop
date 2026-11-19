@@ -17,7 +17,7 @@ add_library(flop_core STATIC
     src/flop/craft/resources.cpp
     src/flop/craft/resource_registry.cpp
     src/flop/craft/parts/part.cpp
-    src/flop/craft/plugins/part_plugin_factory.cpp
+    src/flop/craft/plugins/plugin_factory.cpp
     src/flop/craft/plugins/engine_plugin.cpp
     src/flop/craft/plugins/resource_plugin.cpp
     src/flop/config/asset_path.cpp
