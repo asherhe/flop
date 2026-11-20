@@ -15,6 +15,7 @@
 #include "flop/orbit/prediction/patched_conics.hpp"
 #include "flop/orbit/propagators/universal.hpp"
 #include "flop/orbit/ref_frame.hpp"
+#include "flop/world/tick_durations.hpp"
 #include "flop/world/universe_context.hpp"
 
 namespace flop::craft {
@@ -56,8 +57,14 @@ public:
     return resources_.mass_properties(*this);
   }
 
-  // advance Craft simulation. triggers PartPlugin steps and advances CraftNewtonian simulation
-  void step(double now_ut, double dt_sec);
+  // advance Craft simulation. triggers PartPlugin steps and advances
+  // CraftNewtonian simulation. control-phase plugins (the command pod) use the
+  // control duration; actuators and the rigid body use the simulation duration.
+  void step(double now_ut, world::TickDurations durations);
+
+  // same-duration adapter: advances control and simulation by the same dt. kept
+  // for callers and tests that do not separate control from warped time.
+  void step(double now_ut, double dt_sec) { step(now_ut, world::TickDurations{dt_sec, dt_sec}); }
 
   // position and velocity of the craft at the requested UT, in its current
   // orbit's frame. a const query for rendering and read-only inspection: it

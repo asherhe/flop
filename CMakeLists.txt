@@ -8,6 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(FLOP_BUILD_GAME "Build the desktop game" OFF)
 
 add_library(flop_core STATIC
+    src/flop/app/game_scene.cpp
+    src/flop/app/tick_scheduler.cpp
     src/flop/craft/craft.cpp
     src/flop/craft/newtonian.cpp
     src/flop/craft/resources.cpp
@@ -42,6 +44,7 @@ if(BUILD_TESTING)
     include(Catch)
 
     add_executable(flop_tests
+        tests/app/tick_scheduler_tests.cpp
         tests/craft/actuator_tests.cpp
         tests/craft/control_tests.cpp
         tests/craft/craft_tests.cpp
@@ -61,14 +64,17 @@ if(BUILD_TESTING)
         tests/world/control_manager_tests.cpp
         tests/world/craft_ownership_tests.cpp
         tests/world/universe_tests.cpp
+        tests/world/universe_tick_tests.cpp
     )
     target_link_libraries(flop_tests PRIVATE flop_core Catch2::Catch2WithMain)
     target_include_directories(flop_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
     catch_discover_tests(flop_tests)
 
     add_executable(flop_config_tests
+        tests/app/game_scene_tests.cpp
         tests/config/body_decode_tests.cpp
         tests/config/body_orbit_decode_tests.cpp
+        tests/config/body_visual_decode_tests.cpp
         tests/config/craft_decode_tests.cpp
         tests/config/part_decode_tests.cpp
         tests/config/resources_decode_tests.cpp
@@ -84,7 +90,10 @@ endif()
 
 if(FLOP_BUILD_GAME)
     add_executable(flop
+        src/flop/app/app.cpp
         src/flop/app/main.cpp
+        src/flop/platform/input_mapper.cpp
+        src/flop/platform/sdl_platform.cpp
     )
 
     target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)

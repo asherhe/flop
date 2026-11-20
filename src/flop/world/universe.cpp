@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -164,6 +165,12 @@ const craft::Craft *Universe::find_craft(CraftId id) const noexcept {
   return found == craft_.end() ? nullptr : found->second.get();
 }
 
+bool Universe::any_craft_powered() const noexcept {
+  return std::ranges::any_of(craft_order_, [this](const CraftId id) {
+    return craft_.at(id)->control().throttle() > 0.0;
+  });
+}
+
 craft::Craft *Universe::mutable_craft(CraftId id) noexcept {
   const auto found = craft_.find(id);
   return found == craft_.end() ? nullptr : found->second.get();
@@ -236,15 +243,60 @@ std::vector<ControlManager::Result> Universe::apply_commands() {
   return results;
 }
 
+void Universe::prepare_active_command_plugin() {
+  craft::Craft *active = mutable_craft(controls_.active_craft_);
+  if (active == nullptr) {
+    return;
+  }
+  if (auto *command = find_command_plugin(*active)) {
+    const PilotSample sample = controls_.pilot_sample_;
+    command->set_throttle_input(sample.throttle_rate_per_sec);
+    command->set_steering_input(sample.steering);
+  }
+}
+
+void Universe::tick(TickDurations durations) {
+  if (!std::isfinite(durations.control_dt_sec) || durations.control_dt_sec < 0 ||
+      !std::isfinite(durations.simulation_dt_sec) || durations.simulation_dt_sec <= 0) {
+    throw std::invalid_argument(
+        "Universe tick durations must be finite, with a positive simulation step"
+    );
+  }
+  const double next_ut_sec = ut_sec_ + durations.simulation_dt_sec;
+  if (!std::isfinite(next_ut_sec) || next_ut_sec <= ut_sec_) {
+    throw std::invalid_argument("Universe tick must advance to a finite UT");
+  }
+
+  // feed the held pilot input into the active craft just before stepping so the
+  // step integrates it; an inactive craft receives no held input.
+  prepare_active_command_plugin();
+
+  // step every craft from the same pre-tick UT so stepping order does not change
+  // the world time each craft reads.
+  const double now_ut = ut_sec_;
+  for (const auto id : craft_order_) {
+    craft_.at(id)->step(now_ut, durations);
+  }
+
+  // TODO(soi): apply any SOI crossings whose crossing UT falls within this step,
+  // chronologically across all craft, reseeding the crossing craft into the
+  // destination frame before publishing UT. Deferred to a focused SOI unit; no
+  // shipped body has a finite SOI child yet, so no crossing is due here.
+
+  ut_sec_ = next_ut_sec;
+}
+
 void Universe::tick(double dt_sec) {
   if (!std::isfinite(dt_sec) || dt_sec <= 0) {
     throw std::invalid_argument("Universe tick must be finite and positive");
   }
-  const double next_ut_sec = ut_sec_ + dt_sec;
-  if (!std::isfinite(next_ut_sec) || next_ut_sec <= ut_sec_) {
-    throw std::invalid_argument("Universe tick must advance to a finite UT");
-  }
-  ut_sec_ = next_ut_sec;
+  // same-duration adapter: control and simulation advance by the same dt.
+  tick(TickDurations{dt_sec, dt_sec});
+}
+
+double warp_ceiling(const Universe &universe) noexcept {
+  return universe.any_craft_powered() ? POWERED_WARP_CEILING
+                                      : std::numeric_limits<double>::infinity();
 }
 
 } // namespace flop::world

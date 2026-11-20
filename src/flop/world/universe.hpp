@@ -13,6 +13,7 @@
 #include "flop/world/celestial_body.hpp"
 #include "flop/world/control_manager.hpp"
 #include "flop/world/craft_id.hpp"
+#include "flop/world/tick_durations.hpp"
 #include "flop/world/universe_context.hpp"
 
 namespace flop::world {
@@ -81,6 +82,12 @@ public:
   // the craft with the given id, or nullptr if there is none.
   [[nodiscard]] const craft::Craft *find_craft(CraftId id) const noexcept;
 
+  // true when any craft in the world currently has a nonzero persistent
+  // throttle. used to compute the powered warp ceiling: switching away from a
+  // burning craft must not let warp exceed the powered limit, so the check
+  // spans all craft, not only the active one.
+  [[nodiscard]] bool any_craft_powered() const noexcept;
+
   // the world's control manager, which owns active-craft selection, the pending
   // command queue, and the held pilot sample. UI and input submit through the
   // mutable accessor; rendering and inspection use the const one. Mutable craft
@@ -97,6 +104,15 @@ public:
   // advance UT by a simulation interval supplied by the application
   void tick(double dt_sec);
 
+  // advance the world by one fixed simulation step. prepares the active craft's
+  // command plugin from the held pilot sample, advances every craft from the
+  // current UT by the given durations, then publishes the new completed UT
+  // (advanced by the simulation duration). control integrates in real time and
+  // motion in warped time, so a held throttle changes at a warp-independent
+  // rate. craft are stepped from the pre-tick UT so each reads the same world
+  // time regardless of enumeration order.
+  void tick(TickDurations durations);
+
 private:
   // the craft with the given id for internal mutation, or nullptr. kept private
   // so external callers cannot obtain mutable craft access; only command
@@ -108,6 +124,11 @@ private:
   // continuing to receive pilot input. does nothing when no command plugin is
   // installed or no craft is active.
   void neutralize_active_pilot_input();
+
+  // push the held pilot sample into the active craft's command plugin before a
+  // step, so the step integrates the pilot's throttle rate and steering. does
+  // nothing when no craft is active or it has no command plugin.
+  void prepare_active_command_plugin();
 
   double ut_sec_;
   double gravitational_constant_;
@@ -125,5 +146,15 @@ private:
   // active-craft selection, command queue, and held pilot sample.
   ControlManager controls_;
 };
+
+// the warp ceiling the world currently imposes: the conservative powered limit
+// (20x) while any craft is powered, otherwise no limit (infinity). the
+// application passes this to the tick scheduler, which clamps its warp ladder
+// to it. kept here so the "any craft powered" rule lives in one named place and
+// the scheduler stays free of any Universe dependency.
+[[nodiscard]] double warp_ceiling(const Universe &universe) noexcept;
+
+// the powered warp ceiling in effect while a craft is burning.
+inline constexpr double POWERED_WARP_CEILING = 20.0;
 
 } // namespace flop::world

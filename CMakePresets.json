@@ -24,6 +24,18 @@
         "BUILD_TESTING": false,
         "FLOP_BUILD_GAME": true
       }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux / WSL (Debug)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "BUILD_TESTING": false,
+        "FLOP_BUILD_GAME": true
+      }
     }
   ],
   "buildPresets": [
@@ -34,6 +46,10 @@
     {
       "name": "windows-debug",
       "configurePreset": "windows-debug"
+    },
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug"
     }
   ],
   "testPresets": [
@@ -58,6 +74,13 @@
       "steps": [
         { "type": "configure", "name": "windows-debug" },
         { "type": "build", "name": "windows-debug" }
+      ]
+    },
+    {
+      "name": "linux-debug",
+      "steps": [
+        { "type": "configure", "name": "linux-debug" },
+        { "type": "build", "name": "linux-debug" }
       ]
     }
   ]

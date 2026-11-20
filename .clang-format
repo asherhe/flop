@@ -10,6 +10,7 @@ MaxEmptyLinesToKeep: 2
 
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: true
 
 BinPackParameters: false
 BinPackArguments: false
