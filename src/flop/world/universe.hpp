@@ -11,6 +11,7 @@
 #include "flop/craft/craft.hpp"
 #include "flop/craft/resource_registry.hpp"
 #include "flop/world/celestial_body.hpp"
+#include "flop/world/control_manager.hpp"
 #include "flop/world/craft_id.hpp"
 #include "flop/world/universe_context.hpp"
 
@@ -80,10 +81,34 @@ public:
   // the craft with the given id, or nullptr if there is none.
   [[nodiscard]] const craft::Craft *find_craft(CraftId id) const noexcept;
 
+  // the world's control manager, which owns active-craft selection, the pending
+  // command queue, and the held pilot sample. UI and input submit through the
+  // mutable accessor; rendering and inspection use the const one. Mutable craft
+  // access stays private to Universe so only apply_commands() can change craft.
+  [[nodiscard]] ControlManager &controls() noexcept { return controls_; }
+  [[nodiscard]] const ControlManager &controls() const noexcept { return controls_; }
+
+  // drain the control queue, executing each command against live craft storage
+  // in submit order, and return one result per command. Safe to call every
+  // frame, including while paused; discrete commands still apply. A command
+  // whose target no longer exists fails without touching any other craft.
+  std::vector<ControlManager::Result> apply_commands();
+
   // advance UT by a simulation interval supplied by the application
   void tick(double dt_sec);
 
 private:
+  // the craft with the given id for internal mutation, or nullptr. kept private
+  // so external callers cannot obtain mutable craft access; only command
+  // execution and stepping use it.
+  [[nodiscard]] craft::Craft *mutable_craft(CraftId id) noexcept;
+
+  // clear the active craft's command plugin held throttle rate and steering, so
+  // a deselected or focus-lost craft coasts on its persistent throttle without
+  // continuing to receive pilot input. does nothing when no command plugin is
+  // installed or no craft is active.
+  void neutralize_active_pilot_input();
+
   double ut_sec_;
   double gravitational_constant_;
   std::vector<CelestialBody> bodies_;
@@ -97,6 +122,8 @@ private:
   std::vector<CraftId> craft_order_;
   // next craft id to assign; increments on every add and is never reset.
   std::uint64_t next_craft_id_{1};
+  // active-craft selection, command queue, and held pilot sample.
+  ControlManager controls_;
 };
 
 } // namespace flop::world

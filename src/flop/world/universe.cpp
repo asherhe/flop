@@ -4,12 +4,31 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
+#include <variant>
 
+#include "flop/craft/plugins/behavior_plugins.hpp"
 #include "flop/math/utils.hpp"
 
 namespace flop::world {
 namespace {
+
+// the enabled command plugin on a craft, or nullptr if none is installed. a
+// craft has at most one command pod in the current model; the first one found
+// is authoritative.
+craft::plugin::CommandPlugin *find_command_plugin(craft::Craft &craft) {
+  for (const auto &part : craft.parts()) {
+    // parts() is a const span; reach the mutable part through the craft by id.
+    auto &mutable_part = craft.part(part.id);
+    for (const auto &plugin : mutable_part.installed_plugins()) {
+      if (auto *command = dynamic_cast<craft::plugin::CommandPlugin *>(plugin.get())) {
+        return command;
+      }
+    }
+  }
+  return nullptr;
+}
 
 double valid_ut(double value) {
   if (!std::isfinite(value)) {
@@ -135,9 +154,7 @@ std::vector<CraftId> Universe::craft_ids() const {
 const craft::Craft &Universe::craft(CraftId id) const {
   const auto found = craft_.find(id);
   if (found == craft_.end()) {
-    throw std::out_of_range(
-        "Unknown craft id: " + std::to_string(static_cast<std::uint64_t>(id))
-    );
+    throw std::out_of_range("Unknown craft id: " + std::to_string(static_cast<std::uint64_t>(id)));
   }
   return *found->second;
 }
@@ -145,6 +162,78 @@ const craft::Craft &Universe::craft(CraftId id) const {
 const craft::Craft *Universe::find_craft(CraftId id) const noexcept {
   const auto found = craft_.find(id);
   return found == craft_.end() ? nullptr : found->second.get();
+}
+
+craft::Craft *Universe::mutable_craft(CraftId id) noexcept {
+  const auto found = craft_.find(id);
+  return found == craft_.end() ? nullptr : found->second.get();
+}
+
+void Universe::neutralize_active_pilot_input() {
+  craft::Craft *active = mutable_craft(controls_.active_craft_);
+  if (active == nullptr) {
+    return;
+  }
+  if (auto *command = find_command_plugin(*active)) {
+    command->set_throttle_input(0.0);
+    command->set_steering_input(0.0);
+  }
+}
+
+std::vector<ControlManager::Result> Universe::apply_commands() {
+  std::vector<ControlManager::Result> results;
+  results.reserve(controls_.pending_.size());
+  // take the queue so commands submitted during execution (none today) wait for
+  // the next drain, and so the manager is left empty afterward.
+  std::vector<ControlManager::Command> commands;
+  commands.swap(controls_.pending_);
+
+  for (auto &command : commands) {
+    const ControlManager::Status status = std::visit(
+        [&](auto &value) -> ControlManager::Status {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, ControlManager::SelectCraft>) {
+            if (mutable_craft(value.craft) == nullptr) {
+              return ControlManager::Status::missing_target;
+            }
+            if (value.craft != controls_.active_craft_) {
+              // leaving a craft neutralizes its held input so it coasts on its
+              // persistent throttle; the newly selected craft starts from the
+              // current (neutral) pilot sample.
+              neutralize_active_pilot_input();
+              controls_.active_craft_ = value.craft;
+            }
+            return ControlManager::Status::applied;
+          } else if constexpr (std::is_same_v<T, ControlManager::SetThrottle>) {
+            craft::Craft *active = mutable_craft(controls_.active_craft_);
+            if (active == nullptr) {
+              return ControlManager::Status::unsupported;
+            }
+            active->control().set_throttle(std::clamp(value.throttle, 0.0, 1.0));
+            return ControlManager::Status::applied;
+          } else if constexpr (std::is_same_v<T, ControlManager::SetPluginEnabled>) {
+            craft::Craft *target = mutable_craft(value.target.craft);
+            if (target == nullptr) {
+              return ControlManager::Status::missing_target;
+            }
+            craft::Part *part = target->find_part(value.target.part);
+            if (part == nullptr) {
+              return ControlManager::Status::missing_target;
+            }
+            craft::plugin::PartPlugin *plugin = part->find_plugin(value.target.plugin);
+            if (plugin == nullptr) {
+              return ControlManager::Status::missing_target;
+            }
+            plugin->set_enabled(value.enabled);
+            return ControlManager::Status::applied;
+          }
+          return ControlManager::Status::unsupported;
+        },
+        command
+    );
+    results.push_back({std::move(command), status});
+  }
+  return results;
 }
 
 void Universe::tick(double dt_sec) {

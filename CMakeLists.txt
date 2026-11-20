@@ -58,6 +58,7 @@ if(BUILD_TESTING)
         tests/orbit/reference_frame_tests.cpp
         tests/orbit/state_tests.cpp
         tests/world/celestial_body_tests.cpp
+        tests/world/control_manager_tests.cpp
         tests/world/craft_ownership_tests.cpp
         tests/world/universe_tests.cpp
     )

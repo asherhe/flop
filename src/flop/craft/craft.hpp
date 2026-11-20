@@ -37,6 +37,12 @@ public:
   // plugins (e.g. a command pod's throttle/steering).
   [[nodiscard]] Part &part(std::string_view id);
 
+  // the installed part with the given id, or nullptr if this craft has none.
+  // unlike part(id), this does not throw, so a queued command targeting a part
+  // that no longer exists fails cleanly.
+  [[nodiscard]] const Part *find_part(const PartId &part_id) const;
+  [[nodiscard]] Part *find_part(const PartId &part_id);
+
   [[nodiscard]] const CraftControl &control() const noexcept override { return control_; }
   [[nodiscard]] CraftControl &control() noexcept override { return control_; }
 

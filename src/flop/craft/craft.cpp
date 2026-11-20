@@ -128,6 +128,16 @@ Part &Craft::part(std::string_view id) {
   return *found;
 }
 
+const Part *Craft::find_part(const PartId &part_id) const {
+  const auto found = std::ranges::find(parts_, part_id.value(), &Part::id);
+  return found == parts_.end() ? nullptr : &*found;
+}
+
+Part *Craft::find_part(const PartId &part_id) {
+  const auto found = std::ranges::find(parts_, part_id.value(), &Part::id);
+  return found == parts_.end() ? nullptr : &*found;
+}
+
 const orbit::UniversalPropagator &Craft::propagator() {
   if (!propagator_.has_value()) {
     const double mu =
