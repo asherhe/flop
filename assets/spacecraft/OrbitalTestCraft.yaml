@@ -1,14 +1,10 @@
 # OrbitalTestCraft.yaml
+#
+# A craft TEMPLATE: the authored design (parts, attachments, plugins, initial
+# rotation). A template has no position in the world, so it carries no `orbit`
+# block. A save instance places a copy of this design at a concrete orbit state.
 
 name: Orbital Test Craft
-
-orbit:
-  parent: Hamswell
-  h: 1.73e10
-  e: 0.08
-  omega: 1
-  M0: 1
-  t0: 0
 
 rotation:
   angle: 2.7 # rad

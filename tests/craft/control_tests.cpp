@@ -21,7 +21,7 @@ flop::orbit::RefFrameManager frames() {
 flop::craft::CraftConfig basic_config() {
   return {
       "Test Craft",
-      {"Hamswell", 1.73e10, 0.08, 1, 1, 0},
+      flop::craft::CraftOrbitState{"Hamswell", {{3.0e6, 0}, {0, 5000}}, 0},
       {2.7, -1000},
       {{"Pod", "pod_1", "Pod", {0, 0}, 0, {}}}
   };

@@ -115,6 +115,38 @@ orbit::StateVectors Universe::body_state(std::string_view name, double ut_sec) c
   return frames_.offset(frame_id(name), root_frame_id_, ut_sec);
 }
 
+CraftId Universe::add_craft(
+    craft::CraftConfig config, std::vector<craft::PartTypeConfig> part_types
+) {
+  const auto id = static_cast<CraftId>(next_craft_id_);
+  // build before recording so a construction failure leaves the world and the
+  // id counter unchanged.
+  auto craft = std::make_unique<craft::Craft>(std::move(config), *this, std::move(part_types));
+  craft_.emplace(id, std::move(craft));
+  craft_order_.push_back(id);
+  ++next_craft_id_;
+  return id;
+}
+
+std::vector<CraftId> Universe::craft_ids() const {
+  return craft_order_;
+}
+
+const craft::Craft &Universe::craft(CraftId id) const {
+  const auto found = craft_.find(id);
+  if (found == craft_.end()) {
+    throw std::out_of_range(
+        "Unknown craft id: " + std::to_string(static_cast<std::uint64_t>(id))
+    );
+  }
+  return *found->second;
+}
+
+const craft::Craft *Universe::find_craft(CraftId id) const noexcept {
+  const auto found = craft_.find(id);
+  return found == craft_.end() ? nullptr : found->second.get();
+}
+
 void Universe::tick(double dt_sec) {
   if (!std::isfinite(dt_sec) || dt_sec <= 0) {
     throw std::invalid_argument("Universe tick must be finite and positive");

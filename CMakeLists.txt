@@ -46,6 +46,7 @@ if(BUILD_TESTING)
         tests/craft/control_tests.cpp
         tests/craft/craft_tests.cpp
         tests/craft/headless_simulation_tests.cpp
+        tests/craft/ids_tests.cpp
         tests/craft/newtonian_tests.cpp
         tests/craft/part_plugin_tests.cpp
         tests/craft/resources_tests.cpp
@@ -57,6 +58,7 @@ if(BUILD_TESTING)
         tests/orbit/reference_frame_tests.cpp
         tests/orbit/state_tests.cpp
         tests/world/celestial_body_tests.cpp
+        tests/world/craft_ownership_tests.cpp
         tests/world/universe_tests.cpp
     )
     target_link_libraries(flop_tests PRIVATE flop_core Catch2::Catch2WithMain)
@@ -69,6 +71,7 @@ if(BUILD_TESTING)
         tests/config/craft_decode_tests.cpp
         tests/config/part_decode_tests.cpp
         tests/config/resources_decode_tests.cpp
+        tests/config/save_decode_tests.cpp
         tests/config/config_tests.cpp
     )
     target_link_libraries(flop_config_tests PRIVATE flop_core Catch2::Catch2WithMain)

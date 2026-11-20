@@ -1,0 +1,95 @@
+# orbital_test.yaml
+#
+# A SAVE: a concrete snapshot of game state. It states every craft in full,
+# including each craft's orbit as cartesian state vectors (pos/vel in metres and
+# metres per second, in the parent body's frame at t0) and its live resource
+# balances. Loading a save reconstructs the craft instances into a Universe
+# whose bodies, resources, and part types are fixed by the game build.
+
+craft:
+  - name: Orbital Test Craft
+
+    # Cartesian orbit seed in Hamswell's frame. Derived from the original
+    # authored elements (h=1.73e10, e=0.08, omega=1, M0=1) at t0=0.
+    orbit:
+      parent: Hamswell
+      pos: { x: -1775017.642566629, y: 2763005.5625398336 }
+      vel: { x: -4632.602307965213, y: -2535.239056863811 }
+      t0: 0
+
+    rotation:
+      angle: 2.7 # rad
+      momentum: -1000 # kg m^2 s^-1
+
+    parts:
+      - type: TestingCommandPod
+        id: TestingCommandPod_1
+        name: Testing Command Pod
+
+        transform:
+          pos: { x: 0.0, y: 0.0 }
+          rot: 0
+
+        attachments:
+          - mode: Node
+            node: bottom
+            attach_part: TestingTank_2
+            attach_node: top
+
+        plugins:
+          SpriteRendererPlugin:
+            enabled: true
+          CommandPlugin:
+            enabled: true
+          ReactionWheelPlugin:
+            enabled: true
+
+      - type: TestingTank
+        id: TestingTank_2
+        name: Testing Tank
+
+        transform:
+          pos: { x: 0.0, y: -2.0 }
+          rot: 0
+
+        attachments:
+          - mode: Node
+            node: top
+            attach_part: TestingCommandPod_1
+            attach_node: bottom
+          - mode: Node
+            node: bottom
+            attach_part: TestingEngine_3
+            attach_node: top
+
+        plugins:
+          SpriteRendererPlugin:
+            enabled: true
+          ResourceContainerPlugin:
+            enabled: true
+            amount:
+              NTO: 1800
+              Hydrazine: 1200
+            priority:
+              NTO: 0
+              Hydrazine: 0
+
+      - type: TestingEngine
+        id: TestingEngine_3
+        name: Testing Engine
+
+        transform:
+          pos: { x: 0.0, y: -3.75 }
+          rot: 0
+
+        attachments:
+          - mode: Node
+            node: top
+            attach_part: TestingTank_2
+            attach_node: bottom
+
+        plugins:
+          SpriteRendererPlugin:
+            enabled: true
+          EnginePlugin:
+            enabled: true

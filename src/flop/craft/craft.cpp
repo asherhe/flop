@@ -17,29 +17,21 @@ Craft::Craft(
     std::vector<PartTypeConfig> part_types
 ) : context_(&context), name_(std::move(config.name)) {
   const auto &frames = context.reference_frames();
-  const auto &orbit_config = config.orbit;
+  if (!config.orbit.has_value()) {
+    throw std::invalid_argument(
+        "Craft '" + name_ + "' has no orbit; a template cannot be placed without a save instance"
+    );
+  }
+  const auto &orbit_config = *config.orbit;
   if (name_.empty() || orbit_config.parent_name.empty() ||
-      !std::isfinite(orbit_config.specific_angular_momentum_m2_per_s) ||
-      orbit_config.specific_angular_momentum_m2_per_s == 0 ||
-      !std::isfinite(orbit_config.eccentricity) || orbit_config.eccentricity < 0 ||
-      !std::isfinite(orbit_config.longitude_periapsis_rad) ||
-      !std::isfinite(orbit_config.epoch_mean_anomaly_rad) ||
-      !std::isfinite(orbit_config.epoch_sec)) {
+      !is_finite(orbit_config.state.position) || !is_finite(orbit_config.state.velocity) ||
+      orbit_config.state.position == Vec2d{} || !std::isfinite(orbit_config.epoch_sec)) {
     throw std::invalid_argument("Invalid craft configuration");
   }
   const auto frame_id = frames.frame_id(orbit_config.parent_name);
-  const auto mu = frames.frame(frame_id).gravitational_parameter;
-  orbit_state_ = orbit::state_at_epoch_from_elements(
-      mu,
-      orbit_config.epoch_sec,
-      {
-          orbit_config.specific_angular_momentum_m2_per_s,
-          orbit_config.eccentricity,
-          orbit_config.longitude_periapsis_rad,
-          orbit_config.epoch_mean_anomaly_rad,
-      },
-      frame_id
-  );
+  // seed the orbit directly from the saved cartesian state, the same shape
+  // reseed_orbit installs after a burn. no element conversion is involved.
+  orbit_state_ = {orbit_config.epoch_sec, orbit_config.state, frame_id};
   patches_ = {
       {{orbit_state_, orbit_config.epoch_sec, orbit_config.epoch_sec}}, orbit_config.epoch_sec
   };
@@ -143,6 +135,19 @@ const orbit::UniversalPropagator &Craft::propagator() {
     propagator_.emplace(mu, orbit_state_);
   }
   return *propagator_;
+}
+
+orbit::StateVectors Craft::state_at(double ut) const {
+  // reuse the step cache when it is already built from the current seed; a
+  // displayed frame then costs one anomaly solve and no allocation. otherwise
+  // build a throwaway propagator so the query stays const and does not disturb
+  // the next step's cache.
+  if (propagator_.has_value()) {
+    return propagator_->state_at(ut);
+  }
+  const double mu =
+      context_->reference_frames().frame(orbit_state_.frame_id).gravitational_parameter;
+  return orbit::UniversalPropagator(mu, orbit_state_).state_at(ut);
 }
 
 void Craft::reseed_orbit(double now_ut, const orbit::StateVectors &state) {

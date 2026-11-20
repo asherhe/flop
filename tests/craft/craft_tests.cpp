@@ -4,6 +4,7 @@
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "flop/craft/craft.hpp"
 #include "flop/craft/plugins/behavior_plugins.hpp"
@@ -23,7 +24,7 @@ flop::orbit::RefFrameManager frames() {
 flop::craft::CraftConfig basic_config() {
   return {
       "Test Craft",
-      {"Hamswell", 1.73e10, 0.08, 1, 1, 0},
+      flop::craft::CraftOrbitState{"Hamswell", {{3.0e6, 0}, {0, 5000}}, 0},
       {2.7, -1000},
       {{"Pod", "pod_1", "Pod", {0, 0}, 0, {}}}
   };
@@ -56,12 +57,22 @@ TEST_CASE("Craft owns its resolved orbital state and initial patch") {
 TEST_CASE("Craft validates parent reference and typed orbital inputs") {
   const flop::testing::StubUniverseContext context(frames());
   auto config = basic_config();
-  config.orbit.parent_name = "missing";
+  config.orbit->parent_name = "missing";
   CHECK_THROWS_AS(flop::craft::Craft(config, context, basic_types()), std::invalid_argument);
 
   config = basic_config();
-  config.orbit.specific_angular_momentum_m2_per_s = 0;
+  config.orbit->state.position = {0, 0}; // a degenerate seed at the parent center is rejected.
   CHECK_THROWS_AS(flop::craft::Craft(config, context, basic_types()), std::invalid_argument);
+}
+
+TEST_CASE("Craft cannot be built from a template that has no orbit") {
+  const flop::testing::StubUniverseContext context(frames());
+  auto config = basic_config();
+  config.orbit.reset(); // a template: no world position.
+  CHECK_THROWS_WITH(
+      flop::craft::Craft(config, context, basic_types()),
+      Catch::Matchers::ContainsSubstring("no orbit")
+  );
 }
 
 TEST_CASE("Craft owns installed parts and resolves reciprocal attachment nodes") {
@@ -230,7 +241,12 @@ flop::craft::CraftConfig burn_config() {
   using flop::craft::plugin::CommandConfig;
   using flop::craft::plugin::EngineConfig;
   using flop::craft::plugin::ResourceConfig;
-  flop::craft::CraftConfig config{"Burn Craft", {"Hamswell", 1.73e10, 0.08, 1, 1, 0}, {0, 0}, {}};
+  flop::craft::CraftConfig config{
+      "Burn Craft",
+      flop::craft::CraftOrbitState{"Hamswell", {{3.0e6, 0}, {0, 5000}}, 0},
+      {0, 0},
+      {}
+  };
   config.plugins_resolved = true;
   config.parts = {
       {"Pod",

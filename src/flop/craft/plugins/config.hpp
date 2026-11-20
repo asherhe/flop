@@ -66,6 +66,11 @@ struct PartPluginConfig {
   std::string name;
   bool enabled{true};
   PluginValues values;
+  // stable instance id, unique within the owning part. empty means "default to
+  // the plugin name", which preserves the current one-instance-per-type assets.
+  // placed last so existing positional {name, enabled, values} initializers and
+  // decoders stay valid.
+  std::string id;
 };
 
 } // namespace flop::craft::plugin

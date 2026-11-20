@@ -12,6 +12,7 @@
 #include "flop/config/decode/part.hpp"
 #include "flop/config/decode/part_plugin.hpp"
 #include "flop/config/decode/resources.hpp"
+#include "flop/config/decode/save.hpp"
 #include "flop/craft/craft.hpp"
 #include "flop/craft/plugins/behavior_plugins.hpp"
 #include "flop/world/universe.hpp"
@@ -149,7 +150,7 @@ TEST_CASE("Engine definitions require every field and overrides retain omitted v
   CHECK(engine.propellant_ratio.at("Fuel") == 1);
 }
 
-TEST_CASE("Shipped craft assembles its three decoded part types") {
+TEST_CASE("A saved craft instance assembles its three decoded part types") {
   const AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
   const auto sun = load_config<flop::world::BodyConfig>(
       resolver, AssetPath("assets/celestialbodies/Sun/Sun.yaml")
@@ -166,9 +167,13 @@ TEST_CASE("Shipped craft assembles its three decoded part types") {
       load_part_type(resolver, "TestingTank"),
       load_part_type(resolver, "TestingEngine"),
   };
-  const auto config = flop::config::load_craft_config(
-      resolver, AssetPath("assets/spacecraft/OrbitalTestCraft.yaml"), types
-  );
+  const auto saved =
+      flop::config::load_save(resolver, AssetPath("assets/saves/orbital_test.yaml"), types);
+  REQUIRE(saved.size() == 1);
+  const auto &config = saved.front();
+  REQUIRE(config.orbit.has_value());
+  CHECK(config.orbit->parent_name == "Hamswell");
+
   flop::craft::Craft craft(config, universe, types);
   REQUIRE(craft.parts().size() == 3);
   CHECK(craft.part("TestingEngine_3").dry_mass_kg == 1200);
@@ -179,9 +184,15 @@ TEST_CASE("Shipped craft assembles its three decoded part types") {
   );
   REQUIRE(tank_plugin != tank_plugins.end());
   const auto &tank_state = std::get<flop::craft::plugin::ResourceConfig>(tank_plugin->values);
+  // capacity comes from the part type; the live balance comes from the save.
   CHECK(tank_state.max_amount_units.at("NTO") == 3600);
-  CHECK(tank_state.amount_units.at("NTO") == 3600);
+  CHECK(tank_state.amount_units.at("NTO") == 1800);
   CHECK(tank_state.priority.at("Hydrazine") == 0);
+
+  // the craft is seeded directly from the saved cartesian state.
+  CHECK(craft.orbit_state().state.position.x == config.orbit->state.position.x);
+  CHECK(craft.orbit_state().state.velocity.y == config.orbit->state.velocity.y);
+  CHECK(craft.orbit_state().epoch == 0);
 
   // a short powered step through the loaded craft: command input flows into the
   // control state, the engine burns, mass drops, motion stays finite, and the
@@ -239,7 +250,11 @@ TEST_CASE("Craft plugin fields override matching part type fields") {
   );
   const flop::world::Universe universe({sun, hamswell});
   flop::craft::CraftConfig config{
-      "Test", {"Hamswell", 1.73e10, 0.08, 1, 1, 0}, {0, 0}, {placement}, true
+      "Test",
+      flop::craft::CraftOrbitState{"Hamswell", {{3.0e6, 0}, {0, 5000}}, 0},
+      {0, 0},
+      {placement},
+      true
   };
   const flop::craft::Craft craft(config, universe, {pod});
   const auto &plugins = craft.part("pod_1").plugins;

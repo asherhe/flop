@@ -53,6 +53,16 @@ public:
   // advance Craft simulation. triggers PartPlugin steps and advances CraftNewtonian simulation
   void step(double now_ut, double dt_sec);
 
+  // position and velocity of the craft at the requested UT, in its current
+  // orbit's frame. a const query for rendering and read-only inspection: it
+  // reuses the cached propagator when one is already built from the current
+  // seed and otherwise builds a throwaway propagator, so calling it every
+  // displayed frame neither rebuilds the step cache nor mutates the craft.
+  [[nodiscard]] orbit::StateVectors state_at(double ut) const;
+
+  // frame the craft's orbit is currently expressed in.
+  [[nodiscard]] orbit::FrameId frame_id() const noexcept { return orbit_state_.frame_id; }
+
   // replace the owned prediction only after the requested interval is covered.
   void predict_patches(const orbit::RefFrameManager &frames, double begin_ut, double end_ut);
 

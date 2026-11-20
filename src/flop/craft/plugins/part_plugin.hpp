@@ -8,6 +8,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <utility>
+
+#include "flop/craft/ids.hpp"
 
 namespace flop::craft {
 class CraftContext;
@@ -43,6 +46,12 @@ public:
   [[nodiscard]] std::size_t part_index() const noexcept { return part_index_; }
   void set_part_index(std::size_t part_index) noexcept { part_index_ = part_index; }
 
+  // stable id of this plugin instance within its owning part, assigned when the
+  // part installs its plugins. unique and nonempty within one part; callers
+  // address a plugin through it rather than by index or pointer.
+  [[nodiscard]] const PluginId &id() const noexcept { return id_; }
+  void set_id(PluginId id) noexcept { id_ = std::move(id); }
+
   [[nodiscard]] bool enabled() const noexcept { return enabled_; }
   void set_enabled(bool enabled) noexcept { enabled_ = enabled; }
 
@@ -52,6 +61,7 @@ protected:
 private:
   bool enabled_;
   std::size_t part_index_{};
+  PluginId id_;
 };
 
 } // namespace flop::craft::plugin

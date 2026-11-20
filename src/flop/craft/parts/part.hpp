@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "flop/craft/ids.hpp"
 #include "flop/craft/parts/config.hpp"
 
 namespace flop::craft {
@@ -45,8 +46,17 @@ public:
 
   // build the runtime plugin objects from this part's authored plugin
   // configuration, binding each to this part's index within its craft. the
-  // registry validates resource containers.
+  // registry validates resource containers. each installed plugin is assigned a
+  // stable id defaulting to its authored plugin name; a part may not install
+  // two plugins that resolve to the same nonempty id.
   void install_plugins(const ResourceRegistry &registry, std::size_t part_index);
+
+  // strong view of this part's authored id.
+  [[nodiscard]] PartId part_id() const { return PartId(id); }
+
+  // the installed plugin with the given id, or nullptr if this part has none.
+  [[nodiscard]] const plugin::PartPlugin *find_plugin(const PluginId &plugin_id) const;
+  [[nodiscard]] plugin::PartPlugin *find_plugin(const PluginId &plugin_id);
 
   // advance this part by one simulation step, ticking the enabled plugins whose
   // tick phase matches. the craft drives each phase across all parts in turn.

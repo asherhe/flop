@@ -13,23 +13,12 @@ namespace flop::config {
 
 namespace detail {
 
-inline craft::CraftOrbitConfig decode_craft_orbit(const ConfigView &orbit) {
-  const auto h = orbit.required("h");
-  const auto specific_angular_momentum = h.as<double>();
-  if (specific_angular_momentum == 0) {
-    h.fail(h.mark(), "Specific angular momentum cannot be zero");
-  }
-  const auto e = orbit.required("e");
-  const auto eccentricity = e.as<double>();
-  if (eccentricity < 0) {
-    e.fail(e.mark(), "Eccentricity cannot be negative");
-  }
+// a save instance seeds the craft from cartesian state. a template omits the
+// orbit block entirely and leaves CraftConfig::orbit absent.
+inline craft::CraftOrbitState decode_craft_orbit(const ConfigView &orbit) {
   return {
       orbit.required("parent").nonempty_string(),
-      specific_angular_momentum,
-      eccentricity,
-      orbit.required("omega").as<double>(),
-      orbit.required("M0").as<double>(),
+      {decode_vec(orbit.required("pos")), decode_vec(orbit.required("vel"))},
       orbit.required("t0").as<double>(),
   };
 }
@@ -41,29 +30,32 @@ template <> struct ConfigDecoder<craft::CraftConfig> {
     const auto rotation = document.required("rotation");
     craft::CraftConfig result{
         document.required("name").nonempty_string(),
-        detail::decode_craft_orbit(document.required("orbit")),
+        std::nullopt,
         {rotation.required("angle").as<double>(), rotation.required("momentum").as<double>()},
         {},
     };
+    if (const auto orbit = document.optional("orbit")) {
+      result.orbit = detail::decode_craft_orbit(*orbit);
+    }
     for (const auto &part : document.required("parts").sequence())
       result.parts.push_back(ConfigDecoder<craft::PartConfig>::decode(part));
     return result;
   }
 };
 
-// resolve part templates while the craft YAML is still available for overrides.
-[[nodiscard]] inline craft::CraftConfig load_craft_config(
-    const AssetResolver &resolver,
-    const AssetPath &path,
+// resolve each part's plugin configuration against its part type: copy the
+// type's plugin list onto the part, then apply the craft document's per-plugin
+// overrides. `craft_view` is the ConfigView of one craft mapping (its `parts`
+// sequence is read for override entries and error locations). mutates `config`
+// in place and marks its plugins resolved.
+inline void resolve_craft_plugins(
+    craft::CraftConfig &config,
+    const ConfigView &craft_view,
     std::span<const craft::PartTypeConfig> part_types
 ) {
-  const auto document = detail::read_config(resolver, path);
-  const ConfigView root(document, path.address());
-  root.validate_unique_keys();
-  auto result = ConfigDecoder<craft::CraftConfig>::decode(root);
-  const auto parts = root.required("parts");
-  for (std::size_t index = 0; index < result.parts.size(); ++index) {
-    auto &part = result.parts[index];
+  const auto parts = craft_view.required("parts");
+  for (std::size_t index = 0; index < config.parts.size(); ++index) {
+    auto &part = config.parts[index];
     const auto type = std::ranges::find(part_types, part.type_id, &craft::PartTypeConfig::type_id);
     if (type == part_types.end())
       parts.at(index).required("type").fail(
@@ -78,7 +70,20 @@ template <> struct ConfigDecoder<craft::CraftConfig> {
       apply_part_plugin_fields(*plugin, entry.value);
     }
   }
-  result.plugins_resolved = true;
+  config.plugins_resolved = true;
+}
+
+// resolve part templates while the craft YAML is still available for overrides.
+[[nodiscard]] inline craft::CraftConfig load_craft_config(
+    const AssetResolver &resolver,
+    const AssetPath &path,
+    std::span<const craft::PartTypeConfig> part_types
+) {
+  const auto document = detail::read_config(resolver, path);
+  const ConfigView root(document, path.address());
+  root.validate_unique_keys();
+  auto result = ConfigDecoder<craft::CraftConfig>::decode(root);
+  resolve_craft_plugins(result, root, part_types);
   return result;
 }
 

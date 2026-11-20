@@ -71,9 +71,14 @@ constexpr double nto_density_kg_per_unit = 1.0;
 constexpr double initial_fuel_units = 10.0;
 constexpr double initial_attitude_rad = 0.25;
 
-// the craft orbit seed, identical across scenarios.
-flop::craft::CraftOrbitConfig orbit_elements() {
-  return {"Hamswell", 1.73e10, 0.08, 1, 1, 0};
+// the craft orbit seed, identical across scenarios. a cartesian seed in
+// Hamswell's frame equivalent to the elements h=1.73e10, e=0.08, omega=1, M0=1.
+flop::craft::CraftOrbitState orbit_seed() {
+  return {
+      "Hamswell",
+      {{-1775017.642566629, 2763005.5625398336}, {-4632.602307965213, -2535.239056863811}},
+      0,
+  };
 }
 
 // engine craft-space thrust direction: local (1,0) rotated by the engine's
@@ -86,7 +91,7 @@ Vec2d craft_thrust_unit() {
 // then the command pod last, so that correct command-before-actuator ordering
 // cannot depend on part order.
 CraftConfig primary_config(double fuel_units = initial_fuel_units) {
-  CraftConfig config{"Primary", orbit_elements(), {initial_attitude_rad, 0.0}, {}};
+  CraftConfig config{"Primary", orbit_seed(), {initial_attitude_rad, 0.0}, {}};
   config.plugins_resolved = true;
   config.parts = {
       {"Engine",
@@ -130,7 +135,7 @@ std::vector<PartTypeConfig> primary_types() {
 // the same craft with the pod placed first, used to prove the physical outcome
 // does not depend on part ordering.
 CraftConfig pod_first_config(double fuel_units = initial_fuel_units) {
-  CraftConfig config{"PodFirst", orbit_elements(), {initial_attitude_rad, 0.0}, {}};
+  CraftConfig config{"PodFirst", orbit_seed(), {initial_attitude_rad, 0.0}, {}};
   config.plugins_resolved = true;
   config.parts = {
       {"Pod",
@@ -496,7 +501,7 @@ TEST_CASE("Headless mixed-density burn drains per the inherited mixture formula"
       {{"NTO", "N2O4", 1.0, ResourceFlow::stage}, {"UDMH", "UDMH", 2.0, ResourceFlow::stage}}
   );
 
-  CraftConfig config{"Mixed", orbit_elements(), {initial_attitude_rad, 0.0}, {}};
+  CraftConfig config{"Mixed", orbit_seed(), {initial_attitude_rad, 0.0}, {}};
   config.plugins_resolved = true;
   const double nto_start = 10.0;
   const double udmh_start = 1.0 / 24.0;
