@@ -11,37 +11,23 @@
 
 namespace flop::craft::plugin {
 
-// the command pod: the sole writer of the craft's control state. it integrates
-// the pilot's throttle rate into the persistent throttle and passes the
-// steering level straight through, both clamped by the control channel.
-// autosteer is not modeled yet. a single command pod drives the craft;
+// the command pod. the universe writes the pilot's throttle and steering into the craft's control
+// state before each step, and the pod's tick is the hook where later control logic (autosteer)
+// will override steering. autosteer is not modeled yet. a single command pod drives the craft;
 // arbitration between multiple pods is a later addition.
 class CommandPlugin : public PartPlugin {
 public:
   CommandPlugin(CommandConfig config, bool enabled) :
       PartPlugin(enabled), config_(std::move(config)) {}
 
-  void tick(CraftContext &ctx, double dt_sec) override {
-    ctx.control().integrate_throttle(throttle_input_ * dt_sec);
-    ctx.control().set_steering(steering_input_);
-  }
+  void tick(CraftContext & /*ctx*/, double /*dt_sec*/) override {}
 
   [[nodiscard]] TickPhase tick_phase() const noexcept override { return TickPhase::control; }
-
-  // the pilot's requested throttle rate (per second) and steering level. the
-  // throttle rate integrates into the persistent throttle each step; the
-  // steering level is applied instantaneously.
-  void set_throttle_input(double throttle_input) noexcept { throttle_input_ = throttle_input; }
-  void set_steering_input(double steering_input) noexcept { steering_input_ = steering_input; }
-  [[nodiscard]] double throttle_input() const noexcept { return throttle_input_; }
-  [[nodiscard]] double steering_input() const noexcept { return steering_input_; }
 
   [[nodiscard]] const CommandConfig &config() const noexcept { return config_; }
 
 private:
   CommandConfig config_;
-  double throttle_input_{};
-  double steering_input_{};
 };
 
 // converts steering commands into torque about the craft's center of mass. it

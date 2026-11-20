@@ -109,42 +109,18 @@ TEST_CASE("StubCraftContext control() throws until wired and then returns the ba
   CHECK(control.throttle() == 0.25);
 }
 
-TEST_CASE("CommandPlugin integrates throttle input over the step duration") {
+TEST_CASE("CommandPlugin leaves throttle and steering to the universe") {
   flop::craft::CraftControl control;
   flop::testing::StubCraftContext ctx;
   ctx.with_control(control);
+  control.set_throttle(0.4);
+  control.set_steering(-0.3);
 
   flop::craft::plugin::CommandPlugin command({}, true);
-  command.set_throttle_input(0.5);
-
   command.tick(ctx, 1.0);
-  CHECK(control.throttle() == 0.5);
 
-  // the persistent throttle keeps climbing and saturates at the upper bound.
-  command.tick(ctx, 1.0);
-  CHECK(control.throttle() == 1.0);
-
-  // a shorter step integrates a proportionally smaller change.
-  control.set_throttle(0.0);
-  command.tick(ctx, 0.25);
-  CHECK(control.throttle() == 0.125);
-}
-
-TEST_CASE("CommandPlugin passes steering input through, clamped") {
-  flop::craft::CraftControl control;
-  flop::testing::StubCraftContext ctx;
-  ctx.with_control(control);
-
-  flop::craft::plugin::CommandPlugin command({}, true);
-
-  command.set_steering_input(0.5);
-  command.tick(ctx, 1.0);
-  CHECK(control.steering() == 0.5);
-
-  // out-of-range steering input is clamped by the control channel on write.
-  command.set_steering_input(-1.5);
-  command.tick(ctx, 1.0);
-  CHECK(control.steering() == -1.0);
+  CHECK(control.throttle() == 0.4);
+  CHECK(control.steering() == -0.3);
 }
 
 TEST_CASE("CommandPlugin ticks in the control phase") {

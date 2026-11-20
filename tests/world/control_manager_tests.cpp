@@ -16,6 +16,7 @@
 #include "flop/craft/resource_type_config.hpp"
 #include "flop/world/control_manager.hpp"
 #include "flop/world/craft_id.hpp"
+#include "flop/world/pilot_sample.hpp"
 #include "flop/world/plugin_target.hpp"
 #include "flop/world/universe.hpp"
 
@@ -33,6 +34,7 @@ using flop::craft::plugin::CommandPlugin;
 using flop::craft::plugin::ReactionWheelConfig;
 using flop::world::ControlManager;
 using flop::world::CraftId;
+using flop::world::PilotSample;
 using flop::world::PluginTarget;
 using flop::world::Universe;
 using Status = flop::world::ControlManager::Status;
@@ -67,16 +69,6 @@ CraftConfig pod_craft(const char *name) {
   };
   config.plugins_resolved = true;
   return config;
-}
-
-CommandPlugin &command_plugin(const flop::craft::Craft &craft) {
-  for (const auto &plugin : craft.part("pod").installed_plugins()) {
-    if (auto *command = dynamic_cast<CommandPlugin *>(plugin.get())) {
-      return *command;
-    }
-  }
-  FAIL("craft has no command plugin");
-  throw std::logic_error("unreachable");
 }
 
 } // namespace
@@ -230,17 +222,16 @@ TEST_CASE("Changing the active craft neutralizes the previous craft held input")
   universe.controls().submit(ControlManager::SelectCraft{first});
   (void)universe.apply_commands();
 
-  // simulate held pilot input having been pushed into the active craft's
-  // command plugin, as stepping will do in a later unit.
-  command_plugin(universe.craft(first)).set_throttle_input(0.3);
-  command_plugin(universe.craft(first)).set_steering_input(0.5);
+  // hold steering on the first craft through a step, as the pilot would.
+  universe.controls().set_pilot_sample(PilotSample{0.0, 0.5});
+  universe.tick(0.02);
+  REQUIRE(universe.craft(first).control().steering() == 0.5);
 
   universe.controls().submit(ControlManager::SelectCraft{second});
   (void)universe.apply_commands();
 
-  // leaving the first craft cleared its held rate and steering so it coasts.
-  CHECK(command_plugin(universe.craft(first)).throttle_input() == 0.0);
-  CHECK(command_plugin(universe.craft(first)).steering_input() == 0.0);
+  // leaving the first craft cleared its steering so it coasts.
+  CHECK(universe.craft(first).control().steering() == 0.0);
   CHECK(universe.controls().active_craft_id() == second);
 }
 

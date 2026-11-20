@@ -13,17 +13,16 @@
 #include "flop/world/celestial_body.hpp"
 #include "flop/world/control_manager.hpp"
 #include "flop/world/craft_id.hpp"
-#include "flop/world/tick_durations.hpp"
 #include "flop/world/universe_context.hpp"
 
 namespace flop::world {
 
-// describes a full game world.
-// owns universal time (UT), celestial bodies, all universal Manager instances,
-// and every craft in the world. a craft retains a pointer back into this
-// Universe (through UniverseContext) and is stored behind a stable owning
-// pointer, so Universe must be constructed at its final address and is neither
-// copyable nor movable: relocating it would dangle those back-pointers.
+// describes a fullly simulated game world.
+// owns universal time (UT), celestial bodies, all universal Manager instances, and every craft in
+// the world. a craft retains a pointer back into this Universe (through UniverseContext) and is
+// stored behind a stable owning pointer, so Universe must be constructed at its final address and
+// is neither copyable nor movable: relocating it would dangle those back-pointers. Universe is only
+// concerned with simulation and is completely unaware of user interaction, time warp, etc.
 class Universe : public UniverseContext {
 public:
   explicit Universe(
@@ -63,72 +62,57 @@ public:
   // position and velocity of a body's center relative to the root at the requested UT
   [[nodiscard]] orbit::StateVectors body_state(std::string_view name, double ut_sec) const;
 
-  // build a craft from its configuration and take ownership of it, returning a
-  // stable id assigned in increasing order and never reused during this world's
-  // lifetime. the craft is stored behind an owning pointer, so adding more
-  // craft never relocates existing ones and outstanding ids and references stay
-  // valid. the craft retains this Universe as its UniverseContext.
-  CraftId add_craft(
-      craft::CraftConfig config, std::vector<craft::PartTypeConfig> part_types = {}
-  );
+  // build a craft from its configuration and take ownership of it, returning a stable id assigned
+  // in increasing order and never reused during this world's lifetime. the craft is stored behind
+  // an owning pointer, so adding more craft never relocates existing ones and outstanding ids and
+  // references stay valid. the craft retains this Universe as its UniverseContext.
+  CraftId add_craft(craft::CraftConfig config, std::vector<craft::PartTypeConfig> part_types = {});
 
   // number of craft currently in the world.
   [[nodiscard]] std::size_t craft_count() const noexcept { return craft_order_.size(); }
   // ids of every craft, in the order they were added.
   [[nodiscard]] std::vector<CraftId> craft_ids() const;
-  // the craft with the given id. throws std::out_of_range for an unknown or
-  // stale id, so a retired or never-assigned id fails rather than aliasing.
+  // the craft with the given id. throws std::out_of_range for an unknown or stale id, so a retired
+  // or never-assigned id fails rather than aliasing.
   [[nodiscard]] const craft::Craft &craft(CraftId id) const;
   // the craft with the given id, or nullptr if there is none.
   [[nodiscard]] const craft::Craft *find_craft(CraftId id) const noexcept;
 
-  // true when any craft in the world currently has a nonzero persistent
-  // throttle. used to compute the powered warp ceiling: switching away from a
-  // burning craft must not let warp exceed the powered limit, so the check
-  // spans all craft, not only the active one.
+  // true when any craft in the world currently has a nonzero persistent throttle. used to compute
+  // the powered warp ceiling: switching away from a burning craft must not let warp exceed the
+  // powered limit, so the check spans all craft, not only the active one.
   [[nodiscard]] bool any_craft_powered() const noexcept;
 
-  // the world's control manager, which owns active-craft selection, the pending
-  // command queue, and the held pilot sample. UI and input submit through the
-  // mutable accessor; rendering and inspection use the const one. Mutable craft
-  // access stays private to Universe so only apply_commands() can change craft.
+  // the world's control manager, which owns active-craft selection, the pending command queue, and
+  // the held pilot sample. UI and input submit through the mutable accessor; rendering and
+  // inspection use the const one. Mutable craft access stays private to Universe so only
+  // apply_commands() can change craft.
   [[nodiscard]] ControlManager &controls() noexcept { return controls_; }
   [[nodiscard]] const ControlManager &controls() const noexcept { return controls_; }
 
-  // drain the control queue, executing each command against live craft storage
-  // in submit order, and return one result per command. Safe to call every
-  // frame, including while paused; discrete commands still apply. A command
-  // whose target no longer exists fails without touching any other craft.
+  // drain the control queue, executing each command against live craft storage in submit order, and
+  // return one result per command. Safe to call every frame, including while paused; discrete
+  // commands still apply. A command whose target no longer exists fails without touching any other
+  // craft.
   std::vector<ControlManager::Result> apply_commands();
 
-  // advance UT by a simulation interval supplied by the application
+  // advance the world by one simulation step of dt_sec. writes the active craft's pilot throttle
+  // and steering, steps every craft from the pre-tick UT, then publishes the new UT. the universe
+  // has no notion of wall time or time warp; the caller chooses dt_sec.
   void tick(double dt_sec);
 
-  // advance the world by one fixed simulation step. prepares the active craft's
-  // command plugin from the held pilot sample, advances every craft from the
-  // current UT by the given durations, then publishes the new completed UT
-  // (advanced by the simulation duration). control integrates in real time and
-  // motion in warped time, so a held throttle changes at a warp-independent
-  // rate. craft are stepped from the pre-tick UT so each reads the same world
-  // time regardless of enumeration order.
-  void tick(TickDurations durations);
-
 private:
-  // the craft with the given id for internal mutation, or nullptr. kept private
-  // so external callers cannot obtain mutable craft access; only command
-  // execution and stepping use it.
+  // the craft with the given id for internal mutation, or nullptr. kept private so external callers
+  // cannot obtain mutable craft access; only command execution and stepping use it.
   [[nodiscard]] craft::Craft *mutable_craft(CraftId id) noexcept;
 
-  // clear the active craft's command plugin held throttle rate and steering, so
-  // a deselected or focus-lost craft coasts on its persistent throttle without
-  // continuing to receive pilot input. does nothing when no command plugin is
-  // installed or no craft is active.
-  void neutralize_active_pilot_input();
+  // clear the active craft's steering, so a deselected craft stops receiving it and coasts on its
+  // persistent throttle. does nothing when no craft is active.
+  void clear_active_pilot_input();
 
-  // push the held pilot sample into the active craft's command plugin before a
-  // step, so the step integrates the pilot's throttle rate and steering. does
-  // nothing when no craft is active or it has no command plugin.
-  void prepare_active_command_plugin();
+  // write the pilot sample into the active craft before a step: the absolute throttle and the
+  // steering level go to the craft's control state. does nothing when no craft is active.
+  void apply_pilot_sample();
 
   double ut_sec_;
   double gravitational_constant_;
@@ -136,9 +120,8 @@ private:
   orbit::RefFrameManager frames_;
   orbit::FrameId root_frame_id_;
   craft::ResourceRegistry resources_;
-  // owning craft storage keyed by id. owning pointers keep each craft at a
-  // stable address as the map grows. craft_order_ preserves insertion order for
-  // deterministic enumeration.
+  // owning craft storage keyed by id. owning pointers keep each craft at a stable address as the
+  // map grows. craft_order_ preserves insertion order for deterministic enumeration.
   std::unordered_map<CraftId, std::unique_ptr<craft::Craft>> craft_;
   std::vector<CraftId> craft_order_;
   // next craft id to assign; increments on every add and is never reset.
@@ -147,11 +130,10 @@ private:
   ControlManager controls_;
 };
 
-// the warp ceiling the world currently imposes: the conservative powered limit
-// (20x) while any craft is powered, otherwise no limit (infinity). the
-// application passes this to the tick scheduler, which clamps its warp ladder
-// to it. kept here so the "any craft powered" rule lives in one named place and
-// the scheduler stays free of any Universe dependency.
+// the warp ceiling the world currently imposes: the conservative powered limit (20x) while any
+// craft is powered, otherwise no limit (infinity). the application passes this to the tick
+// scheduler, which clamps its warp ladder to it. kept here so the "any craft powered" rule lives in
+// one named place and the scheduler stays free of any Universe dependency.
 [[nodiscard]] double warp_ceiling(const Universe &universe) noexcept;
 
 // the powered warp ceiling in effect while a craft is burning.

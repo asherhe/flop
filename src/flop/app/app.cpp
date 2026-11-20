@@ -12,11 +12,12 @@
 #include "flop/app/game_scene.hpp"
 #include "flop/app/tick_scheduler.hpp"
 #include "flop/config/asset_path.hpp"
+#include "flop/craft/craft.hpp"
+#include "flop/input/pilot_control.hpp"
 #include "flop/platform/frame_input.hpp"
 #include "flop/platform/input_mapper.hpp"
 #include "flop/platform/sdl_platform.hpp"
 #include "flop/world/control_manager.hpp"
-#include "flop/world/tick_durations.hpp"
 #include "flop/world/universe.hpp"
 
 namespace flop::app {
@@ -46,11 +47,6 @@ std::optional<config::AssetResolver> resolve_assets(int argc, char **argv) {
     base = fs::current_path();
   }
   return config::AssetResolver::from_startup(base, explicit_root);
-}
-
-// the simulation duration for one fixed step at a given warp.
-world::TickDurations durations_for(double warp) {
-  return {TickScheduler::FIXED_STEP_SEC, TickScheduler::FIXED_STEP_SEC * warp};
 }
 
 } // namespace
@@ -103,6 +99,7 @@ int App::run(int argc, char **argv) {
 
   platform::InputMapper input;
   TickScheduler scheduler;
+  input::PilotControl pilot_control;
 
   int exit_code = 0;
   bool running = true;
@@ -125,18 +122,26 @@ int App::run(int argc, char **argv) {
       running = false;
     }
 
-    // queue simulation control events
-    universe.controls().set_pilot_sample(frame.pilot);
+    // queue craft commands. absolute throttle requests apply before the pilot integrates.
     for (const auto &command : frame.commands) {
       universe.controls().submit(command);
     }
     (void)universe.apply_commands();
 
-    // schedule fixed steps and advance the world.
     const FrameSchedule schedule =
         scheduler.advance(wall_elapsed, frame.scheduler, world::warp_ceiling(universe));
+
+    // integrate the pilot throttle once per frame, over the control time the fixed steps cover.
+    const craft::Craft *active = universe.find_craft(universe.controls().active_craft_id());
+
+    // advance simulation; each step covers its simulation time at the current warp.
+    const double wall_dt = TickScheduler::FIXED_STEP_SEC;
+    const double sim_dt = TickScheduler::FIXED_STEP_SEC * schedule.warp;
     for (int step = 0; step < schedule.fixed_step_count; ++step) {
-      universe.tick(durations_for(schedule.warp));
+      const double current_throttle = active != nullptr ? active->control().throttle() : 0.0;
+      pilot_control.update(frame.pilot, current_throttle, wall_dt);
+      universe.controls().set_pilot_sample(pilot_control.sample());
+      universe.tick(sim_dt);
     }
 
     // rendering time!

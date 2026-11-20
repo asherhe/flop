@@ -60,9 +60,9 @@ public:
   // submit order.
   void submit(Command command) { pending_.push_back(std::move(command)); }
 
-  // replace the held pilot input for the active craft. the value is read when
-  // Universe prepares the active command plugin before a step.
-  void set_pilot_sample(PilotSample sample) noexcept { pilot_sample_ = sample; }
+  // replace the pilot sample for the active craft. Universe writes its throttle and steering into the
+  // craft at the start of each tick.
+  void set_pilot_sample(const PilotSample &sample) noexcept { pilot_sample_ = sample; }
   [[nodiscard]] PilotSample pilot_sample() const noexcept { return pilot_sample_; }
 
   // the craft currently receiving held pilot input, or CraftId::invalid when no

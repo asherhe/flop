@@ -204,7 +204,7 @@ TEST_CASE("A saved craft instance assembles its three decoded part types") {
     }
   }
   REQUIRE(command != nullptr);
-  command->set_throttle_input(10.0); // drive the throttle fully open this step.
+  craft.control().set_throttle(1.0); // drive the throttle fully open this step.
 
   const double mass_before = craft.mass_properties().total_mass_kg;
   const auto seed_before = craft.orbit_state();

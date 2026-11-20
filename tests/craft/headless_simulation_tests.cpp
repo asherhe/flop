@@ -174,16 +174,6 @@ flop::testing::StubUniverseContext primary_context() {
   );
 }
 
-CommandPlugin &command_of(Craft &craft) {
-  for (const auto &plugin : craft.part("pod").installed_plugins()) {
-    if (auto *command = dynamic_cast<CommandPlugin *>(plugin.get())) {
-      return *command;
-    }
-  }
-  FAIL("pod has no command plugin");
-  throw std::logic_error("unreachable");
-}
-
 const EnginePlugin &engine_of(const Craft &craft) {
   for (const auto &plugin : craft.part("engine").installed_plugins()) {
     if (const auto *engine = dynamic_cast<const EnginePlugin *>(plugin.get())) {
@@ -235,9 +225,9 @@ TEST_CASE("Headless burn integrates fresh mass, combined torque, and reseeds eac
   const auto context = primary_context();
   Craft craft(primary_config(), context, primary_types());
 
-  // ramp the throttle to 0.5 over the first step with a 0.5/s rate, then hold.
-  command_of(craft).set_throttle_input(0.5);
-  command_of(craft).set_steering_input(0.25);
+  // hold the throttle at 0.5 for every step.
+  craft.control().set_throttle(0.5);
+  craft.control().set_steering(0.25);
 
   const double steering = 0.25;
   const double dt = 1.0;
@@ -249,10 +239,7 @@ TEST_CASE("Headless burn integrates fresh mass, combined torque, and reseeds eac
   double prev_kick_magnitude = 0.0;
 
   for (int step_index = 0; step_index < 3; ++step_index) {
-    if (step_index == 1) {
-      // hold the throttle: a zero rate keeps 0.5, it does not cut it.
-      command_of(craft).set_throttle_input(0.0);
-    }
+
     const double now_ut = dt * (step_index + 1);
 
     // copy the prior seed and propagate it analytically to the upcoming epoch;
@@ -263,7 +250,7 @@ TEST_CASE("Headless burn integrates fresh mass, combined torque, and reseeds eac
 
     craft.step(now_ut, dt);
 
-    // throttle integrates to 0.5 on the first step and holds afterwards.
+    // the throttle stays at 0.5 across steps.
     CHECK(craft.control().throttle() == Catch::Approx(0.5).epsilon(1e-9));
     CHECK(craft.control().steering() == Catch::Approx(steering).epsilon(1e-9));
 
@@ -326,8 +313,8 @@ TEST_CASE("Headless control-phase ordering is independent of part ordering") {
   Craft pod_first(pod_first_config(), context, primary_types());
 
   for (Craft *craft : {&engine_first, &pod_first}) {
-    command_of(*craft).set_throttle_input(0.5);
-    command_of(*craft).set_steering_input(0.25);
+    craft->control().set_throttle(0.5);
+    craft->control().set_steering(0.25);
     craft->step(1.0, 1.0);
   }
 
@@ -360,7 +347,7 @@ TEST_CASE("Headless pure steering spins the craft without burning or reseeding")
 
   for (const double steering : {0.25, -0.25}) {
     Craft craft(primary_config(), context, primary_types());
-    command_of(craft).set_steering_input(steering);
+    craft.control().set_steering(steering);
 
     const auto seed_before = craft.orbit_state();
     const double fuel_before = fuel_units_of(craft);
@@ -384,7 +371,7 @@ TEST_CASE("Headless pure steering spins the craft without burning or reseeding")
 
     // neutralize steering and step again: momentum holds (torque was cleared),
     // but attitude keeps advancing from the standing spin.
-    command_of(craft).set_steering_input(0.0);
+    craft.control().set_steering(0.0);
     const double momentum_latched = craft.newtonian().angular_momentum_kg_m2_per_s();
     const double angle_before = craft.newtonian().angle_rad();
     const double omega = craft.newtonian().angular_velocity_rad_per_s();
@@ -406,18 +393,17 @@ TEST_CASE("Headless throttle cut stops the burn and holds the seed while coastin
   Craft craft(primary_config(), context, primary_types());
 
   // a powered step first.
-  command_of(craft).set_throttle_input(0.5);
-  command_of(craft).set_steering_input(0.0);
+  craft.control().set_throttle(0.5);
+  craft.control().set_steering(0.0);
   craft.step(1.0, 1.0);
   REQUIRE(craft.orbit_state().epoch == Catch::Approx(1.0));
   const double fuel_after_burn = fuel_units_of(craft);
 
-  // drive the throttle back to zero with a sufficient negative rate.
-  command_of(craft).set_throttle_input(-1.0);
+  // cut the throttle to zero before the step.
+  craft.control().set_throttle(0.0);
   craft.step(2.0, 1.0);
   REQUIRE(craft.control().throttle() == Catch::Approx(0.0));
-  // this step still drew nothing (throttle only reaches zero via integration,
-  // but the engine saw throttle 0 on this tick because control runs first).
+  // this step still drew nothing: the engine saw the cut throttle of zero.
   const double fuel_after_cut = fuel_units_of(craft);
 
   // from here the craft coasts: the seed must be preserved exactly.
@@ -438,8 +424,8 @@ TEST_CASE("Headless partial final burn scales thrust and latches flame-out on th
   Craft craft(primary_config(0.25), context, primary_types());
 
   // full throttle in one step; only 0.25 units are available.
-  command_of(craft).set_throttle_input(1.0);
-  command_of(craft).set_steering_input(0.0);
+  craft.control().set_throttle(1.0);
+  craft.control().set_steering(0.0);
 
   const auto seed_before = craft.orbit_state();
   const flop::orbit::UniversalPropagator coast(mu_hamswell, seed_before);
@@ -478,7 +464,7 @@ TEST_CASE("Headless partial final burn scales thrust and latches flame-out on th
   // next positive-throttle step: now there is no fuel, so the engine disables,
   // nothing drains, and the seed is left exactly where the burn put it.
   const auto latched_seed = craft.orbit_state();
-  command_of(craft).set_throttle_input(0.0); // hold full throttle.
+
   craft.step(2.0, 1.0);
   CHECK_FALSE(engine_of(craft).enabled());
   CHECK(fuel_units_of(craft) == Catch::Approx(0.0).margin(1e-12));
@@ -541,7 +527,7 @@ TEST_CASE("Headless mixed-density burn drains per the inherited mixture formula"
   const std::vector<PartTypeConfig> types = primary_types();
 
   Craft craft(config, context, types);
-  command_of(craft).set_throttle_input(1.0);
+  craft.control().set_throttle(1.0);
 
   const auto seed_before = craft.orbit_state();
   const flop::orbit::UniversalPropagator coast(mu_hamswell, seed_before);

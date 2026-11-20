@@ -275,16 +275,6 @@ std::vector<flop::craft::PartTypeConfig> burn_types() {
   };
 }
 
-flop::craft::plugin::CommandPlugin &command_of(flop::craft::Craft &craft) {
-  for (const auto &plugin : craft.part("pod").installed_plugins()) {
-    if (auto *command = dynamic_cast<flop::craft::plugin::CommandPlugin *>(plugin.get())) {
-      return *command;
-    }
-  }
-  FAIL("pod has no command plugin");
-  throw std::logic_error("unreachable");
-}
-
 } // namespace
 
 TEST_CASE("Craft burn drains propellant, lightens the craft, and shifts the center of mass") {
@@ -299,7 +289,7 @@ TEST_CASE("Craft burn drains propellant, lightens the craft, and shifts the cent
   const double com_before = mass_before.center_of_mass_meters.y;
 
   // drive the throttle fully open in one step, then hold it there.
-  command_of(craft).set_throttle_input(10.0);
+  craft.control().set_throttle(1.0);
 
   double previous_mass = mass_before.total_mass_kg;
   double ut = 0.0;
@@ -324,7 +314,7 @@ TEST_CASE("Craft burn reseeds the orbit while thrusting and holds the seed when 
   );
   flop::craft::Craft craft(burn_config(), context, burn_types());
 
-  command_of(craft).set_throttle_input(10.0);
+  craft.control().set_throttle(1.0);
 
   // a thrusting step changes the linear velocity, so the seed is reinstalled at
   // the step's UT rather than staying at the epoch.
@@ -337,8 +327,8 @@ TEST_CASE("Craft burn reseeds the orbit while thrusting and holds the seed when 
   CHECK(craft.orbit_state().state.velocity != velocity_after_burn);
 
   // cut the throttle and let it fall to zero, then coast: the seed stops moving.
-  command_of(craft).set_throttle_input(-10.0);
-  craft.step(3.0, 1.0); // throttle integrates back to zero this step
+  craft.control().set_throttle(0.0);
+  craft.step(3.0, 1.0); // the throttle was cut to zero before this step
   const auto seed_coasting = craft.orbit_state();
   for (double t = 4.0; t <= 10.0; t += 1.0) {
     craft.step(t, 1.0);
@@ -358,7 +348,7 @@ TEST_CASE("Craft burn flames out the engine when the propellant runs dry") {
       flop::craft::plugin::ResourceConfig{{{"NTO", 1000}}, {{"NTO", 1.0}}, {}};
   flop::craft::Craft craft(config, context, burn_types());
 
-  command_of(craft).set_throttle_input(10.0);
+  craft.control().set_throttle(1.0);
 
   // burn until the tank is dry; the engine disables itself on the empty step.
   double ut = 0.0;

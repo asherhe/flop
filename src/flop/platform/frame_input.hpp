@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "flop/app/tick_scheduler.hpp"
+#include "flop/input/pilot_control.hpp"
 #include "flop/world/control_manager.hpp"
-#include "flop/world/pilot_sample.hpp"
 
 namespace flop::platform {
 
@@ -19,8 +19,9 @@ struct CameraInput {
 
 // ALL input from SDL, partitioned by responsibility
 struct FrameInput {
-  // forwarded to Craft controls
-  world::PilotSample pilot;
+  // forwarded to PilotControl
+  input::PilotActions pilot;
+
   // queue of simulation actions
   std::vector<world::ControlManager::Command> commands;
   // TickScheduler-related inputs

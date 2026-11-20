@@ -167,21 +167,19 @@ void Craft::reseed_orbit(double now_ut, const orbit::StateVectors &state) {
   propagator_.reset();
 }
 
-void Craft::step(double now_ut, world::TickDurations durations) {
+void Craft::step(double now_ut, double dt_sec) {
   orbit::StateVectors state = propagator().state_at(now_ut);
 
-  // control plugins rely on real wall time for interaction updates
-  // actuaion plugins rely on in-universe time for simulation changes
-  const double control_dt = durations.control_dt_sec;
-  const double simulation_dt = durations.simulation_dt_sec;
+  // control-phase plugins (the command pod) write steering before actuation-phase
+  // plugins read it, regardless of the order parts were installed in.
   for (auto &part : parts_) {
-    part.step_phase(*this, control_dt, plugin::TickPhase::control);
+    part.step_phase(*this, dt_sec, plugin::TickPhase::control);
   }
   for (auto &part : parts_) {
-    part.step_phase(*this, simulation_dt, plugin::TickPhase::actuation);
+    part.step_phase(*this, dt_sec, plugin::TickPhase::actuation);
   }
 
-  const bool vel_changed = newtonian_.step(*this, state, simulation_dt);
+  const bool vel_changed = newtonian_.step(*this, state, dt_sec);
   // a burn changed the linear velocity, so install a new seed at now_ut.
   // coasting keeps the analytical seed exact and reuses the cached propagator.
   if (vel_changed) {

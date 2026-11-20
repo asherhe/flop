@@ -92,6 +92,7 @@ if(FLOP_BUILD_GAME)
     add_executable(flop
         src/flop/app/app.cpp
         src/flop/app/main.cpp
+        src/flop/input/pilot_control.cpp
         src/flop/platform/input_mapper.cpp
         src/flop/platform/sdl_platform.cpp
     )

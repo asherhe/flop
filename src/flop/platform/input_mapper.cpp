@@ -10,12 +10,6 @@
 #include "SDL3/SDL_keycode.h"
 
 namespace flop::platform {
-namespace {
-
-// keyboard throttle rate, per the first flight bindings (fraction per second).
-constexpr double KEY_THROTTLE_RATE = 0.3;
-
-} // namespace
 
 void InputMapper::begin_frame() noexcept {
   frame_ = FrameInput{};
@@ -82,11 +76,13 @@ FrameInput InputMapper::build_frame(const SDLPlatform &platform) {
   // keyboard held intents into a pilot sample.
   double throttle_rate = 0.0;
   if (key_throttle_up_) {
-    throttle_rate += KEY_THROTTLE_RATE;
+    throttle_rate += 1.0;
   }
   if (key_throttle_down_) {
-    throttle_rate -= KEY_THROTTLE_RATE;
+    throttle_rate -= 1.0;
   }
+  throttle_rate = std::clamp(throttle_rate, -1.0, 1.0);
+
   double steering = 0.0;
   if (key_steer_ccw_) {
     steering += 1.0;
@@ -94,8 +90,9 @@ FrameInput InputMapper::build_frame(const SDLPlatform &platform) {
   if (key_steer_cw_) {
     steering -= 1.0;
   }
+  steering = std::clamp(steering, -1.0, 1.0);
 
-  frame_.pilot = world::PilotSample{throttle_rate, std::clamp(steering, -1.0, 1.0)};
+  frame_.pilot = input::PilotActions{throttle_rate, steering};
 
   int pixel_width = 0;
   int pixel_height = 0;

@@ -15,22 +15,6 @@
 namespace flop::world {
 namespace {
 
-// the enabled command plugin on a craft, or nullptr if none is installed. a
-// craft has at most one command pod in the current model; the first one found
-// is authoritative.
-craft::plugin::CommandPlugin *find_command_plugin(craft::Craft &craft) {
-  for (const auto &part : craft.parts()) {
-    // parts() is a const span; reach the mutable part through the craft by id.
-    auto &mutable_part = craft.part(part.id);
-    for (const auto &plugin : mutable_part.installed_plugins()) {
-      if (auto *command = dynamic_cast<craft::plugin::CommandPlugin *>(plugin.get())) {
-        return command;
-      }
-    }
-  }
-  return nullptr;
-}
-
 double valid_ut(double value) {
   if (!std::isfinite(value)) {
     throw std::invalid_argument("Universe UT must be finite");
@@ -176,15 +160,12 @@ craft::Craft *Universe::mutable_craft(CraftId id) noexcept {
   return found == craft_.end() ? nullptr : found->second.get();
 }
 
-void Universe::neutralize_active_pilot_input() {
+void Universe::clear_active_pilot_input() {
   craft::Craft *active = mutable_craft(controls_.active_craft_);
   if (active == nullptr) {
     return;
   }
-  if (auto *command = find_command_plugin(*active)) {
-    command->set_throttle_input(0.0);
-    command->set_steering_input(0.0);
-  }
+  active->control().set_steering(0.0);
 }
 
 std::vector<ControlManager::Result> Universe::apply_commands() {
@@ -207,7 +188,7 @@ std::vector<ControlManager::Result> Universe::apply_commands() {
               // leaving a craft neutralizes its held input so it coasts on its
               // persistent throttle; the newly selected craft starts from the
               // current (neutral) pilot sample.
-              neutralize_active_pilot_input();
+              clear_active_pilot_input();
               controls_.active_craft_ = value.craft;
             }
             return ControlManager::Status::applied;
@@ -243,39 +224,34 @@ std::vector<ControlManager::Result> Universe::apply_commands() {
   return results;
 }
 
-void Universe::prepare_active_command_plugin() {
+void Universe::apply_pilot_sample() {
   craft::Craft *active = mutable_craft(controls_.active_craft_);
   if (active == nullptr) {
     return;
   }
-  if (auto *command = find_command_plugin(*active)) {
-    const PilotSample sample = controls_.pilot_sample_;
-    command->set_throttle_input(sample.throttle_rate_per_sec);
-    command->set_steering_input(sample.steering);
-  }
+  const PilotSample sample = controls_.pilot_sample_;
+  active->control().set_throttle(sample.throttle);
+  active->control().set_steering(sample.steering);
 }
 
-void Universe::tick(TickDurations durations) {
-  if (!std::isfinite(durations.control_dt_sec) || durations.control_dt_sec < 0 ||
-      !std::isfinite(durations.simulation_dt_sec) || durations.simulation_dt_sec <= 0) {
-    throw std::invalid_argument(
-        "Universe tick durations must be finite, with a positive simulation step"
-    );
+void Universe::tick(double dt_sec) {
+  if (!std::isfinite(dt_sec) || dt_sec <= 0) {
+    throw std::invalid_argument("Universe tick must be finite and positive");
   }
-  const double next_ut_sec = ut_sec_ + durations.simulation_dt_sec;
+  const double next_ut_sec = ut_sec_ + dt_sec;
   if (!std::isfinite(next_ut_sec) || next_ut_sec <= ut_sec_) {
     throw std::invalid_argument("Universe tick must advance to a finite UT");
   }
 
-  // feed the held pilot input into the active craft just before stepping so the
-  // step integrates it; an inactive craft receives no held input.
-  prepare_active_command_plugin();
+  // write the pilot sample into the active craft so this step uses it; an
+  // inactive craft receives no pilot input.
+  apply_pilot_sample();
 
   // step every craft from the same pre-tick UT so stepping order does not change
   // the world time each craft reads.
   const double now_ut = ut_sec_;
   for (const auto id : craft_order_) {
-    craft_.at(id)->step(now_ut, durations);
+    craft_.at(id)->step(now_ut, dt_sec);
   }
 
   // TODO(soi): apply any SOI crossings whose crossing UT falls within this step,
@@ -284,14 +260,6 @@ void Universe::tick(TickDurations durations) {
   // shipped body has a finite SOI child yet, so no crossing is due here.
 
   ut_sec_ = next_ut_sec;
-}
-
-void Universe::tick(double dt_sec) {
-  if (!std::isfinite(dt_sec) || dt_sec <= 0) {
-    throw std::invalid_argument("Universe tick must be finite and positive");
-  }
-  // same-duration adapter: control and simulation advance by the same dt.
-  tick(TickDurations{dt_sec, dt_sec});
 }
 
 double warp_ceiling(const Universe &universe) noexcept {
