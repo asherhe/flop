@@ -18,6 +18,7 @@ public:
       orbit::RefFrameManager frames, std::vector<craft::ResourceTypeConfig> resources = {}
   ) : frames_(std::move(frames)), resources_(std::move(resources)) {}
 
+  [[nodiscard]] double ut_sec() const override { return 0.0; }
   [[nodiscard]] const craft::ResourceRegistry &resources() const override { return resources_; }
   [[nodiscard]] const orbit::RefFrameManager &reference_frames() const override { return frames_; }
 

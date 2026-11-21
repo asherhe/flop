@@ -11,6 +11,7 @@
 
 #include "flop/app/game_scene.hpp"
 #include "flop/app/tick_scheduler.hpp"
+#include "flop/app/warp_policy.hpp"
 #include "flop/config/asset_path.hpp"
 #include "flop/craft/craft.hpp"
 #include "flop/input/pilot_control.hpp"
@@ -67,10 +68,12 @@ int App::run(int argc, char **argv) {
   }
   world::Universe &universe = *scene.universe;
 
+  world::ControlManager &univ_controls = universe.controls();
+
   // select active craft, using first defined craft
   if (!scene.craft.empty()) {
-    universe.controls().submit(world::ControlManager::SelectCraft{scene.craft.front()});
-    (void)universe.apply_commands();
+    univ_controls.submit(world::ControlManager::SelectCraft{scene.craft.front()});
+    (void)univ_controls.apply_commands();
   }
 
   std::optional<platform::SDLPlatform> platform;
@@ -111,7 +114,7 @@ int App::run(int argc, char **argv) {
     last = now;
 
     // drain events into one frame of input.
-    input.set_active_craft(universe.controls().active_craft_id());
+    input.set_active_craft(univ_controls.active_craft_id());
     input.begin_frame();
     SDL_Event event;
     while (platform->poll_event(event)) {
@@ -124,15 +127,15 @@ int App::run(int argc, char **argv) {
 
     // queue craft commands. absolute throttle requests apply before the pilot integrates.
     for (const auto &command : frame.commands) {
-      universe.controls().submit(command);
+      univ_controls.submit(command);
     }
-    (void)universe.apply_commands();
+    (void)univ_controls.apply_commands();
 
     const FrameSchedule schedule =
-        scheduler.advance(wall_elapsed, frame.scheduler, world::warp_ceiling(universe));
+        scheduler.advance(wall_elapsed, frame.scheduler, warp_ceiling(universe));
 
-    // integrate the pilot throttle once per frame, over the control time the fixed steps cover.
-    const craft::Craft *active = universe.find_craft(universe.controls().active_craft_id());
+    // Read current throttle before integrating pilot input for each fixed step.
+    const craft::Craft *active = universe.find_craft(univ_controls.active_craft_id());
 
     // advance simulation; each step covers its simulation time at the current warp.
     const double wall_dt = TickScheduler::FIXED_STEP_SEC;
@@ -140,7 +143,9 @@ int App::run(int argc, char **argv) {
     for (int step = 0; step < schedule.fixed_step_count; ++step) {
       const double current_throttle = active != nullptr ? active->control().throttle() : 0.0;
       pilot_control.update(frame.pilot, current_throttle, wall_dt);
-      universe.controls().set_pilot_sample(pilot_control.sample());
+      univ_controls.set_pilot_sample(pilot_control.sample());
+      // Apply held input immediately before each world step.
+      univ_controls.apply_pilot_sample();
       universe.tick(sim_dt);
     }
 

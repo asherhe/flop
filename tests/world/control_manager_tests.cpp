@@ -1,4 +1,4 @@
-// ControlManager inside Universe: typed commands resolve against live craft at
+// ControlManager: typed commands resolve against live craft at
 // execution, in submit order, affecting exactly the intended instance once. A
 // stale target fails cleanly without touching another craft, and changing the
 // active selection neutralizes the previous craft's held pilot input.
@@ -75,19 +75,20 @@ CraftConfig pod_craft(const char *name) {
 
 TEST_CASE("Selecting a craft directs pilot throttle commands to it") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId first = universe.add_craft(pod_craft("First"), pod_types());
   const CraftId second = universe.add_craft(pod_craft("Second"), pod_types());
 
-  CHECK(universe.controls().active_craft_id() == CraftId::invalid);
+  CHECK(controls.active_craft_id() == CraftId::invalid);
 
-  universe.controls().submit(ControlManager::SelectCraft{first});
-  universe.controls().submit(ControlManager::SetThrottle{0.6});
-  const auto results = universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{first});
+  controls.submit(ControlManager::SetThrottle{0.6});
+  const auto results = controls.apply_commands();
 
   REQUIRE(results.size() == 2);
   CHECK(results[0].status == Status::applied);
   CHECK(results[1].status == Status::applied);
-  CHECK(universe.controls().active_craft_id() == first);
+  CHECK(controls.active_craft_id() == first);
   CHECK(universe.craft(first).control().throttle() == 0.6);
   // the non-selected craft is untouched.
   CHECK(universe.craft(second).control().throttle() == 0.0);
@@ -95,10 +96,11 @@ TEST_CASE("Selecting a craft directs pilot throttle commands to it") {
 
 TEST_CASE("A pilot throttle command with no active craft is unsupported") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId only = universe.add_craft(pod_craft("Only"), pod_types());
 
-  universe.controls().submit(ControlManager::SetThrottle{0.5});
-  const auto results = universe.apply_commands();
+  controls.submit(ControlManager::SetThrottle{0.5});
+  const auto results = controls.apply_commands();
   REQUIRE(results.size() == 1);
   CHECK(results[0].status == Status::unsupported);
   // the rejected command left the craft's throttle at its initial value.
@@ -107,30 +109,32 @@ TEST_CASE("A pilot throttle command with no active craft is unsupported") {
 
 TEST_CASE("SetThrottle replaces the active craft's persistent throttle") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId only = universe.add_craft(pod_craft("Only"), pod_types());
 
-  universe.controls().submit(ControlManager::SelectCraft{only});
-  universe.controls().submit(ControlManager::SetThrottle{0.4});
-  (void)universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{only});
+  controls.submit(ControlManager::SetThrottle{0.4});
+  (void)controls.apply_commands();
   CHECK(universe.craft(only).control().throttle() == 0.4);
 
   // a second write sets the level rather than adding to the first.
-  universe.controls().submit(ControlManager::SetThrottle{0.75});
-  (void)universe.apply_commands();
+  controls.submit(ControlManager::SetThrottle{0.75});
+  (void)controls.apply_commands();
   CHECK(universe.craft(only).control().throttle() == 0.75);
 }
 
 TEST_CASE("SetThrottle clamps values outside [0, 1]") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId only = universe.add_craft(pod_craft("Only"), pod_types());
 
-  universe.controls().submit(ControlManager::SelectCraft{only});
-  universe.controls().submit(ControlManager::SetThrottle{1.5});
-  (void)universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{only});
+  controls.submit(ControlManager::SetThrottle{1.5});
+  (void)controls.apply_commands();
   CHECK(universe.craft(only).control().throttle() == 1.0);
 
-  universe.controls().submit(ControlManager::SetThrottle{-0.5});
-  const auto results = universe.apply_commands();
+  controls.submit(ControlManager::SetThrottle{-0.5});
+  const auto results = controls.apply_commands();
   REQUIRE(results.size() == 1);
   CHECK(results[0].status == Status::applied);
   CHECK(universe.craft(only).control().throttle() == 0.0);
@@ -138,14 +142,15 @@ TEST_CASE("SetThrottle clamps values outside [0, 1]") {
 
 TEST_CASE("SetThrottle affects only the active craft and keeps each craft's level on reselection") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId first = universe.add_craft(pod_craft("First"), pod_types());
   const CraftId second = universe.add_craft(pod_craft("Second"), pod_types());
 
-  universe.controls().submit(ControlManager::SelectCraft{first});
-  universe.controls().submit(ControlManager::SetThrottle{0.25});
-  universe.controls().submit(ControlManager::SelectCraft{second});
-  universe.controls().submit(ControlManager::SetThrottle{0.75});
-  (void)universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{first});
+  controls.submit(ControlManager::SetThrottle{0.25});
+  controls.submit(ControlManager::SelectCraft{second});
+  controls.submit(ControlManager::SetThrottle{0.75});
+  (void)controls.apply_commands();
 
   // deselecting a craft does not reset its throttle; each craft holds the
   // level it was last given.
@@ -153,9 +158,9 @@ TEST_CASE("SetThrottle affects only the active craft and keeps each craft's leve
   CHECK(universe.craft(second).control().throttle() == 0.75);
 
   // reselecting first and writing again changes only first.
-  universe.controls().submit(ControlManager::SelectCraft{first});
-  universe.controls().submit(ControlManager::SetThrottle{0.5});
-  const auto results = universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{first});
+  controls.submit(ControlManager::SetThrottle{0.5});
+  const auto results = controls.apply_commands();
   REQUIRE(results.size() == 2);
   CHECK(results[0].status == Status::applied);
   CHECK(results[1].status == Status::applied);
@@ -165,12 +170,13 @@ TEST_CASE("SetThrottle affects only the active craft and keeps each craft's leve
 
 TEST_CASE("SetPluginEnabled toggles exactly the targeted instance") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId first = universe.add_craft(pod_craft("First"), pod_types());
   const CraftId second = universe.add_craft(pod_craft("Second"), pod_types());
 
   const PluginTarget wheel{first, PartId("pod"), PluginId("ReactionWheelPlugin")};
-  universe.controls().submit(ControlManager::SetPluginEnabled{wheel, false});
-  const auto results = universe.apply_commands();
+  controls.submit(ControlManager::SetPluginEnabled{wheel, false});
+  const auto results = controls.apply_commands();
   REQUIRE(results.size() == 1);
   CHECK(results[0].status == Status::applied);
 
@@ -185,24 +191,25 @@ TEST_CASE("SetPluginEnabled toggles exactly the targeted instance") {
 
 TEST_CASE("Stale targets fail cleanly without mutating other craft") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId first = universe.add_craft(pod_craft("First"), pod_types());
 
   const auto missing_craft = static_cast<CraftId>(static_cast<std::uint64_t>(first) + 500);
-  universe.controls().submit(
+  controls.submit(
       ControlManager::SetPluginEnabled{
           {missing_craft, PartId("pod"), PluginId("ReactionWheelPlugin")}, false
       }
   );
-  universe.controls().submit(
+  controls.submit(
       ControlManager::SetPluginEnabled{
           {first, PartId("absent"), PluginId("ReactionWheelPlugin")}, false
       }
   );
-  universe.controls().submit(
+  controls.submit(
       ControlManager::SetPluginEnabled{{first, PartId("pod"), PluginId("AbsentPlugin")}, false}
   );
-  universe.controls().submit(ControlManager::SelectCraft{missing_craft});
-  const auto results = universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{missing_craft});
+  const auto results = controls.apply_commands();
 
   REQUIRE(results.size() == 4);
   CHECK(results[0].status == Status::missing_target);
@@ -211,40 +218,57 @@ TEST_CASE("Stale targets fail cleanly without mutating other craft") {
   CHECK(results[3].status == Status::missing_target);
   // nothing was toggled and no craft became active.
   CHECK(universe.craft(first).part("pod").find_plugin(PluginId("ReactionWheelPlugin"))->enabled());
-  CHECK(universe.controls().active_craft_id() == CraftId::invalid);
+  CHECK(controls.active_craft_id() == CraftId::invalid);
 }
 
 TEST_CASE("Changing the active craft neutralizes the previous craft held input") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId first = universe.add_craft(pod_craft("First"), pod_types());
   const CraftId second = universe.add_craft(pod_craft("Second"), pod_types());
 
-  universe.controls().submit(ControlManager::SelectCraft{first});
-  (void)universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{first});
+  (void)controls.apply_commands();
 
   // hold steering on the first craft through a step, as the pilot would.
-  universe.controls().set_pilot_sample(PilotSample{0.0, 0.5});
+  controls.set_pilot_sample(PilotSample{0.0, 0.5});
+  controls.apply_pilot_sample();
   universe.tick(0.02);
   REQUIRE(universe.craft(first).control().steering() == 0.5);
 
-  universe.controls().submit(ControlManager::SelectCraft{second});
-  (void)universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{second});
+  (void)controls.apply_commands();
 
   // leaving the first craft cleared its steering so it coasts.
   CHECK(universe.craft(first).control().steering() == 0.0);
-  CHECK(universe.controls().active_craft_id() == second);
+  CHECK(controls.active_craft_id() == second);
 }
 
 TEST_CASE("apply_commands leaves the queue empty and preserves submit order") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId only = universe.add_craft(pod_craft("Only"), pod_types());
 
-  universe.controls().submit(ControlManager::SelectCraft{only});
-  CHECK(universe.controls().has_pending());
-  const auto first_pass = universe.apply_commands();
-  CHECK_FALSE(universe.controls().has_pending());
+  controls.submit(ControlManager::SelectCraft{only});
+  CHECK(controls.has_pending());
+  const auto first_pass = controls.apply_commands();
+  CHECK_FALSE(controls.has_pending());
   REQUIRE(first_pass.size() == 1);
 
   // a second drain with nothing queued returns no results.
-  CHECK(universe.apply_commands().empty());
+  CHECK(controls.apply_commands().empty());
+}
+
+TEST_CASE("Reselecting the active craft preserves steering") {
+  Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
+  const auto id = universe.add_craft(pod_craft("Pilot"), pod_types());
+  controls.submit(ControlManager::SelectCraft{id});
+  (void)controls.apply_commands();
+  controls.set_pilot_sample(PilotSample{0.4, 0.5});
+  controls.apply_pilot_sample();
+  controls.submit(ControlManager::SelectCraft{id});
+  (void)controls.apply_commands();
+  CHECK(universe.craft(id).control().steering() == 0.5);
+  CHECK(universe.craft(id).control().throttle() == 0.4);
 }

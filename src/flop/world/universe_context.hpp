@@ -26,6 +26,8 @@ public:
   UniverseContext &operator=(UniverseContext &&) = default;
   virtual ~UniverseContext() = default;
 
+  [[nodiscard]] virtual double ut_sec() const = 0;
+
   [[nodiscard]] virtual const craft::ResourceRegistry &resources() const = 0;
   [[nodiscard]] virtual const orbit::RefFrameManager &reference_frames() const = 0;
 };

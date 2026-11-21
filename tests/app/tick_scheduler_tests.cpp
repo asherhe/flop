@@ -61,7 +61,7 @@ TEST_CASE("Single-step runs exactly one step while paused") {
   (void)scheduler.advance(0.0, pause, NO_CEILING);
 
   FrameActions step;
-  step.single_step = true;
+  step.single_steps = 1;
   const auto schedule = scheduler.advance(0.0, step, NO_CEILING);
   CHECK(schedule.paused);
   CHECK(schedule.fixed_step_count == 1);
@@ -83,13 +83,13 @@ TEST_CASE("The catch-up cap bounds steps and reports discarded wall time") {
 TEST_CASE("Warp climbs and descends the ladder and cancels to 1x") {
   TickScheduler scheduler;
   FrameActions up;
-  up.warp_up = true;
+  up.warp_steps = 1;
   CHECK(scheduler.advance(0.0, up, NO_CEILING).warp == 2.0);
   CHECK(scheduler.advance(0.0, up, NO_CEILING).warp == 5.0);
   CHECK(scheduler.advance(0.0, up, NO_CEILING).warp == 10.0);
 
   FrameActions down;
-  down.warp_down = true;
+  down.warp_steps = -1;
   CHECK(scheduler.advance(0.0, down, NO_CEILING).warp == 5.0);
 
   FrameActions cancel;
@@ -100,7 +100,7 @@ TEST_CASE("Warp climbs and descends the ladder and cancels to 1x") {
 TEST_CASE("Each fixed step advances simulation by 20 ms times the warp factor") {
   TickScheduler scheduler;
   FrameActions up;
-  up.warp_up = true;
+  up.warp_steps = 1;
   for (int i = 0; i < 4; ++i) {
     (void)scheduler.advance(0.0, up, NO_CEILING); // climb to 20x.
   }
@@ -114,7 +114,7 @@ TEST_CASE("Each fixed step advances simulation by 20 ms times the warp factor") 
 TEST_CASE("The warp ceiling clamps the selected warp down") {
   TickScheduler scheduler;
   FrameActions up;
-  up.warp_up = true;
+  up.warp_steps = 1;
   for (int i = 0; i < 6; ++i) {
     (void)scheduler.advance(0.0, up, NO_CEILING); // climb well past 20x.
   }

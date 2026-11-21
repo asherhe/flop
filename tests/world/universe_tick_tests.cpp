@@ -1,6 +1,4 @@
-// Universe::tick(dt): the held pilot sample is written into the active craft
-// before the step, only the active craft receives it, UT advances by dt, and the
-// world-owned warp ceiling that the tick scheduler is handed.
+// World stepping and explicit control handoff.
 
 #include <cmath>
 #include <limits>
@@ -9,6 +7,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "flop/app/warp_policy.hpp"
 #include "flop/craft/config.hpp"
 #include "flop/craft/craft.hpp"
 #include "flop/craft/plugins/behavior_plugins.hpp"
@@ -89,6 +88,7 @@ double tank_fuel(const flop::craft::Craft &craft) {
 
 TEST_CASE("tick advances UT by the simulation duration") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   universe.tick(0.4);
   CHECK(universe.ut_sec() == Approx(0.4));
   universe.tick(0.4);
@@ -97,6 +97,7 @@ TEST_CASE("tick advances UT by the simulation duration") {
 
 TEST_CASE("tick rejects nonpositive or nonfinite simulation durations") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   CHECK_THROWS(universe.tick(0.0));
   CHECK_THROWS(universe.tick(-0.4));
   CHECK_THROWS(universe.tick(std::numeric_limits<double>::infinity()));
@@ -104,17 +105,19 @@ TEST_CASE("tick rejects nonpositive or nonfinite simulation durations") {
 
 TEST_CASE("The pilot throttle is written to the craft before the step and burns over the step") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId id = universe.add_craft(burn_craft(), craft_types());
-  universe.controls().submit(ControlManager::SelectCraft{id});
-  (void)universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{id});
+  (void)controls.apply_commands();
 
   // an absolute throttle of 0.6 from the pilot sample.
   const double throttle = 0.6;
-  universe.controls().set_pilot_sample(PilotSample{throttle, 0.0});
+  controls.set_pilot_sample(PilotSample{throttle, 0.0});
 
   const double fuel_before = tank_fuel(universe.craft(id));
 
   // one step at 20x warp: the simulation duration is 0.4 s.
+  controls.apply_pilot_sample();
   universe.tick(0.4);
 
   CHECK(universe.craft(id).control().throttle() == Approx(throttle));
@@ -129,12 +132,14 @@ TEST_CASE("The pilot throttle is written to the craft before the step and burns 
 
 TEST_CASE("Held pilot input only reaches the active craft") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId first = universe.add_craft(burn_craft(), craft_types());
   const CraftId second = universe.add_craft(burn_craft(), craft_types());
 
-  universe.controls().submit(ControlManager::SelectCraft{first});
-  (void)universe.apply_commands();
-  universe.controls().set_pilot_sample(PilotSample{0.5, 0.0});
+  controls.submit(ControlManager::SelectCraft{first});
+  (void)controls.apply_commands();
+  controls.set_pilot_sample(PilotSample{0.5, 0.0});
+  controls.apply_pilot_sample();
   universe.tick(0.02);
 
   CHECK(universe.craft(first).control().throttle() == Approx(0.5));
@@ -144,12 +149,14 @@ TEST_CASE("Held pilot input only reaches the active craft") {
 
 TEST_CASE("The pilot steering is written to the active craft before the step") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId first = universe.add_craft(burn_craft(), craft_types());
   const CraftId second = universe.add_craft(burn_craft(), craft_types());
 
-  universe.controls().submit(ControlManager::SelectCraft{first});
-  (void)universe.apply_commands();
-  universe.controls().set_pilot_sample(PilotSample{0.0, -0.25});
+  controls.submit(ControlManager::SelectCraft{first});
+  (void)controls.apply_commands();
+  controls.set_pilot_sample(PilotSample{0.0, -0.25});
+  controls.apply_pilot_sample();
   universe.tick(0.02);
 
   CHECK(universe.craft(first).control().steering() == Approx(-0.25));
@@ -158,17 +165,61 @@ TEST_CASE("The pilot steering is written to the active craft before the step") {
 
 TEST_CASE("The warp ceiling drops to the powered limit when a craft is burning") {
   Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
   const CraftId id = universe.add_craft(burn_craft(), craft_types());
 
   // no craft powered yet: no ceiling.
   CHECK(universe.any_craft_powered() == false);
-  CHECK(std::isinf(flop::world::warp_ceiling(universe)));
+  CHECK(std::isinf(flop::app::warp_ceiling(universe)));
 
   // open the throttle on the craft.
-  universe.controls().submit(ControlManager::SelectCraft{id});
-  universe.controls().submit(ControlManager::SetThrottle{0.5});
-  (void)universe.apply_commands();
+  controls.submit(ControlManager::SelectCraft{id});
+  controls.submit(ControlManager::SetThrottle{0.5});
+  (void)controls.apply_commands();
 
   CHECK(universe.any_craft_powered());
-  CHECK(flop::world::warp_ceiling(universe) == flop::world::POWERED_WARP_CEILING);
+  CHECK(flop::app::warp_ceiling(universe) == flop::app::POWERED_WARP_CEILING);
+}
+
+TEST_CASE("Inactive powered craft continues burning and limits warp") {
+  Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
+  const auto burning = universe.add_craft(burn_craft(), craft_types());
+  const auto other = universe.add_craft(burn_craft(), craft_types());
+  controls.submit(ControlManager::SelectCraft{burning});
+  controls.submit(ControlManager::SetThrottle{0.5});
+  controls.submit(ControlManager::SelectCraft{other});
+  (void)controls.apply_commands();
+  const double before = tank_fuel(universe.craft(burning));
+  universe.tick(0.4);
+  CHECK(tank_fuel(universe.craft(burning)) < before);
+  CHECK(flop::app::warp_ceiling(universe) == flop::app::POWERED_WARP_CEILING);
+}
+
+TEST_CASE("World tick does not apply a held pilot sample") {
+  Universe universe({root_body()}, resource_types());
+  ControlManager &controls = universe.controls();
+  const auto id = universe.add_craft(burn_craft(), craft_types());
+  controls.submit(ControlManager::SelectCraft{id});
+  (void)controls.apply_commands();
+  controls.set_pilot_sample(PilotSample{0.7, 0.5});
+  universe.tick(0.02);
+  CHECK(universe.craft(id).control().throttle() == 0.0);
+  CHECK(universe.craft(id).control().steering() == 0.0);
+}
+
+TEST_CASE("Every craft steps from the same pre-tick UT") {
+  Universe universe({root_body()}, resource_types(), 10.0);
+  ControlManager &controls = universe.controls();
+  const auto first = universe.add_craft(burn_craft(), craft_types());
+  const auto second = universe.add_craft(burn_craft(), craft_types());
+  controls.submit(ControlManager::SelectCraft{first});
+  controls.submit(ControlManager::SetThrottle{0.5});
+  controls.submit(ControlManager::SelectCraft{second});
+  controls.submit(ControlManager::SetThrottle{0.5});
+  (void)controls.apply_commands();
+  universe.tick(0.4);
+  CHECK(universe.craft(first).orbit_state().epoch == Approx(10.0));
+  CHECK(universe.craft(second).orbit_state().epoch == Approx(10.0));
+  CHECK(universe.ut_sec() == Approx(10.4));
 }

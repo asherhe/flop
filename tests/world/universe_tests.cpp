@@ -62,6 +62,7 @@ TEST_CASE("Universe satisfies the UniverseContext interface") {
   using flop::world::UniverseContext;
   const Universe universe({ROOT}, {{"NTO", "N2O4", 1.0, ResourceFlow::stage}});
   const UniverseContext &context = universe;
+  CHECK(context.ut_sec() == universe.ut_sec());
   CHECK(context.resources().at("NTO").name == "N2O4");
   CHECK(&context.reference_frames() == &universe.reference_frames());
   CHECK(context.reference_frames().frame(universe.frame_id("root")).name == "root");

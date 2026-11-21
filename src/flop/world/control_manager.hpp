@@ -4,22 +4,15 @@
 #include <variant>
 #include <vector>
 
+#include "flop/world/craft_access.hpp"
 #include "flop/world/craft_id.hpp"
 #include "flop/world/pilot_sample.hpp"
 #include "flop/world/plugin_target.hpp"
 
+
 namespace flop::world {
 
-class Universe;
-
-// owns active-craft selection and the queue of external craft-control commands
-// for one world. UI and input submit typed commands; Universe drains the queue
-// once per frame through apply_commands() and resolves each target against live
-// craft storage at that moment. The manager holds no pointer back into Universe
-// and no craft references: it carries only the pending commands, the active
-// craft id, and the latest pilot sample. Only external changes flow through
-// here; a plugin's own internal behavior (fuel drain, flame-out, force
-// accumulation) is not a command.
+// Routes external commands and held pilot input through narrow craft access.
 class ControlManager {
 public:
   // select which craft receives held pilot input and pilot throttle commands.
@@ -55,13 +48,14 @@ public:
     Status status;
   };
 
+  explicit ControlManager(CraftAccess &access) : access_(&access) {}
+
   // queue a command for the next apply_commands(). commands are copied or moved
   // into the queue and resolve their targets only at execution, preserving
   // submit order.
   void submit(Command command) { pending_.push_back(std::move(command)); }
 
-  // replace the pilot sample for the active craft. Universe writes its throttle and steering into the
-  // craft at the start of each tick.
+  // Replace the held sample; apply it explicitly before each world step.
   void set_pilot_sample(const PilotSample &sample) noexcept { pilot_sample_ = sample; }
   [[nodiscard]] PilotSample pilot_sample() const noexcept { return pilot_sample_; }
 
@@ -71,9 +65,13 @@ public:
 
   [[nodiscard]] bool has_pending() const noexcept { return !pending_.empty(); }
 
-private:
-  friend class Universe;
+  // Drain commands in submission order, including while the simulation is paused.
+  std::vector<Result> apply_commands();
+  void apply_pilot_sample();
 
+private:
+  void clear_active_pilot_input();
+  CraftAccess *access_;
   std::vector<Command> pending_;
   CraftId active_craft_{CraftId::invalid};
   PilotSample pilot_sample_{};
