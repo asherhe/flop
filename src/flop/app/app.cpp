@@ -110,7 +110,7 @@ int App::run(int argc, char **argv) {
 
   while (running) {
     const auto now = std::chrono::steady_clock::now();
-    const double wall_elapsed = std::chrono::duration<double>(now - last).count();
+    const double real_elapsed = std::chrono::duration<double>(now - last).count();
     last = now;
 
     // drain events into one frame of input.
@@ -132,17 +132,17 @@ int App::run(int argc, char **argv) {
     (void)univ_controls.apply_commands();
 
     const FrameSchedule schedule =
-        scheduler.advance(wall_elapsed, frame.scheduler, warp_ceiling(universe));
+        scheduler.advance(real_elapsed, frame.scheduler, warp_ceiling(universe));
 
     // Read current throttle before integrating pilot input for each fixed step.
     const craft::Craft *active = universe.find_craft(univ_controls.active_craft_id());
 
     // advance simulation; each step covers its simulation time at the current warp.
-    const double wall_dt = TickScheduler::FIXED_STEP_SEC;
-    const double sim_dt = TickScheduler::FIXED_STEP_SEC * schedule.warp;
+    const double real_dt = TickScheduler::REAL_TIME_STEP_SEC;
+    const double sim_dt = TickScheduler::REAL_TIME_STEP_SEC * schedule.warp;
     for (int step = 0; step < schedule.fixed_step_count; ++step) {
       const double current_throttle = active != nullptr ? active->control().throttle() : 0.0;
-      pilot_control.update(frame.pilot, current_throttle, wall_dt);
+      pilot_control.update(frame.pilot, current_throttle, real_dt);
       univ_controls.set_pilot_sample(pilot_control.sample());
       // Apply held input immediately before each world step.
       univ_controls.apply_pilot_sample();

@@ -23,16 +23,16 @@ struct FrameSchedule {
   int fixed_step_count{0};
   double warp{1.0};
   bool paused{false};
-  // wall seconds dropped this frame because the catch-up cap was hit. reported
+  // real time seconds dropped this frame because the catch-up cap was hit. reported
   // for telemetry
-  double discarded_wall_sec{0.0};
+  double discarded_real_time_sec{0.0};
 };
 
 // directs the flow of simulation time.
 class TickScheduler {
 public:
   // real seconds per fixed step, without warp.
-  static constexpr double FIXED_STEP_SEC = 0.02;
+  static constexpr double REAL_TIME_STEP_SEC = 0.02;
   // most fixed steps run in one frame. excess time debt is dropped in case of extreme lag spikes
   static constexpr int MAX_CATCHUP_STEPS = 8;
 
@@ -41,9 +41,9 @@ public:
   // the warp factors, lowest first. index 0 is 1x
   [[nodiscard]] static std::span<const double> warp_ladder() noexcept;
 
-  // advance one frame. wall_elapsed_sec is the elapsed time since the last advance() call. max_warp
-  // is the current ceiling that the selected warp may not exceed
-  FrameSchedule advance(double wall_elapsed_sec, FrameActions actions, double max_warp);
+  // advance one frame. real_dt is the elapsed time since the last advance() call.
+  // max_warp is the current ceiling that the selected warp may not exceed
+  FrameSchedule advance(double real_dt, FrameActions actions, double max_warp);
 
   [[nodiscard]] bool paused() const noexcept { return paused_; }
   [[nodiscard]] double warp() const noexcept;
@@ -55,8 +55,8 @@ private:
 
   bool paused_{false};
   std::size_t warp_index_{0};
-  // real wall seconds not yet consumed by a fixed step
-  double accumulator_sec_{0.0};
+  // real time seconds not yet consumed by a fixed step
+  double real_time_accumulator_sec_{0.0};
 };
 
 } // namespace flop::app

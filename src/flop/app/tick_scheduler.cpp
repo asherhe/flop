@@ -33,7 +33,7 @@ void TickScheduler::clamp_to_ceiling(double max_warp) noexcept {
 }
 
 FrameSchedule TickScheduler::advance(
-    double wall_elapsed_sec, FrameActions actions, double max_warp
+    double real_dt, FrameActions actions, double max_warp
 ) {
   // apply one-off actions first
   if (actions.toggle_pause) {
@@ -57,27 +57,27 @@ FrameSchedule TickScheduler::advance(
 
   if (paused_) {
     // the accumulator does not run while paused
-    accumulator_sec_ = 0.0;
+    real_time_accumulator_sec_ = 0.0;
     schedule.fixed_step_count = actions.single_steps;
     return schedule;
   }
 
-  // accumulate elapsed wall time
-  if (wall_elapsed_sec > 0.0) {
-    accumulator_sec_ += wall_elapsed_sec;
+  // accumulate elapsed real time
+  if (real_dt > 0.0) {
+    real_time_accumulator_sec_ += real_dt;
   }
   // schedule steps until accumulated time debt is resolved
   // step count is capped to prevent gigalag from evil unexpected frame delays
-  int steps = static_cast<int>(accumulator_sec_ / FIXED_STEP_SEC);
+  int steps = static_cast<int>(real_time_accumulator_sec_ / REAL_TIME_STEP_SEC);
   if (steps > MAX_CATCHUP_STEPS) {
     // drop extra time to avoid accumulating massive time debt
-    const double capped_consumption = MAX_CATCHUP_STEPS * FIXED_STEP_SEC;
-    const double excess = accumulator_sec_ - capped_consumption;
-    accumulator_sec_ = 0.0;
-    schedule.discarded_wall_sec = excess;
+    const double capped_consumption = MAX_CATCHUP_STEPS * REAL_TIME_STEP_SEC;
+    const double excess = real_time_accumulator_sec_ - capped_consumption;
+    real_time_accumulator_sec_ = 0.0;
+    schedule.discarded_real_time_sec = excess;
     steps = MAX_CATCHUP_STEPS;
   } else {
-    accumulator_sec_ -= steps * FIXED_STEP_SEC;
+    real_time_accumulator_sec_ -= steps * REAL_TIME_STEP_SEC;
   }
   schedule.fixed_step_count = steps;
   return schedule;

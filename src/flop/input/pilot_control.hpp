@@ -20,7 +20,7 @@ private:
   world::PilotSample sample_{0.0, 0.0};
 
 public:
-  void update(const PilotActions &action, double current_throttle, double control_dt);
+  void update(const PilotActions &action, double current_throttle, double real_dt);
   void reset_control() { sample_ = {0.0, 0.0}; }
 
   [[nodiscard]] const world::PilotSample &sample() const noexcept { return sample_; }

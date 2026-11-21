@@ -1,6 +1,6 @@
 // TickScheduler: pause, single-step, the warp ladder and ceiling, the 20 ms
 // fixed-step accumulator, and the eight-step catch-up cap. The scheduler has no
-// SDL or Universe dependency; these drive it with plain wall time, actions, and
+// SDL or Universe dependency; these drive it with plain real time, actions, and
 // a warp ceiling.
 
 #include <catch2/catch_approx.hpp>
@@ -14,22 +14,22 @@ using Catch::Approx;
 using flop::app::FrameActions;
 using flop::app::TickScheduler;
 
-constexpr double STEP = TickScheduler::FIXED_STEP_SEC;
+constexpr double STEP = TickScheduler::REAL_TIME_STEP_SEC;
 constexpr double NO_CEILING = 1e18;
 
 } // namespace
 
-TEST_CASE("A frame emits one fixed step per whole 20 ms of wall time") {
+TEST_CASE("A frame emits one fixed step per whole 20 ms of real time") {
   TickScheduler scheduler;
-  // exactly three steps' worth of wall time.
+  // exactly three steps' worth of real time.
   const auto schedule = scheduler.advance(3 * STEP, {}, NO_CEILING);
   CHECK(schedule.fixed_step_count == 3);
   CHECK(schedule.warp == 1.0);
   CHECK_FALSE(schedule.paused);
-  CHECK(schedule.discarded_wall_sec == 0.0);
+  CHECK(schedule.discarded_real_time_sec == 0.0);
 }
 
-TEST_CASE("Leftover wall time carries into the next frame") {
+TEST_CASE("Leftover real time carries into the next frame") {
   TickScheduler scheduler;
   // 2.5 steps: two now, half a step retained.
   CHECK(scheduler.advance(2.5 * STEP, {}, NO_CEILING).fixed_step_count == 2);
@@ -45,12 +45,12 @@ TEST_CASE("Pause halts stepping and clears the accumulator") {
   CHECK(schedule.paused);
   CHECK(schedule.fixed_step_count == 0);
 
-  // while paused, wall time does not accumulate into later steps.
+  // while paused, real time does not accumulate into later steps.
   CHECK(scheduler.advance(10 * STEP, {}, NO_CEILING).fixed_step_count == 0);
 
   FrameActions unpause;
   unpause.toggle_pause = true;
-  // resuming does not replay the wall time spent paused.
+  // resuming does not replay the real time spent paused.
   CHECK(scheduler.advance(0.0, unpause, NO_CEILING).fixed_step_count == 0);
 }
 
@@ -66,16 +66,16 @@ TEST_CASE("Single-step runs exactly one step while paused") {
   CHECK(schedule.paused);
   CHECK(schedule.fixed_step_count == 1);
 
-  // single-step does not consume or depend on wall time.
+  // single-step does not consume or depend on real time.
   CHECK(scheduler.advance(0.0, {}, NO_CEILING).fixed_step_count == 0);
 }
 
-TEST_CASE("The catch-up cap bounds steps and reports discarded wall time") {
+TEST_CASE("The catch-up cap bounds steps and reports discarded real time") {
   TickScheduler scheduler;
-  // twelve steps' worth of wall time, capped at eight.
+  // twelve steps' worth of real time, capped at eight.
   const auto schedule = scheduler.advance(12 * STEP, {}, NO_CEILING);
   CHECK(schedule.fixed_step_count == TickScheduler::MAX_CATCHUP_STEPS);
-  CHECK(schedule.discarded_wall_sec == Approx(4 * STEP));
+  CHECK(schedule.discarded_real_time_sec == Approx(4 * STEP));
   // the accumulator was cleared, so the next frame starts fresh.
   CHECK(scheduler.advance(STEP, {}, NO_CEILING).fixed_step_count == 1);
 }
@@ -107,7 +107,7 @@ TEST_CASE("Each fixed step advances simulation by 20 ms times the warp factor") 
   REQUIRE(scheduler.warp() == 20.0);
   const auto schedule = scheduler.advance(STEP, {}, NO_CEILING);
   REQUIRE(schedule.fixed_step_count == 1);
-  // a 20 ms wall step at 20x covers 0.4 s of simulation time.
+  // a 20 ms real time step at 20x covers 0.4 s of simulation time.
   CHECK(schedule.warp * STEP == Approx(0.4));
 }
 
