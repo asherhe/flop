@@ -27,6 +27,7 @@ add_library(flop_core STATIC
     src/flop/orbit/prediction/soi_escape.cpp
     src/flop/orbit/prediction/soi_intercept.cpp
     src/flop/orbit/propagators/universal.cpp
+    src/flop/view/frame.cpp
     src/flop/world/control_manager.cpp
     src/flop/world/celestial_body.cpp
     src/flop/world/universe.cpp
@@ -73,6 +74,7 @@ if(BUILD_TESTING)
 
     add_executable(flop_config_tests
         tests/app/game_scene_tests.cpp
+        tests/app/frame_tests.cpp
         tests/config/body_decode_tests.cpp
         tests/config/body_orbit_decode_tests.cpp
         tests/config/body_visual_decode_tests.cpp
@@ -110,4 +112,5 @@ if(FLOP_BUILD_GAME)
         )
     endif()
 endif()
+
 

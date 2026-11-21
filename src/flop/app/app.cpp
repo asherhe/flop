@@ -18,6 +18,7 @@
 #include "flop/platform/frame_input.hpp"
 #include "flop/platform/input_mapper.hpp"
 #include "flop/platform/sdl_platform.hpp"
+#include "flop/view/frame.hpp"
 #include "flop/world/control_manager.hpp"
 #include "flop/world/universe.hpp"
 
@@ -103,6 +104,9 @@ int App::run(int argc, char **argv) {
   platform::InputMapper input;
   TickScheduler scheduler;
   input::PilotControl pilot_control;
+  view::ViewState views;
+  views.flight.focus = scene.craft.empty() ? view::Focus{scene.body_visuals.front().name}
+                                           : view::Focus{scene.craft.front()};
 
   int exit_code = 0;
   bool running = true;
@@ -148,6 +152,15 @@ int App::run(int argc, char **argv) {
       univ_controls.apply_pilot_sample();
       universe.tick(sim_dt);
     }
+
+    int logical_width = 0, logical_height = 0, pixel_width = 0, pixel_height = 0;
+    platform->logical_size(logical_width, logical_height);
+    platform->drawable_size(pixel_width, pixel_height);
+    views.flight.update(
+        frame.camera, logical_width, logical_height, pixel_width, pixel_height
+    );
+    const auto draw_data = views.flight.build_frame(universe, scene.body_visuals);
+    (void)draw_data; // consumed by the renderer in Unit F
 
     // rendering time!
     SDL_GPUCommandBuffer *command_buffer = SDL_AcquireGPUCommandBuffer(device);
