@@ -59,15 +59,16 @@ Each `textures` record has these fields:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `name` | string | Nonempty reflected sampled-image name. |
-| `binding` | integer | Sampled-image slot. |
+| `name` | string | Nonempty reflected combined image-sampler name. |
+| `binding` | integer | Combined image-sampler slot. |
 
 The tool checks the expected stage-specific descriptor sets, consecutiveness
-within each resource class, matching texture/sampler binding numbers, and some
+within each resource class, combined image-sampler bindings, and some
 unsupported resource types. It rejects arrays, matrices, and unsupported scalar
 types. The result does not include texture dimensionality, sampler names,
-material semantics or backend-specific layouts. In particular, separate SPIR-V
-image and sampler declarations still require SDL/Vulkan compatibility validation;
-matching slot numbers alone do not establish it. Optimized-out resources may be
+material semantics or backend-specific layouts. Separate SPIR-V image and sampler
+resources are rejected: annotate HLSL texture and sampler declarations with
+`[[vk::combinedImageSampler]]` and use matching register indices and spaces.
+The combined form still requires an SDL/Vulkan GPU test. Optimized-out resources may be
 absent. Do not apply these offsets or bindings to DXIL or Metal without independent
 validation. This prototype contract may change as reflection is integrated.

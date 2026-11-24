@@ -74,9 +74,11 @@ int main(int argc, char **argv) {
     const unsigned uniform_set = resource_set + 1;
     const auto resources = compiler.get_shader_resources(compiler.get_active_interface_variables());
     if (!resources.storage_buffers.empty() || !resources.storage_images.empty() ||
-        !resources.sampled_images.empty() || !resources.push_constant_buffers.empty() ||
+        !resources.push_constant_buffers.empty() ||
         !resources.subpass_inputs.empty() || !resources.atomic_counters.empty())
       throw std::runtime_error("unsupported resource type");
+    if (!resources.separate_images.empty() || !resources.separate_samplers.empty())
+      throw std::runtime_error("separate textures and samplers are not supported; use combined image sampler bindings");
 
     auto slots = [&](const auto &items, unsigned expected_set) {
       std::set<unsigned> result;
@@ -101,13 +103,10 @@ int main(int argc, char **argv) {
     };
 
     slots(resources.uniform_buffers, uniform_set);
-    const auto images = slots(resources.separate_images, resource_set);
-    const auto samplers = slots(resources.separate_samplers, resource_set);
-    if (images != samplers)
-      throw std::runtime_error("texture and sampler bindings must match");
+    slots(resources.sampled_images, resource_set);
 
     // TODO: DXC emits separate SPIR-V textures and samplers. further testing is needed to determine
-    // if it works on SDL/Vulcan
+    // if it works on SDL/Vulkan
     std::string json = "{\"version\":1,\"binding_validation\":\"partial\",\"stage\":" +
                        quote(model == spv::ExecutionModelVertex ? "vertex" : "fragment") +
                        ",\"entrypoint\":" + name(entries.front().name) + ",\"uniform_buffers\":[";
@@ -136,7 +135,7 @@ int main(int argc, char **argv) {
     }
     json += "],\"textures\":[";
     first = true;
-    for (const auto &item : resources.separate_images) {
+    for (const auto &item : resources.sampled_images) {
       if (!first)
         json += ',';
       first = false;
