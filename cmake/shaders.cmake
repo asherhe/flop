@@ -15,6 +15,23 @@ endif()
 FetchContent_Declare(flop_dxc URL "${dxc_url}" URL_HASH "SHA256=${dxc_hash}")
 FetchContent_MakeAvailable(flop_dxc)
 set(dxc "${flop_dxc_SOURCE_DIR}/${dxc_relative}")
+
+set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_ENABLE_GLSL OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_ENABLE_HLSL OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_ENABLE_MSL OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_ENABLE_CPP OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_ENABLE_REFLECT OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_ENABLE_C_API OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_ENABLE_UTIL OFF CACHE BOOL "" FORCE)
+set(SPIRV_CROSS_SKIP_INSTALL ON CACHE BOOL "" FORCE)
+FetchContent_Declare(flop_spirv_cross
+  URL https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.304.0.tar.gz
+  URL_HASH SHA256=635b9b9ed2318df5ac65a0e1db1f92deb1e9c29e9dac30cd4b14eb3d72be5cf3)
+FetchContent_MakeAvailable(flop_spirv_cross)
+add_executable(flop_shader_reflect tools/shader_reflect.cpp)
+target_link_libraries(flop_shader_reflect PRIVATE spirv-cross-core)
 set(shader_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
 file(MAKE_DIRECTORY "${shader_dir}")
 # Recompile on shared include changes, including when an include is added or removed.
