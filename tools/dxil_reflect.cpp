@@ -12,8 +12,9 @@
 #include "json_writer.hpp"
 
 namespace {
-using flop::tools::json::name;
-using flop::tools::json::quote;
+using flop::tools::json::required_name;
+using flop::tools::json::ShaderReflection;
+using flop::tools::json::UniformBuffer;
 // Explicit interface IDs also work with toolchains that do not implement __uuidof.
 constexpr GUID dxc_utils_id = {
     0x6245d6af, 0x66e0, 0x48fd, {0x80, 0xb4, 0x4d, 0x27, 0x17, 0x96, 0x74, 0x8c}
@@ -90,9 +91,8 @@ int main(int argc, char **argv) {
       throw std::runtime_error("unsupported shader stage");
     const unsigned resource_space = shader_type == D3D12_SHVER_VERTEX_SHADER ? 0 : 2;
     const unsigned uniform_space = resource_space + 1;
-    std::string json = "{\"version\":1,\"stage\":";
-    json += shader_type == D3D12_SHVER_VERTEX_SHADER ? "\"vertex\"" : "\"fragment\"";
-    json += ",\"resources\":[";
+    ShaderReflection metadata{ShaderReflection::Format::dxil};
+    metadata.stage = shader_type == D3D12_SHVER_VERTEX_SHADER ? "vertex" : "fragment";
 
     // Report shader resource types and their Direct3D registers and spaces.
     for (UINT i = 0; i < desc.BoundResources; ++i) {
@@ -109,41 +109,34 @@ int main(int argc, char **argv) {
         throw std::runtime_error("unsupported resource type or register space");
       if (resource.BindCount != 1)
         throw std::runtime_error("resource arrays are not supported");
-      if (i)
-        json += ',';
-      json += "{\"name\":" + name(resource.Name) + ",\"type\":" + quote(kind) +
-              ",\"space\":" + std::to_string(resource.Space) +
-              ",\"binding\":" + std::to_string(resource.BindPoint) + '}';
+      metadata.resources.push_back(
+          {required_name(resource.Name), kind, resource.Space, resource.BindPoint}
+      );
     }
 
     // Report constant-buffer sizes and each member's compiled layout.
-    json += "],\"uniform_buffers\":[";
     for (UINT i = 0; i < desc.ConstantBuffers; ++i) {
       auto *constant_buffer = reflection->GetConstantBufferByIndex(i);
       D3D12_SHADER_BUFFER_DESC buffer_desc{};
       check(constant_buffer->GetDesc(&buffer_desc), "cannot read DXIL constant buffer");
-      if (i)
-        json += ',';
-      json += "{\"name\":" + name(buffer_desc.Name) +
-              ",\"size\":" + std::to_string(buffer_desc.Size) + ",\"members\":[";
+      UniformBuffer reflected{required_name(buffer_desc.Name), std::nullopt, buffer_desc.Size, {}};
       for (UINT j = 0; j < buffer_desc.Variables; ++j) {
         auto *variable = constant_buffer->GetVariableByIndex(j);
         D3D12_SHADER_VARIABLE_DESC variable_desc{};
         D3D12_SHADER_TYPE_DESC type_desc{};
         check(variable->GetDesc(&variable_desc), "cannot read DXIL uniform");
         check(variable->GetType()->GetDesc(&type_desc), "cannot read DXIL uniform type");
-        if (j)
-          json += ',';
-        json += "{\"name\":" + name(variable_desc.Name) +
-                ",\"type\":" + quote(uniform_type(type_desc)) +
-                ",\"components\":" + std::to_string(type_desc.Columns) +
-                ",\"offset\":" + std::to_string(variable_desc.StartOffset) +
-                ",\"size\":" + std::to_string(variable_desc.Size) + '}';
+        reflected.members.push_back(
+            {required_name(variable_desc.Name),
+             uniform_type(type_desc),
+             type_desc.Columns,
+             variable_desc.StartOffset,
+             variable_desc.Size}
+        );
       }
-      json += "]}";
+      metadata.uniform_buffers.push_back(std::move(reflected));
     }
-    json += "]}";
-    std::cout << json << '\n';
+    std::cout << flop::tools::json::emit(metadata) << '\n';
     status = 0;
   } catch (const std::exception &error) {
     std::fprintf(stderr, "DXIL reflection: %s\n", error.what());

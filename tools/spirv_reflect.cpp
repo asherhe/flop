@@ -12,8 +12,8 @@
 #include "json_writer.hpp"
 
 namespace {
-using flop::tools::json::name;
-using flop::tools::json::quote;
+using flop::tools::json::ShaderReflection;
+using flop::tools::json::UniformBuffer;
 
 std::string scalar_type(const spirv_cross::SPIRType &t) {
   if (!t.array.empty() || t.columns != 1 || t.vecsize > 4 || t.width != 32)
@@ -61,11 +61,13 @@ int main(int argc, char **argv) {
     const unsigned uniform_set = resource_set + 1;
     const auto resources = compiler.get_shader_resources(compiler.get_active_interface_variables());
     if (!resources.storage_buffers.empty() || !resources.storage_images.empty() ||
-        !resources.push_constant_buffers.empty() ||
-        !resources.subpass_inputs.empty() || !resources.atomic_counters.empty())
+        !resources.push_constant_buffers.empty() || !resources.subpass_inputs.empty() ||
+        !resources.atomic_counters.empty())
       throw std::runtime_error("unsupported resource type");
     if (!resources.separate_images.empty() || !resources.separate_samplers.empty())
-      throw std::runtime_error("separate textures and samplers are not supported; use combined image sampler bindings");
+      throw std::runtime_error(
+          "separate textures and samplers are not supported; use combined image sampler bindings"
+      );
 
     auto slots = [&](const auto &items, unsigned expected_set) {
       std::set<unsigned> result;
@@ -92,45 +94,35 @@ int main(int argc, char **argv) {
     slots(resources.uniform_buffers, uniform_set);
     slots(resources.sampled_images, resource_set);
 
-    // TODO: DXC emits separate SPIR-V textures and samplers. further testing is needed to determine
-    // if it works on SDL/Vulkan
-    std::string json = "{\"version\":1,\"binding_validation\":\"partial\",\"stage\":" +
-                       quote(model == spv::ExecutionModelVertex ? "vertex" : "fragment") +
-                       ",\"entrypoint\":" + name(entries.front().name) + ",\"uniform_buffers\":[";
-    bool first = true;
+    ShaderReflection metadata{ShaderReflection::Format::spirv};
+    metadata.stage = model == spv::ExecutionModelVertex ? "vertex" : "fragment";
+    metadata.entrypoint = entries.front().name;
     for (const auto &buffer : resources.uniform_buffers) {
-      if (!first)
-        json += ',';
-      first = false;
       const auto &type = compiler.get_type(buffer.base_type_id);
-      json += "{\"name\":" + name(buffer.name) + ",\"binding\":" +
-              std::to_string(compiler.get_decoration(buffer.id, spv::DecorationBinding)) +
-              ",\"size\":" + std::to_string(compiler.get_declared_struct_size(type)) +
-              ",\"members\":[";
+      UniformBuffer reflected{
+          buffer.name,
+          compiler.get_decoration(buffer.id, spv::DecorationBinding),
+          compiler.get_declared_struct_size(type),
+          {}
+      };
       for (unsigned i = 0; i < type.member_types.size(); ++i) {
-        if (i)
-          json += ',';
         const auto &member = compiler.get_type(type.member_types[i]);
-        json += "{\"name\":" + name(compiler.get_member_name(type.self, i)) +
-                ",\"type\":" + quote(scalar_type(member)) +
-                ",\"components\":" + std::to_string(member.vecsize) +
-                ",\"offset\":" + std::to_string(compiler.type_struct_member_offset(type, i)) +
-                ",\"size\":" + std::to_string(compiler.get_declared_struct_member_size(type, i)) +
-                '}';
+        reflected.members.push_back(
+            {compiler.get_member_name(type.self, i),
+             scalar_type(member),
+             member.vecsize,
+             compiler.type_struct_member_offset(type, i),
+             compiler.get_declared_struct_member_size(type, i)}
+        );
       }
-      json += "]}";
+      metadata.uniform_buffers.push_back(std::move(reflected));
     }
-    json += "],\"textures\":[";
-    first = true;
     for (const auto &item : resources.sampled_images) {
-      if (!first)
-        json += ',';
-      first = false;
-      json += "{\"name\":" + name(item.name) + ",\"binding\":" +
-              std::to_string(compiler.get_decoration(item.id, spv::DecorationBinding)) + '}';
+      metadata.textures.push_back(
+          {item.name, compiler.get_decoration(item.id, spv::DecorationBinding)}
+      );
     }
-    json += "]}";
-    std::cout << json << '\n';
+    std::cout << flop::tools::json::emit(metadata) << '\n';
   } catch (const std::exception &error) {
     std::cerr << "shader reflection (" << argv[1] << "): " << error.what() << '\n';
     return 1;
