@@ -30,10 +30,10 @@ FetchContent_Declare(flop_spirv_cross
   URL https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.304.0.tar.gz
   URL_HASH SHA256=635b9b9ed2318df5ac65a0e1db1f92deb1e9c29e9dac30cd4b14eb3d72be5cf3)
 FetchContent_MakeAvailable(flop_spirv_cross)
-add_executable(flop_spirv_reflect tools/spirv_reflect.cpp)
+add_executable(flop_spirv_reflect tools/reflection/spirv_reflect.cpp)
 target_link_libraries(flop_spirv_reflect PRIVATE spirv-cross-core)
 if(CMAKE_HOST_WIN32 AND WIN32)
-  add_executable(flop_dxil_reflect tools/dxil_reflect.cpp)
+  add_executable(flop_dxil_reflect tools/reflection/dxil_reflect.cpp)
   target_include_directories(flop_dxil_reflect SYSTEM PRIVATE "${flop_dxc_SOURCE_DIR}/inc")
 endif()
 if(BUILD_TESTING)
