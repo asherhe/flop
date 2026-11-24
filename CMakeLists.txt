@@ -98,6 +98,7 @@ if(FLOP_BUILD_GAME)
         src/flop/input/pilot_control.cpp
         src/flop/platform/input_mapper.cpp
         src/flop/platform/sdl_platform.cpp
+        src/flop/render/renderer.cpp
     )
 
     target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)

@@ -18,6 +18,7 @@
 #include "flop/platform/frame_input.hpp"
 #include "flop/platform/input_mapper.hpp"
 #include "flop/platform/sdl_platform.hpp"
+#include "flop/render/renderer.hpp"
 #include "flop/view/frame.hpp"
 #include "flop/world/control_manager.hpp"
 #include "flop/world/universe.hpp"
@@ -85,21 +86,13 @@ int App::run(int argc, char **argv) {
     return 1;
   }
 
-  SDL_GPUShaderFormat shader_formats = SDL_GPU_SHADERFORMAT_SPIRV;
-#ifdef _WIN32
-  shader_formats = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL;
-#elif defined(__APPLE__)
-  shader_formats = SDL_GPU_SHADERFORMAT_METALLIB;
-#endif
-  SDL_GPUDevice *device = SDL_CreateGPUDevice(shader_formats, true, nullptr);
-  if (device == nullptr || !SDL_ClaimWindowForGPUDevice(device, platform->window())) {
-    std::fprintf(stderr, "flop: GPU device setup failed: %s\n", SDL_GetError());
-    if (device != nullptr) {
-      SDL_DestroyGPUDevice(device);
-    }
+  std::optional<render::Renderer> renderer;
+  try {
+    renderer.emplace(platform->window());
+  } catch (const std::exception &error) {
+    std::fprintf(stderr, "flop: GPU device setup failed: %s\n", error.what());
     return 1;
   }
-  SDL_Log("GPU backend: %s", SDL_GetGPUDeviceDriver(device));
 
   platform::InputMapper input;
   TickScheduler scheduler;
@@ -160,40 +153,17 @@ int App::run(int argc, char **argv) {
         frame.camera, logical_width, logical_height, pixel_width, pixel_height
     );
     const auto draw_data = views.flight.build_frame(universe, scene.body_visuals);
-    (void)draw_data; // consumed by the renderer in Unit F
-
-    // rendering time!
-    SDL_GPUCommandBuffer *command_buffer = SDL_AcquireGPUCommandBuffer(device);
-    if (command_buffer == nullptr) {
-      std::fprintf(stderr, "flop: SDL_AcquireGPUCommandBuffer: %s\n", SDL_GetError());
+    try {
+      renderer->present(draw_data);
+    } catch (const std::exception &error) {
+      std::fprintf(stderr, "flop: rendering failed: %s\n", error.what());
       exit_code = 1;
       break;
     }
-    SDL_GPUTexture *swapchain = nullptr;
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(
-            command_buffer, platform->window(), &swapchain, nullptr, nullptr
-        )) {
-      std::fprintf(stderr, "flop: SDL_WaitAndAcquireGPUSwapchainTexture: %s\n", SDL_GetError());
-      SDL_CancelGPUCommandBuffer(command_buffer);
-      exit_code = 1;
-      break;
-    }
-    if (swapchain != nullptr) {
-      SDL_GPUColorTargetInfo target{};
-      target.texture = swapchain;
-      target.clear_color = SDL_FColor{0.02f, 0.05f, 0.12f, 1.0f};
-      target.load_op = SDL_GPU_LOADOP_CLEAR;
-      target.store_op = SDL_GPU_STOREOP_STORE;
-      SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(command_buffer, &target, 1, nullptr);
-      SDL_EndGPURenderPass(pass);
-    }
-    SDL_SubmitGPUCommandBuffer(command_buffer);
   }
 
   // teardown, in reverse order from setup
-  SDL_WaitForGPUIdle(device);
-  SDL_ReleaseWindowFromGPUDevice(device, platform->window());
-  SDL_DestroyGPUDevice(device);
+  renderer.reset();
   platform.reset();
   return exit_code;
 }
