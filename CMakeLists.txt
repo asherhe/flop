@@ -106,6 +106,7 @@ if(FLOP_BUILD_GAME)
     include(cmake/shaders.cmake)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl)
     flop_embed_shaders(flop)
+    add_subdirectory(tools/gpu_probe EXCLUDE_FROM_ALL)
 
     # package SDL3.dll alongside flop.exe on Windows.
     if(WIN32)
