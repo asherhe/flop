@@ -20,8 +20,8 @@ file(MAKE_DIRECTORY "${shader_dir}")
 set(shader_outputs)
 set(shader_manifest "${shader_dir}/manifest.txt")
 set(shader_manifest_content "")
-# Each listed program currently uses vertex_main/fragment_main and no resources.
-# The resource counts must be reflected when shaders with resources are added.
+# each listed program currently uses vertex/fragment entry points and no resources
+# the resource counts must be reflected when shaders with resources are added
 foreach(program IN ITEMS test_tri)
 set(shader_source "${CMAKE_CURRENT_SOURCE_DIR}/src/flop/render/shaders/${program}.hlsl")
 foreach(stage IN ITEMS vertex fragment)
@@ -37,10 +37,10 @@ foreach(stage IN ITEMS vertex fragment)
       list(APPEND flags -spirv -fspv-target-env=vulkan1.0)
     endif()
     add_custom_command(OUTPUT "${output}"
-      COMMAND "${dxc}" -T "${profile}" -E "${stage}_main" ${flags} -Fo "${output}" "${shader_source}"
+      COMMAND "${dxc}" -T "${profile}" -E "${stage}" ${flags} -Fo "${output}" "${shader_source}"
       DEPENDS "${shader_source}" "${dxc}" VERBATIM)
     list(APPEND shader_outputs "${output}")
-    string(APPEND shader_manifest_content "${program}|${stage}|${format}|${stage}_main|${output}\n")
+    string(APPEND shader_manifest_content "${program}|${stage}|${format}|${stage}|${output}\n")
   endforeach()
 endforeach()
 endforeach()

@@ -1,21 +1,29 @@
 #pragma once
 
 #include <stdexcept>
+#include <span>
 #include <string>
 #include <string_view>
 
-#include "embedded.hpp"
-
 namespace flop::render::shaders {
 
-inline bool contains(std::string_view id, std::string_view stage, std::string_view format) {
+struct Entry {
+  std::string_view id, stage, format, entrypoint;
+  const unsigned char *code;
+  std::size_t size;
+  unsigned samplers, storage_textures, storage_buffers, uniform_buffers;
+};
+
+inline bool contains(std::span<const Entry> manifest, std::string_view id,
+                     std::string_view stage, std::string_view format) {
   for (const Entry &entry : manifest) {
     if (entry.id == id && entry.stage == stage && entry.format == format) return true;
   }
   return false;
 }
 
-inline const Entry &find(std::string_view id, std::string_view stage, std::string_view format) {
+inline const Entry &find(std::span<const Entry> manifest, std::string_view id,
+                         std::string_view stage, std::string_view format) {
   std::string available;
   for (const Entry &entry : manifest) {
     if (entry.id == id && entry.stage == stage) {

@@ -1,5 +1,5 @@
 file(STRINGS "${INPUT}" records)
-file(WRITE "${OUTPUT}" "#pragma once\n#include <cstddef>\n#include <string_view>\nnamespace flop::render::shaders {\nstruct Entry { std::string_view id, stage, format, entrypoint; const unsigned char *code; std::size_t size; unsigned samplers, storage_textures, storage_buffers, uniform_buffers; };\n")
+file(WRITE "${OUTPUT}" "#pragma once\n#include \"flop/render/shader_library.hpp\"\nnamespace flop::render::shaders {\n")
 set(entries "")
 set(index 0)
 foreach(record IN LISTS records)

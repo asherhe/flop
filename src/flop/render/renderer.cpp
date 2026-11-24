@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 #include "flop/render/shader_library.hpp"
+#include "embedded.hpp"
 
 namespace flop::render {
 namespace {
@@ -15,17 +16,17 @@ std::runtime_error failure(const char *operation) {
 SDL_GPUGraphicsPipeline *create_test_tri_pipeline(SDL_GPUDevice *device, SDL_Window *window) {
   const auto formats = SDL_GetGPUShaderFormats(device);
   const bool spirv = (formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0 &&
-                     shaders::contains("test_tri", "vertex", "spirv") &&
-                     shaders::contains("test_tri", "fragment", "spirv");
+                     shaders::contains(shaders::manifest, "test_tri", "vertex", "spirv") &&
+                     shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv");
   const bool dxil = (formats & SDL_GPU_SHADERFORMAT_DXIL) != 0 &&
-                    shaders::contains("test_tri", "vertex", "dxil") &&
-                    shaders::contains("test_tri", "fragment", "dxil");
+                    shaders::contains(shaders::manifest, "test_tri", "vertex", "dxil") &&
+                    shaders::contains(shaders::manifest, "test_tri", "fragment", "dxil");
   if (!spirv && !dxil) {
     throw std::runtime_error("test_tri shader: no supported packaged variant (SPIR-V, DXIL)");
   }
   const auto format = spirv ? "spirv" : "dxil";
-  const auto &vertex_entry = shaders::find("test_tri", "vertex", format);
-  const auto &fragment_entry = shaders::find("test_tri", "fragment", format);
+  const auto &vertex_entry = shaders::find(shaders::manifest, "test_tri", "vertex", format);
+  const auto &fragment_entry = shaders::find(shaders::manifest, "test_tri", "fragment", format);
   SDL_GPUShaderCreateInfo info{};
   info.format = spirv ? SDL_GPU_SHADERFORMAT_SPIRV : SDL_GPU_SHADERFORMAT_DXIL;
   info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
@@ -74,10 +75,10 @@ SDL_GPUGraphicsPipeline *create_test_tri_pipeline(SDL_GPUDevice *device, SDL_Win
 
 Renderer::Renderer(SDL_Window *window) : window_(window) {
   SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_INVALID;
-  if (shaders::contains("test_tri", "vertex", "spirv") &&
-      shaders::contains("test_tri", "fragment", "spirv")) formats |= SDL_GPU_SHADERFORMAT_SPIRV;
-  if (shaders::contains("test_tri", "vertex", "dxil") &&
-      shaders::contains("test_tri", "fragment", "dxil")) formats |= SDL_GPU_SHADERFORMAT_DXIL;
+  if (shaders::contains(shaders::manifest, "test_tri", "vertex", "spirv") &&
+      shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv")) formats |= SDL_GPU_SHADERFORMAT_SPIRV;
+  if (shaders::contains(shaders::manifest, "test_tri", "vertex", "dxil") &&
+      shaders::contains(shaders::manifest, "test_tri", "fragment", "dxil")) formats |= SDL_GPU_SHADERFORMAT_DXIL;
   if (formats == SDL_GPU_SHADERFORMAT_INVALID) {
     throw std::runtime_error("test_tri shader: no complete packaged shader variant");
   }
