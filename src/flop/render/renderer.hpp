@@ -1,6 +1,7 @@
 #pragma once
 
 struct SDL_GPUDevice;
+struct SDL_GPUGraphicsPipeline;
 struct SDL_Window;
 
 namespace flop::view { struct FrameDrawData; }
@@ -21,6 +22,7 @@ public:
 private:
   SDL_Window *window_{};
   SDL_GPUDevice *device_{};
+  SDL_GPUGraphicsPipeline *pipeline_{};
 };
 
 } // namespace flop::render

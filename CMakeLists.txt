@@ -102,6 +102,7 @@ if(FLOP_BUILD_GAME)
     )
 
     target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)
+    include(cmake/shaders.cmake)
 
     # package SDL3.dll alongside flop.exe on Windows.
     if(WIN32)
