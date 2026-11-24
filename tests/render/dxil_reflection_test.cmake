@@ -9,17 +9,60 @@ execute_process(COMMAND "${REFLECT}" "${DXCOMPILER}" "${OUTPUT_DIR}/dxil-reflect
 if(NOT result EQUAL 0)
   message(FATAL_ERROR "DXIL reflection failed: ${error}")
 endif()
-foreach(expected IN ITEMS
-    "resource Material type=0 space=3 binding=0 count=1"
-    "resource albedo_sampler type=3 space=2 binding=0 count=1"
-    "resource albedo type=2 space=2 binding=0 count=1"
-    "buffer Material size=16"
-    "member tint offset=0 size=16 type=3 rows=1 columns=4")
-  string(FIND "${output}" "${expected}" index)
-  if(index EQUAL -1)
-    message(FATAL_ERROR "Missing '${expected}' in DXIL reflection output: ${output}")
+string(JSON stage GET "${output}" stage)
+string(JSON count LENGTH "${output}" resources)
+string(JSON buffer_size GET "${output}" uniform_buffers 0 size)
+string(JSON member GET "${output}" uniform_buffers 0 members 0 name)
+string(JSON member_type GET "${output}" uniform_buffers 0 members 0 type)
+string(JSON components GET "${output}" uniform_buffers 0 members 0 components)
+string(JSON offset GET "${output}" uniform_buffers 0 members 0 offset)
+if(NOT stage STREQUAL "fragment" OR NOT count EQUAL 3 OR NOT buffer_size EQUAL 16 OR
+   NOT member STREQUAL "tint" OR NOT member_type STREQUAL "float" OR
+   NOT components EQUAL 4 OR NOT offset EQUAL 0)
+  message(FATAL_ERROR "Unexpected DXIL reflection output: ${output}")
+endif()
+foreach(i RANGE 0 2)
+  string(JSON kind GET "${output}" resources ${i} type)
+  string(JSON space GET "${output}" resources ${i} space)
+  string(JSON binding GET "${output}" resources ${i} binding)
+  if(kind STREQUAL "uniform_buffer" AND space EQUAL 3 AND binding EQUAL 0)
+    set(found_buffer TRUE)
+  elseif(kind STREQUAL "sampler" AND space EQUAL 2 AND binding EQUAL 0)
+    set(found_sampler TRUE)
+  elseif(kind STREQUAL "texture" AND space EQUAL 2 AND binding EQUAL 0)
+    set(found_texture TRUE)
   endif()
 endforeach()
+if(NOT found_buffer OR NOT found_sampler OR NOT found_texture)
+  message(FATAL_ERROR "Unexpected DXIL resource bindings: ${output}")
+endif()
+if(DEFINED COMPARE AND DEFINED SPIRV_REFLECT)
+  execute_process(COMMAND "${DXC}" -T ps_6_0 -E fragment -spirv -fspv-target-env=vulkan1.0
+    -Fo "${OUTPUT_DIR}/dxil-comparison.spirv" "${FIXTURE_DIR}/reflection.hlsl"
+    RESULT_VARIABLE result ERROR_VARIABLE error)
+  if(NOT result EQUAL 0)
+    message(FATAL_ERROR "SPIR-V compilation failed: ${error}")
+  endif()
+  execute_process(COMMAND "${SPIRV_REFLECT}" "${OUTPUT_DIR}/dxil-comparison.spirv"
+    RESULT_VARIABLE result OUTPUT_VARIABLE spv ERROR_VARIABLE error)
+  if(NOT result EQUAL 0)
+    message(FATAL_ERROR "SPIR-V reflection failed: ${error}")
+  endif()
+  file(WRITE "${OUTPUT_DIR}/compare-spv.json" "${spv}")
+  file(WRITE "${OUTPUT_DIR}/compare-dxil.json" "${output}")
+  execute_process(COMMAND "${CMAKE_COMMAND}" "-DSPIRV=${OUTPUT_DIR}/compare-spv.json"
+    "-DDXIL=${OUTPUT_DIR}/compare-dxil.json" -P "${COMPARE}" RESULT_VARIABLE result ERROR_VARIABLE error)
+  if(NOT result EQUAL 0)
+    message(FATAL_ERROR "Compatible layouts rejected: ${error}")
+  endif()
+  string(JSON bad SET "${output}" uniform_buffers 0 members 0 offset 4)
+  file(WRITE "${OUTPUT_DIR}/compare-dxil.json" "${bad}")
+  execute_process(COMMAND "${CMAKE_COMMAND}" "-DSPIRV=${OUTPUT_DIR}/compare-spv.json"
+    "-DDXIL=${OUTPUT_DIR}/compare-dxil.json" -P "${COMPARE}" RESULT_VARIABLE result ERROR_VARIABLE error)
+  if(result EQUAL 0 OR NOT error MATCHES "offset differs")
+    message(FATAL_ERROR "Mismatched layouts were not rejected: ${error}")
+  endif()
+endif()
 execute_process(COMMAND "${REFLECT}" "${DXCOMPILER}" "${FIXTURE_DIR}/reflection.hlsl"
   RESULT_VARIABLE result ERROR_VARIABLE error)
 if(result EQUAL 0 OR NOT error MATCHES "cannot reflect DXIL")

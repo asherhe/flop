@@ -9,24 +9,11 @@
 #include <string>
 #include <vector>
 
-namespace {
-std::string quote(const std::string &s) {
-  std::string out = "\"";
-  for (const unsigned char c : s) {
-    if (c < 32)
-      throw std::runtime_error("control character in reflected name");
-    if (c == '\\' || c == '"')
-      out += '\\';
-    out += static_cast<char>(c);
-  }
-  return out + '"';
-}
+#include "json_writer.hpp"
 
-std::string name(const std::string &s) {
-  if (s.empty())
-    throw std::runtime_error("reflection name missing");
-  return quote(s);
-}
+namespace {
+using flop::tools::json::name;
+using flop::tools::json::quote;
 
 std::string scalar_type(const spirv_cross::SPIRType &t) {
   if (!t.array.empty() || t.columns != 1 || t.vecsize > 4 || t.width != 32)

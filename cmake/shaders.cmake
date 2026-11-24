@@ -46,6 +46,8 @@ if(BUILD_TESTING)
   if(TARGET flop_dxil_reflect)
     add_test(NAME dxil_reflection_fixture
       COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_dxil_reflect>"
+        "-DSPIRV_REFLECT=$<TARGET_FILE:flop_spirv_reflect>"
+        "-DCOMPARE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/compare_shader_reflection.cmake"
         "-DDXCOMPILER=${flop_dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/dxil_reflection_test.cmake")

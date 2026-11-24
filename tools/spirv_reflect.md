@@ -1,10 +1,11 @@
 # SPIR-V reflection output (prototype)
 
 On Windows, `flop_dxil_reflect <path-to-dxcompiler.dll> <shader.dxil>` is a
-separate diagnostic prototype. It prints DXIL resource bindings and constant
-buffer member layouts using DXC's native reflection API. Its output is intended
-for inspection and is not the JSON contract below or part of the generated
-manifest. DXIL metadata comparison and Linux support remain unimplemented.
+separate diagnostic prototype. It emits JSON containing DXIL resource bindings
+and constant-buffer member layouts using DXC's native reflection API. Its output
+is not the SPIR-V JSON contract below or part of the generated manifest. The
+fixture tests exercise an initial cross-format comparison; it is not yet wired
+into production shader builds. Linux DXIL reflection remains unimplemented.
 
 `flop_spirv_reflect <shader.spirv>` writes one JSON object to standard output.
 Errors go to standard error with a nonzero exit code. The build embeds this

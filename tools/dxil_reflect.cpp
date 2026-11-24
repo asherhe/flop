@@ -2,13 +2,18 @@
 #include <d3d12shader.h>
 #include <dxcapi.h>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <stdexcept>
 #include <string>
 #include <vector>
 #include <windows.h>
 
+#include "json_writer.hpp"
+
 namespace {
+using flop::tools::json::name;
+using flop::tools::json::quote;
 // Explicit interface IDs also work with toolchains that do not implement __uuidof.
 constexpr GUID dxc_utils_id = {
     0x6245d6af, 0x66e0, 0x48fd, {0x80, 0xb4, 0x4d, 0x27, 0x17, 0x96, 0x74, 0x8c}
@@ -23,6 +28,20 @@ constexpr GUID reflection_interface = {
 void check(HRESULT result, const char *operation) {
   if (FAILED(result))
     throw std::runtime_error(operation);
+}
+
+const char *uniform_type(const D3D12_SHADER_TYPE_DESC &type) {
+  if ((type.Class != D3D_SVC_SCALAR && type.Class != D3D_SVC_VECTOR) || type.Elements != 0 ||
+      type.Rows != 1 || type.Columns < 1 || type.Columns > 4)
+    throw std::runtime_error(
+        "unsupported uniform type: only 32-bit scalar and vector types supported"
+    );
+  switch (type.Type) {
+  case D3D_SVT_FLOAT: return "float";
+  case D3D_SVT_INT: return "int";
+  case D3D_SVT_UINT: return "uint";
+  default: throw std::runtime_error("unsupported uniform scalar type");
+  }
 }
 } // namespace
 
@@ -66,43 +85,65 @@ int main(int argc, char **argv) {
     );
     D3D12_SHADER_DESC desc{};
     check(reflection->GetDesc(&desc), "cannot read DXIL shader description");
+    const auto shader_type = D3D12_SHVER_GET_TYPE(desc.Version);
+    if (shader_type != D3D12_SHVER_VERTEX_SHADER && shader_type != D3D12_SHVER_PIXEL_SHADER)
+      throw std::runtime_error("unsupported shader stage");
+    const unsigned resource_space = shader_type == D3D12_SHVER_VERTEX_SHADER ? 0 : 2;
+    const unsigned uniform_space = resource_space + 1;
+    std::string json = "{\"version\":1,\"stage\":";
+    json += shader_type == D3D12_SHVER_VERTEX_SHADER ? "\"vertex\"" : "\"fragment\"";
+    json += ",\"resources\":[";
+
     // Report shader resource types and their Direct3D registers and spaces.
     for (UINT i = 0; i < desc.BoundResources; ++i) {
       D3D12_SHADER_INPUT_BIND_DESC resource{};
       check(reflection->GetResourceBindingDesc(i, &resource), "cannot read DXIL resource binding");
-      std::printf(
-          "resource %s type=%u space=%u binding=%u count=%u\n",
-          resource.Name,
-          static_cast<unsigned>(resource.Type),
-          resource.Space,
-          resource.BindPoint,
-          resource.BindCount
-      );
+      const char *kind = nullptr;
+      if (resource.Type == D3D_SIT_CBUFFER && resource.Space == uniform_space)
+        kind = "uniform_buffer";
+      else if (resource.Type == D3D_SIT_TEXTURE && resource.Space == resource_space)
+        kind = "texture";
+      else if (resource.Type == D3D_SIT_SAMPLER && resource.Space == resource_space)
+        kind = "sampler";
+      else
+        throw std::runtime_error("unsupported resource type or register space");
+      if (resource.BindCount != 1)
+        throw std::runtime_error("resource arrays are not supported");
+      if (i)
+        json += ',';
+      json += "{\"name\":" + name(resource.Name) + ",\"type\":" + quote(kind) +
+              ",\"space\":" + std::to_string(resource.Space) +
+              ",\"binding\":" + std::to_string(resource.BindPoint) + '}';
     }
 
     // Report constant-buffer sizes and each member's compiled layout.
+    json += "],\"uniform_buffers\":[";
     for (UINT i = 0; i < desc.ConstantBuffers; ++i) {
       auto *constant_buffer = reflection->GetConstantBufferByIndex(i);
       D3D12_SHADER_BUFFER_DESC buffer_desc{};
       check(constant_buffer->GetDesc(&buffer_desc), "cannot read DXIL constant buffer");
-      std::printf("buffer %s size=%u\n", buffer_desc.Name, buffer_desc.Size);
+      if (i)
+        json += ',';
+      json += "{\"name\":" + name(buffer_desc.Name) +
+              ",\"size\":" + std::to_string(buffer_desc.Size) + ",\"members\":[";
       for (UINT j = 0; j < buffer_desc.Variables; ++j) {
         auto *variable = constant_buffer->GetVariableByIndex(j);
         D3D12_SHADER_VARIABLE_DESC variable_desc{};
         D3D12_SHADER_TYPE_DESC type_desc{};
         check(variable->GetDesc(&variable_desc), "cannot read DXIL uniform");
         check(variable->GetType()->GetDesc(&type_desc), "cannot read DXIL uniform type");
-        std::printf(
-            "member %s offset=%u size=%u type=%u rows=%u columns=%u\n",
-            variable_desc.Name,
-            variable_desc.StartOffset,
-            variable_desc.Size,
-            static_cast<unsigned>(type_desc.Type),
-            type_desc.Rows,
-            type_desc.Columns
-        );
+        if (j)
+          json += ',';
+        json += "{\"name\":" + name(variable_desc.Name) +
+                ",\"type\":" + quote(uniform_type(type_desc)) +
+                ",\"components\":" + std::to_string(type_desc.Columns) +
+                ",\"offset\":" + std::to_string(variable_desc.StartOffset) +
+                ",\"size\":" + std::to_string(variable_desc.Size) + '}';
       }
+      json += "]}";
     }
+    json += "]}";
+    std::cout << json << '\n';
     status = 0;
   } catch (const std::exception &error) {
     std::fprintf(stderr, "DXIL reflection: %s\n", error.what());
