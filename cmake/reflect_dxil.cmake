@@ -1,0 +1,10 @@
+execute_process(COMMAND "${REFLECT}" "${DXCOMPILER}" "${SHADER}"
+  RESULT_VARIABLE result OUTPUT_VARIABLE json ERROR_VARIABLE error)
+if(NOT result EQUAL 0)
+  message(FATAL_ERROR "DXIL reflection failed for ${ID} ${STAGE}: ${error}")
+endif()
+string(JSON stage GET "${json}" stage)
+if(NOT stage STREQUAL STAGE)
+  message(FATAL_ERROR "Unexpected DXIL stage for ${ID} ${STAGE}: ${stage}")
+endif()
+file(WRITE "${OUTPUT}" "${json}")

@@ -109,6 +109,12 @@ int main(int argc, char **argv) {
         throw std::runtime_error("unsupported resource type or register space");
       if (resource.BindCount != 1)
         throw std::runtime_error("resource arrays are not supported");
+      if (resource.Type == D3D_SIT_TEXTURE && resource.Dimension != D3D_SRV_DIMENSION_TEXTURE2D)
+        throw std::runtime_error("only non-arrayed, non-multisampled 2D textures are supported");
+      if (resource.Type == D3D_SIT_TEXTURE && resource.ReturnType != D3D_RETURN_TYPE_FLOAT)
+        throw std::runtime_error("only floating-point texture samples are supported");
+      if (resource.Type == D3D_SIT_SAMPLER && (resource.uFlags & D3D_SIF_COMPARISON_SAMPLER))
+        throw std::runtime_error("comparison samplers are not supported");
       metadata.resources.push_back(
           {required_name(resource.Name), kind, resource.Space, resource.BindPoint}
       );

@@ -93,6 +93,14 @@ int main(int argc, char **argv) {
 
     slots(resources.uniform_buffers, uniform_set);
     slots(resources.sampled_images, resource_set);
+    for (const auto &image : resources.sampled_images) {
+      const auto &type = compiler.get_type(image.type_id);
+      if (type.image.dim != spv::Dim2D || type.image.arrayed || type.image.ms || type.image.depth)
+        throw std::runtime_error("only non-arrayed, non-multisampled 2D color textures are supported");
+      const auto &sampled = compiler.get_type(type.image.type);
+      if (sampled.basetype != spirv_cross::SPIRType::Float || sampled.width != 32)
+        throw std::runtime_error("only 32-bit floating-point texture samples are supported");
+    }
 
     ShaderReflection metadata{ShaderReflection::Format::spirv};
     metadata.stage = model == spv::ExecutionModelVertex ? "vertex" : "fragment";

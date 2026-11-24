@@ -48,6 +48,7 @@ if(BUILD_TESTING)
       COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_dxil_reflect>"
         "-DSPIRV_REFLECT=$<TARGET_FILE:flop_spirv_reflect>"
         "-DCOMPARE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/compare_shader_reflection.cmake"
+        "-DEMBED=${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shaders.cmake"
         "-DDXCOMPILER=${flop_dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/dxil_reflection_test.cmake")
@@ -98,6 +99,11 @@ function(flop_add_shader)
       message(FATAL_ERROR "Invalid ${stage} entry point '${entry}' for shader '${SHADER_ID}'")
     endif()
     set(reflection "${shader_dir}/${SHADER_ID}.${stage}.reflection.json")
+    if(TARGET flop_dxil_reflect)
+      set(dxil_reflection "${shader_dir}/${SHADER_ID}.${stage}.dxil.reflection.json")
+    else()
+      set(dxil_reflection "none")
+    endif()
     foreach(format IN ITEMS spirv dxil)
       set(output "${shader_dir}/${SHADER_ID}.${stage}.${format}")
       get_filename_component(output_dir "${output}" DIRECTORY)
@@ -111,7 +117,7 @@ function(flop_add_shader)
         DEPENDS "${shader_source}" "${dxc}" ${shader_includes} VERBATIM)
       set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_OUTPUTS "${output}")
       set_property(GLOBAL APPEND_STRING PROPERTY FLOP_SHADER_MANIFEST
-        "${SHADER_ID}|${stage}|${format}|${entry}|${output}|${reflection}|${SHADER_RESOURCE_FREE}\n")
+        "${SHADER_ID}|${stage}|${format}|${entry}|${output}|${reflection}|${SHADER_RESOURCE_FREE}|${dxil_reflection}\n")
     endforeach()
     set(spirv_file "${shader_dir}/${SHADER_ID}.${stage}.spirv")
     add_custom_command(OUTPUT "${reflection}"
@@ -120,6 +126,24 @@ function(flop_add_shader)
         "-DSTAGE=${stage}" "-DENTRY=${entry}" -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_shader.cmake"
       DEPENDS "${spirv_file}" flop_spirv_reflect "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_shader.cmake" VERBATIM)
     set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_OUTPUTS "${reflection}")
+    if(TARGET flop_dxil_reflect)
+      set(dxil_file "${shader_dir}/${SHADER_ID}.${stage}.dxil")
+      add_custom_command(OUTPUT "${dxil_reflection}"
+        COMMAND "${CMAKE_COMMAND}" "-DREFLECT=$<TARGET_FILE:flop_dxil_reflect>"
+          "-DDXCOMPILER=${flop_dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
+          "-DSHADER=${dxil_file}" "-DOUTPUT=${dxil_reflection}" "-DID=${SHADER_ID}"
+          "-DSTAGE=${stage}" -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_dxil.cmake"
+        DEPENDS "${dxil_file}" flop_dxil_reflect "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_dxil.cmake" VERBATIM)
+      set(comparison "${shader_dir}/${SHADER_ID}.${stage}.validated")
+      add_custom_command(OUTPUT "${comparison}"
+        COMMAND "${CMAKE_COMMAND}" "-DSPIRV=${reflection}" "-DDXIL=${dxil_reflection}"
+          "-DCOMPARE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/compare_shader_reflection.cmake"
+          "-DOUTPUT=${comparison}" "-DID=${SHADER_ID}" "-DSTAGE=${stage}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/validate_shader.cmake"
+        DEPENDS "${reflection}" "${dxil_reflection}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/compare_shader_reflection.cmake"
+          "${CMAKE_CURRENT_SOURCE_DIR}/cmake/validate_shader.cmake" VERBATIM)
+      set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_OUTPUTS "${dxil_reflection}" "${comparison}")
+    endif()
   endforeach()
 endfunction()
 
