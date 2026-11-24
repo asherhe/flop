@@ -2,8 +2,8 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "headless",
-      "displayName": "Headless",
+      "name": "tests",
+      "displayName": "Tests",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
@@ -40,8 +40,18 @@
   ],
   "buildPresets": [
     {
-      "name": "headless",
-      "configurePreset": "headless"
+      "name": "tests",
+      "configurePreset": "tests"
+    },
+    {
+      "name": "test-core",
+      "configurePreset": "tests",
+      "targets": ["flop_core_tests"]
+    },
+    {
+      "name": "test-app",
+      "configurePreset": "tests",
+      "targets": ["flop_app_tests"]
     },
     {
       "name": "windows-debug",
@@ -54,19 +64,33 @@
   ],
   "testPresets": [
     {
-      "name": "headless",
-      "configurePreset": "headless",
+      "name": "tests",
+      "configurePreset": "tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "test-core",
+      "configurePreset": "tests",
+      "filter": { "include": { "label": "^core$" } },
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "test-app",
+      "configurePreset": "tests",
+      "filter": { "include": { "label": "^app$" } },
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error" }
     }
   ],
   "workflowPresets": [
     {
-      "name": "headless",
+      "name": "tests",
       "steps": [
-        { "type": "configure", "name": "headless" },
-        { "type": "build", "name": "headless" },
-        { "type": "test", "name": "headless" }
+        { "type": "configure", "name": "tests" },
+        { "type": "build", "name": "tests" },
+        { "type": "test", "name": "tests" }
       ]
     },
     {

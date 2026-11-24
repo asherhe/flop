@@ -45,8 +45,7 @@ if(BUILD_TESTING)
     endif()
     include(Catch)
 
-    add_executable(flop_tests
-        tests/app/tick_scheduler_tests.cpp
+    add_executable(flop_core_tests
         tests/craft/actuator_tests.cpp
         tests/craft/control_tests.cpp
         tests/craft/craft_tests.cpp
@@ -62,20 +61,20 @@ if(BUILD_TESTING)
         tests/orbit/propagation_tests.cpp
         tests/orbit/reference_frame_tests.cpp
         tests/orbit/state_tests.cpp
-        tests/render/shader_library_tests.cpp
         tests/world/celestial_body_tests.cpp
         tests/world/control_manager_tests.cpp
         tests/world/craft_ownership_tests.cpp
         tests/world/universe_tests.cpp
         tests/world/universe_tick_tests.cpp
     )
-    target_link_libraries(flop_tests PRIVATE flop_core Catch2::Catch2WithMain)
-    target_include_directories(flop_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
-    catch_discover_tests(flop_tests)
+    target_link_libraries(flop_core_tests PRIVATE flop_core Catch2::Catch2WithMain)
+    target_include_directories(flop_core_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    catch_discover_tests(flop_core_tests PROPERTIES LABELS core)
 
-    add_executable(flop_config_tests
+    add_executable(flop_app_tests
         tests/app/game_scene_tests.cpp
         tests/app/frame_tests.cpp
+        tests/app/tick_scheduler_tests.cpp
         tests/config/body_decode_tests.cpp
         tests/config/body_orbit_decode_tests.cpp
         tests/config/body_visual_decode_tests.cpp
@@ -84,12 +83,13 @@ if(BUILD_TESTING)
         tests/config/resources_decode_tests.cpp
         tests/config/save_decode_tests.cpp
         tests/config/config_tests.cpp
+        tests/render/shader_library_tests.cpp
     )
-    target_link_libraries(flop_config_tests PRIVATE flop_core Catch2::Catch2WithMain)
-    target_include_directories(flop_config_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
-    target_compile_definitions(flop_config_tests PRIVATE
+    target_link_libraries(flop_app_tests PRIVATE flop_core Catch2::Catch2WithMain)
+    target_include_directories(flop_app_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    target_compile_definitions(flop_app_tests PRIVATE
         FLOP_TEST_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets")
-    catch_discover_tests(flop_config_tests)
+    catch_discover_tests(flop_app_tests PROPERTIES LABELS app)
 endif()
 
 if(FLOP_BUILD_GAME)
