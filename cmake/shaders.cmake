@@ -32,6 +32,13 @@ FetchContent_Declare(flop_spirv_cross
 FetchContent_MakeAvailable(flop_spirv_cross)
 add_executable(flop_shader_reflect tools/shader_reflect.cpp)
 target_link_libraries(flop_shader_reflect PRIVATE spirv-cross-core)
+if(BUILD_TESTING)
+  add_test(NAME shader_reflection_fixtures
+    COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_shader_reflect>"
+      "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/reflection_test.cmake")
+  set_tests_properties(shader_reflection_fixtures PROPERTIES LABELS "app;shader")
+endif()
 set(shader_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
 file(MAKE_DIRECTORY "${shader_dir}")
 # Recompile on shared include changes, including when an include is added or removed.
