@@ -104,7 +104,7 @@ if(FLOP_BUILD_GAME)
 
     target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)
     include(cmake/shaders.cmake)
-    flop_add_shader(ID test_tri SOURCE test_tri.hlsl)
+    flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
     flop_embed_shaders(flop)
     add_subdirectory(tools/gpu_probe EXCLUDE_FROM_ALL)
 

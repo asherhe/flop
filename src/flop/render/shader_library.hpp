@@ -12,6 +12,7 @@ struct Entry {
   const unsigned char *code;
   std::size_t size;
   unsigned samplers, storage_textures, storage_buffers, uniform_buffers;
+  std::string_view reflection_json{};
 };
 
 inline bool contains(std::span<const Entry> manifest, std::string_view id,

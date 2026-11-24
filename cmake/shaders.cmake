@@ -36,6 +36,7 @@ if(BUILD_TESTING)
   add_test(NAME shader_reflection_fixtures
     COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_shader_reflect>"
       "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
+      "-DEMBED=${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shaders.cmake"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/reflection_test.cmake")
   set_tests_properties(shader_reflection_fixtures PROPERTIES LABELS "app;shader")
 endif()
@@ -49,9 +50,9 @@ file(GLOB_RECURSE shader_includes CONFIGURE_DEPENDS
 #   ID - identifier for shader
 #   SOURCE is relative to the shader directory
 function(flop_add_shader)
-  cmake_parse_arguments(SHADER "" "ID;SOURCE;VERTEX_ENTRY;FRAGMENT_ENTRY" "" ${ARGN})
+  cmake_parse_arguments(SHADER "RESOURCE_FREE" "ID;SOURCE;VERTEX_ENTRY;FRAGMENT_ENTRY" "" ${ARGN})
   if(SHADER_UNPARSED_ARGUMENTS OR NOT SHADER_ID OR NOT SHADER_SOURCE)
-    message(FATAL_ERROR "flop_add_shader requires ID and SOURCE; optional arguments are VERTEX_ENTRY and FRAGMENT_ENTRY")
+    message(FATAL_ERROR "flop_add_shader requires ID and SOURCE; optional arguments are RESOURCE_FREE, VERTEX_ENTRY and FRAGMENT_ENTRY")
   endif()
   if(NOT SHADER_ID MATCHES "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$")
     message(FATAL_ERROR "Invalid shader ID '${SHADER_ID}': use slash-separated letters, digits, underscores or hyphens")
@@ -82,12 +83,13 @@ function(flop_add_shader)
     if(NOT entry MATCHES "^[A-Za-z_][A-Za-z0-9_]*$")
       message(FATAL_ERROR "Invalid ${stage} entry point '${entry}' for shader '${SHADER_ID}'")
     endif()
+    set(reflection "${shader_dir}/${SHADER_ID}.${stage}.reflection.json")
     foreach(format IN ITEMS spirv dxil)
       set(output "${shader_dir}/${SHADER_ID}.${stage}.${format}")
       get_filename_component(output_dir "${output}" DIRECTORY)
       file(MAKE_DIRECTORY "${output_dir}")
       set(flags)
-      if(format STREQUAL spirv)
+      if("${format}" STREQUAL "spirv")
         list(APPEND flags -spirv -fspv-target-env=vulkan1.0)
       endif()
       add_custom_command(OUTPUT "${output}"
@@ -95,8 +97,15 @@ function(flop_add_shader)
         DEPENDS "${shader_source}" "${dxc}" ${shader_includes} VERBATIM)
       set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_OUTPUTS "${output}")
       set_property(GLOBAL APPEND_STRING PROPERTY FLOP_SHADER_MANIFEST
-        "${SHADER_ID}|${stage}|${format}|${entry}|${output}\n")
+        "${SHADER_ID}|${stage}|${format}|${entry}|${output}|${reflection}|${SHADER_RESOURCE_FREE}\n")
     endforeach()
+    set(spirv_file "${shader_dir}/${SHADER_ID}.${stage}.spirv")
+    add_custom_command(OUTPUT "${reflection}"
+      COMMAND "${CMAKE_COMMAND}" "-DREFLECT=$<TARGET_FILE:flop_shader_reflect>"
+        "-DSHADER=${spirv_file}" "-DOUTPUT=${reflection}" "-DID=${SHADER_ID}"
+        "-DSTAGE=${stage}" "-DENTRY=${entry}" -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_shader.cmake"
+      DEPENDS "${spirv_file}" flop_shader_reflect "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_shader.cmake" VERBATIM)
+    set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_OUTPUTS "${reflection}")
   endforeach()
 endfunction()
 

@@ -1,0 +1,11 @@
+execute_process(COMMAND "${REFLECT}" "${SHADER}"
+  RESULT_VARIABLE result OUTPUT_VARIABLE json ERROR_VARIABLE error)
+if(NOT result EQUAL 0)
+  message(FATAL_ERROR "Reflection failed for ${ID} ${STAGE}: ${error}")
+endif()
+string(JSON stage GET "${json}" stage)
+string(JSON entry GET "${json}" entrypoint)
+if(NOT stage STREQUAL STAGE OR NOT entry STREQUAL ENTRY)
+  message(FATAL_ERROR "Unexpected reflection stage or entry point for ${ID} ${STAGE}: ${json}")
+endif()
+file(WRITE "${OUTPUT}" "${json}")

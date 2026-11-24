@@ -1,9 +1,9 @@
 # SPIR-V reflection output (prototype)
 
 `flop_shader_reflect <shader.spirv>` writes one JSON object to standard output.
-Errors go to standard error with a nonzero exit code. This version is diagnostic:
-it is not consumed by the shader manifest and does not prove a shader works on
-SDL, Vulkan, Direct3D or Metal.
+Errors go to standard error with a nonzero exit code. The build embeds this
+metadata with SPIR-V shader variants and uses its resource counts. Validation
+is partial and does not prove a shader works on SDL, Vulkan, Direct3D or Metal.
 
 Example:
 
