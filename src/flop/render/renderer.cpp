@@ -4,7 +4,7 @@
 #include <string>
 
 #include <SDL3/SDL.h>
-#include "embedded.hpp"
+#include "flop/render/shader_library.hpp"
 
 namespace flop::render {
 namespace {
@@ -14,22 +14,38 @@ std::runtime_error failure(const char *operation) {
 
 SDL_GPUGraphicsPipeline *create_test_tri_pipeline(SDL_GPUDevice *device, SDL_Window *window) {
   const auto formats = SDL_GetGPUShaderFormats(device);
-  const bool spirv = (formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0;
-  if (!spirv && !(formats & SDL_GPU_SHADERFORMAT_DXIL)) {
+  const bool spirv = (formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0 &&
+                     shaders::contains("test_tri", "vertex", "spirv") &&
+                     shaders::contains("test_tri", "fragment", "spirv");
+  const bool dxil = (formats & SDL_GPU_SHADERFORMAT_DXIL) != 0 &&
+                    shaders::contains("test_tri", "vertex", "dxil") &&
+                    shaders::contains("test_tri", "fragment", "dxil");
+  if (!spirv && !dxil) {
     throw std::runtime_error("test_tri shader: no supported packaged variant (SPIR-V, DXIL)");
   }
+  const auto format = spirv ? "spirv" : "dxil";
+  const auto &vertex_entry = shaders::find("test_tri", "vertex", format);
+  const auto &fragment_entry = shaders::find("test_tri", "fragment", format);
   SDL_GPUShaderCreateInfo info{};
   info.format = spirv ? SDL_GPU_SHADERFORMAT_SPIRV : SDL_GPU_SHADERFORMAT_DXIL;
   info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
-  info.entrypoint = "vertex_main";
-  info.code = spirv ? shaders::vertex_spirv : shaders::vertex_dxil;
-  info.code_size = spirv ? sizeof(shaders::vertex_spirv) : sizeof(shaders::vertex_dxil);
+  info.entrypoint = vertex_entry.entrypoint.data();
+  info.code = vertex_entry.code;
+  info.code_size = vertex_entry.size;
+  info.num_samplers = vertex_entry.samplers;
+  info.num_storage_textures = vertex_entry.storage_textures;
+  info.num_storage_buffers = vertex_entry.storage_buffers;
+  info.num_uniform_buffers = vertex_entry.uniform_buffers;
   SDL_GPUShader *vertex = SDL_CreateGPUShader(device, &info);
   if (!vertex) throw failure("create test_tri vertex shader");
   info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
-  info.entrypoint = "fragment_main";
-  info.code = spirv ? shaders::fragment_spirv : shaders::fragment_dxil;
-  info.code_size = spirv ? sizeof(shaders::fragment_spirv) : sizeof(shaders::fragment_dxil);
+  info.entrypoint = fragment_entry.entrypoint.data();
+  info.code = fragment_entry.code;
+  info.code_size = fragment_entry.size;
+  info.num_samplers = fragment_entry.samplers;
+  info.num_storage_textures = fragment_entry.storage_textures;
+  info.num_storage_buffers = fragment_entry.storage_buffers;
+  info.num_uniform_buffers = fragment_entry.uniform_buffers;
   SDL_GPUShader *fragment = SDL_CreateGPUShader(device, &info);
   if (!fragment) {
     const auto error = failure("create test_tri fragment shader");
@@ -57,12 +73,14 @@ SDL_GPUGraphicsPipeline *create_test_tri_pipeline(SDL_GPUDevice *device, SDL_Win
 } // namespace
 
 Renderer::Renderer(SDL_Window *window) : window_(window) {
-  SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_SPIRV;
-#ifdef _WIN32
-  formats |= SDL_GPU_SHADERFORMAT_DXIL;
-#elif defined(__APPLE__)
-  formats = SDL_GPU_SHADERFORMAT_METALLIB;
-#endif
+  SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_INVALID;
+  if (shaders::contains("test_tri", "vertex", "spirv") &&
+      shaders::contains("test_tri", "fragment", "spirv")) formats |= SDL_GPU_SHADERFORMAT_SPIRV;
+  if (shaders::contains("test_tri", "vertex", "dxil") &&
+      shaders::contains("test_tri", "fragment", "dxil")) formats |= SDL_GPU_SHADERFORMAT_DXIL;
+  if (formats == SDL_GPU_SHADERFORMAT_INVALID) {
+    throw std::runtime_error("test_tri shader: no complete packaged shader variant");
+  }
   device_ = SDL_CreateGPUDevice(formats, true, nullptr);
   if (!device_) {
     throw failure("SDL_CreateGPUDevice");
