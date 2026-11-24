@@ -30,15 +30,27 @@ FetchContent_Declare(flop_spirv_cross
   URL https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.304.0.tar.gz
   URL_HASH SHA256=635b9b9ed2318df5ac65a0e1db1f92deb1e9c29e9dac30cd4b14eb3d72be5cf3)
 FetchContent_MakeAvailable(flop_spirv_cross)
-add_executable(flop_shader_reflect tools/shader_reflect.cpp)
-target_link_libraries(flop_shader_reflect PRIVATE spirv-cross-core)
+add_executable(flop_spirv_reflect tools/spirv_reflect.cpp)
+target_link_libraries(flop_spirv_reflect PRIVATE spirv-cross-core)
+if(CMAKE_HOST_WIN32 AND WIN32)
+  add_executable(flop_dxil_reflect tools/dxil_reflect.cpp)
+  target_include_directories(flop_dxil_reflect SYSTEM PRIVATE "${flop_dxc_SOURCE_DIR}/inc")
+endif()
 if(BUILD_TESTING)
   add_test(NAME shader_reflection_fixtures
-    COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_shader_reflect>"
+    COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_spirv_reflect>"
       "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
       "-DEMBED=${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shaders.cmake"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/reflection_test.cmake")
   set_tests_properties(shader_reflection_fixtures PROPERTIES LABELS "app;shader")
+  if(TARGET flop_dxil_reflect)
+    add_test(NAME dxil_reflection_fixture
+      COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_dxil_reflect>"
+        "-DDXCOMPILER=${flop_dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/dxil_reflection_test.cmake")
+    set_tests_properties(dxil_reflection_fixture PROPERTIES LABELS "app;shader")
+  endif()
 endif()
 set(shader_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
 file(MAKE_DIRECTORY "${shader_dir}")
@@ -101,10 +113,10 @@ function(flop_add_shader)
     endforeach()
     set(spirv_file "${shader_dir}/${SHADER_ID}.${stage}.spirv")
     add_custom_command(OUTPUT "${reflection}"
-      COMMAND "${CMAKE_COMMAND}" "-DREFLECT=$<TARGET_FILE:flop_shader_reflect>"
+      COMMAND "${CMAKE_COMMAND}" "-DREFLECT=$<TARGET_FILE:flop_spirv_reflect>"
         "-DSHADER=${spirv_file}" "-DOUTPUT=${reflection}" "-DID=${SHADER_ID}"
         "-DSTAGE=${stage}" "-DENTRY=${entry}" -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_shader.cmake"
-      DEPENDS "${spirv_file}" flop_shader_reflect "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_shader.cmake" VERBATIM)
+      DEPENDS "${spirv_file}" flop_spirv_reflect "${CMAKE_CURRENT_SOURCE_DIR}/cmake/reflect_shader.cmake" VERBATIM)
     set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_OUTPUTS "${reflection}")
   endforeach()
 endfunction()

@@ -44,7 +44,7 @@ std::string scalar_type(const spirv_cross::SPIRType &t) {
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    std::cerr << "usage: flop_shader_reflect <shader.spirv>\n";
+    std::cerr << "usage: flop_spirv_reflect <shader.spirv>\n";
     return 2;
   }
   try {
