@@ -26,6 +26,13 @@ endblock()
 
 
 if(FLOP_BUILD_GAME)
+    # stb_image is dual-licensed under MIT or public domain
+    # compile png support only.
+    FetchContent_Declare(stb
+        URL https://github.com/nothings/stb/archive/f0569113c93ad095470c54bf34a17b36646bbbb5.tar.gz
+        URL_HASH SHA256=4d05c96640ae3a8cbdafdad8d344b50ce610802f78aee80154acdb8e266282e0
+    )
+    FetchContent_MakeAvailable(stb)
     block()
         set(SDL_VIDEO ON)
         set(SDL_GPU ON)

@@ -100,9 +100,11 @@ if(FLOP_BUILD_GAME)
         src/flop/platform/input_mapper.cpp
         src/flop/platform/sdl_platform.cpp
         src/flop/render/renderer.cpp
+        src/flop/render/texture_cache.cpp
     )
 
     target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)
+    target_include_directories(flop SYSTEM PRIVATE "${stb_SOURCE_DIR}")
     include(cmake/shaders.cmake)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
     if(TARGET flop_dxil_reflect)

@@ -5,6 +5,8 @@
 
 #include <SDL3/SDL.h>
 #include "flop/render/shader_library.hpp"
+#include "flop/render/texture_cache.hpp"
+#include "flop/view/frame.hpp"
 #include "embedded.hpp"
 
 namespace flop::render {
@@ -83,7 +85,7 @@ SDL_GPUGraphicsPipeline *create_pipeline(SDL_GPUDevice *device, SDL_Window *wind
 }
 } // namespace
 
-Renderer::Renderer(SDL_Window *window) : window_(window) {
+Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : window_(window) {
   SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_INVALID;
   if (shaders::contains(shaders::manifest, "test_tri", "vertex", "spirv") &&
       shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv")) formats |= SDL_GPU_SHADERFORMAT_SPIRV;
@@ -108,7 +110,9 @@ Renderer::Renderer(SDL_Window *window) : window_(window) {
     if (shaders::contains(shaders::manifest, "craft/sprite", "vertex", "spirv") ||
         shaders::contains(shaders::manifest, "craft/sprite", "vertex", "dxil"))
       craft_pipeline_ = create_pipeline(device_, window_, "craft/sprite", true);
+    textures_ = std::make_unique<TextureCache>(device_, resolver);
   } catch (...) {
+    if (craft_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
     if (pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
     SDL_DestroyGPUDevice(device_);
@@ -120,6 +124,7 @@ Renderer::Renderer(SDL_Window *window) : window_(window) {
 Renderer::~Renderer() {
   if (device_) {
     SDL_WaitForGPUIdle(device_);
+    textures_.reset();
     if (craft_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
     SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
@@ -128,6 +133,8 @@ Renderer::~Renderer() {
 }
 
 void Renderer::present(const view::FrameDrawData &frame) {
+  for (const auto &sprite : frame.sprites)
+    (void)textures_->get_srgb(sprite.visual.sprite);
   SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(device_);
   if (!commands) {
     throw failure("SDL_AcquireGPUCommandBuffer");

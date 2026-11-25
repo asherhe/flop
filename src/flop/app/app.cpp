@@ -88,7 +88,7 @@ int App::run(int argc, char **argv) {
 
   std::optional<render::Renderer> renderer;
   try {
-    renderer.emplace(platform->window());
+    renderer.emplace(platform->window(), *resolver);
   } catch (const std::exception &error) {
     std::fprintf(stderr, "flop: GPU device setup failed: %s\n", error.what());
     return 1;
