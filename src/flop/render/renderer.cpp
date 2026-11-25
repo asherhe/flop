@@ -1,14 +1,16 @@
 #include "flop/render/renderer.hpp"
 
+#include <cstddef>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <cstddef>
 
 #include <SDL3/SDL.h>
+
 #include "flop/render/shader_library.hpp"
 #include "flop/render/texture_cache.hpp"
 #include "flop/view/frame.hpp"
+
 #include "embedded.hpp"
 
 namespace flop::render {
@@ -24,8 +26,9 @@ std::runtime_error failure(const char *operation) {
   return std::runtime_error(std::string(operation) + ": " + SDL_GetError());
 }
 
-SDL_GPUGraphicsPipeline *create_pipeline(SDL_GPUDevice *device, SDL_Window *window,
-                                         const char *id, bool blend) {
+SDL_GPUGraphicsPipeline *create_pipeline(
+    SDL_GPUDevice *device, SDL_Window *window, const char *id, bool blend
+) {
   const auto formats = SDL_GetGPUShaderFormats(device);
   const bool spirv = (formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0 &&
                      shaders::contains(shaders::manifest, id, "vertex", "spirv") &&
@@ -50,7 +53,8 @@ SDL_GPUGraphicsPipeline *create_pipeline(SDL_GPUDevice *device, SDL_Window *wind
   info.num_storage_buffers = vertex_entry.storage_buffers;
   info.num_uniform_buffers = vertex_entry.uniform_buffers;
   SDL_GPUShader *vertex = SDL_CreateGPUShader(device, &info);
-  if (!vertex) throw std::runtime_error(std::string(id) + " vertex shader: " + SDL_GetError());
+  if (!vertex)
+    throw std::runtime_error(std::string(id) + " vertex shader: " + SDL_GetError());
   info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
   info.entrypoint = fragment_entry.entrypoint.data();
   info.code = fragment_entry.code;
@@ -86,10 +90,13 @@ SDL_GPUGraphicsPipeline *create_pipeline(SDL_GPUDevice *device, SDL_Window *wind
   pipeline_info.target_info.color_target_descriptions = &target;
   pipeline_info.target_info.num_color_targets = 1;
   SDL_GPUGraphicsPipeline *pipeline = SDL_CreateGPUGraphicsPipeline(device, &pipeline_info);
-  const auto error = pipeline ? std::runtime_error("") : std::runtime_error(std::string(id) + " pipeline: " + SDL_GetError());
+  const auto error = pipeline
+                         ? std::runtime_error("")
+                         : std::runtime_error(std::string(id) + " pipeline: " + SDL_GetError());
   SDL_ReleaseGPUShader(device, fragment);
   SDL_ReleaseGPUShader(device, vertex);
-  if (!pipeline) throw error;
+  if (!pipeline)
+    throw error;
   return pipeline;
 }
 } // namespace
@@ -97,9 +104,11 @@ SDL_GPUGraphicsPipeline *create_pipeline(SDL_GPUDevice *device, SDL_Window *wind
 Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : window_(window) {
   SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_INVALID;
   if (shaders::contains(shaders::manifest, "test_tri", "vertex", "spirv") &&
-      shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv")) formats |= SDL_GPU_SHADERFORMAT_SPIRV;
+      shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv"))
+    formats |= SDL_GPU_SHADERFORMAT_SPIRV;
   if (shaders::contains(shaders::manifest, "test_tri", "vertex", "dxil") &&
-      shaders::contains(shaders::manifest, "test_tri", "fragment", "dxil")) formats |= SDL_GPU_SHADERFORMAT_DXIL;
+      shaders::contains(shaders::manifest, "test_tri", "fragment", "dxil"))
+    formats |= SDL_GPU_SHADERFORMAT_DXIL;
   if (formats == SDL_GPU_SHADERFORMAT_INVALID) {
     throw std::runtime_error("test_tri shader: no complete packaged shader variant");
   }
@@ -115,6 +124,13 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
   }
   SDL_Log("GPU backend: %s", SDL_GetGPUDeviceDriver(device_));
   try {
+    // Sampled sRGB textures yield linear RGB. An sRGB swapchain encodes the
+    // blended linear result for display; SDL's default SDR swapchain does not.
+    if (!SDL_SetGPUSwapchainParameters(
+            device_, window_, SDL_GPU_SWAPCHAINCOMPOSITION_SDR_LINEAR, SDL_GPU_PRESENTMODE_VSYNC
+        )) {
+      throw failure("SDL_SetGPUSwapchainParameters (linear SDR)");
+    }
     pipeline_ = create_pipeline(device_, window_, "test_tri", false);
     if (shaders::contains(shaders::manifest, "craft/sprite", "vertex", "spirv") ||
         shaders::contains(shaders::manifest, "craft/sprite", "vertex", "dxil")) {
@@ -127,13 +143,17 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       sampler.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
       sampler.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
       sprite_sampler_ = SDL_CreateGPUSampler(device_, &sampler);
-      if (!sprite_sampler_) throw failure("SDL_CreateGPUSampler");
+      if (!sprite_sampler_)
+        throw failure("SDL_CreateGPUSampler");
     }
     textures_ = std::make_unique<TextureCache>(device_, resolver);
   } catch (...) {
-    if (sprite_sampler_) SDL_ReleaseGPUSampler(device_, sprite_sampler_);
-    if (craft_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
-    if (pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
+    if (sprite_sampler_)
+      SDL_ReleaseGPUSampler(device_, sprite_sampler_);
+    if (craft_pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
+    if (pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
     SDL_DestroyGPUDevice(device_);
     device_ = nullptr;
@@ -145,8 +165,10 @@ Renderer::~Renderer() {
   if (device_) {
     SDL_WaitForGPUIdle(device_);
     textures_.reset();
-    if (sprite_sampler_) SDL_ReleaseGPUSampler(device_, sprite_sampler_);
-    if (craft_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
+    if (sprite_sampler_)
+      SDL_ReleaseGPUSampler(device_, sprite_sampler_);
+    if (craft_pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
     SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
     SDL_DestroyGPUDevice(device_);
@@ -186,11 +208,15 @@ void Renderer::present(const view::FrameDrawData &frame) {
       for (std::size_t i = 0; i < frame.sprites.size(); ++i) {
         const auto &corners = frame.sprites[i].corners_pixels;
         const SpriteGeometry geometry{
-            corners[0].x, corners[0].y,
-            corners[1].x - corners[0].x, corners[1].y - corners[0].y,
-            corners[3].x - corners[0].x, corners[3].y - corners[0].y,
+            corners[0].x,
+            corners[0].y,
+            corners[1].x - corners[0].x,
+            corners[1].y - corners[0].y,
+            corners[3].x - corners[0].x,
+            corners[3].y - corners[0].y,
             static_cast<float>(frame.camera.viewport_width),
-            static_cast<float>(frame.camera.viewport_height)};
+            static_cast<float>(frame.camera.viewport_height)
+        };
         SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
         SDL_GPUTextureSamplerBinding binding{sprite_textures[i], sprite_sampler_};
         SDL_BindGPUFragmentSamplers(pass, 0, &binding, 1);
