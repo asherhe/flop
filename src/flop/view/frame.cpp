@@ -103,6 +103,19 @@ FrameDrawData CameraState::build_frame(
               angle + part.angle_rad,
               sprite->config(),
           });
+          const auto &visual = sprite->config();
+          const auto size = visual.size_meters;
+          const auto pivot = visual.pivot;
+          const double sprite_angle = angle + part.angle_rad;
+          const std::array<Vec2d, 4> corners{{
+              {-pivot.x * size.x, -pivot.y * size.y},
+              {(1.0 - pivot.x) * size.x, -pivot.y * size.y},
+              {(1.0 - pivot.x) * size.x, (1.0 - pivot.y) * size.y},
+              {-pivot.x * size.x, (1.0 - pivot.y) * size.y},
+          }};
+          for (std::size_t i = 0; i < corners.size(); ++i)
+            result.sprites.back().corners_pixels[i] =
+                project(pos + corners[i].rotate(sprite_angle), camera);
         } else if (
             const auto *light = dynamic_cast<const craft::plugin::LightPlugin *>(plugin.get())
         ) {

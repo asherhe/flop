@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -51,6 +52,8 @@ struct SpriteDraw {
   PointF center_pixels;
   double angle_rad{};
   craft::plugin::SpriteConfig visual;
+  // lower-left, lower-right, upper-right, upper-left in sprite-local coordinates
+  std::array<PointF, 4> corners_pixels{};
 };
 struct LightDraw {
   world::CraftId craft;

@@ -34,10 +34,12 @@ TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   using namespace flop;
   world::Universe world({{"Root", 3e6, 9.8, 86400, {}}});
   craft::plugin::SpriteConfig sprite{"sprite.png", {}};
+  sprite.size_meters = {2, 4};
+  sprite.pivot = {0, 0};
   craft::plugin::LightConfig light{{1, 0}, "white", 1, 1, 2, 1};
   craft::CraftConfig config{"Test", craft::CraftOrbitState{"Root", {{1e11, 0}, {0, 1}}, 0},
       {0, 0}, {{"Pod", "a", "A", {0, 0}, 0, {}, {{"Sprite", true, sprite}, {"Light", true, light}}},
-               {"Pod", "b", "B", {2, 0}, 0, {}, {{"Sprite", true, sprite}}}}, true};
+               {"Pod", "b", "B", {2, 0}, 1.5707963267948966, {}, {{"Sprite", true, sprite}}}}, true};
   const auto id = world.add_craft(config, {{"Pod", "Pod", 1, true, {}}});
   view::CameraState camera;
   camera.focus = id;
@@ -45,5 +47,13 @@ TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   REQUIRE(frame.sprites.size() == 2);
   REQUIRE(frame.lights.size() == 1);
   CHECK(frame.sprites[1].center_pixels.x - frame.sprites[0].center_pixels.x == Catch::Approx(100));
+  const auto &corners = frame.sprites[0].corners_pixels;
+  CHECK(corners[0].x == Catch::Approx(frame.sprites[0].center_pixels.x));
+  CHECK(corners[0].y == Catch::Approx(frame.sprites[0].center_pixels.y));
+  CHECK(corners[1].x - corners[0].x == Catch::Approx(100));
+  CHECK(corners[3].y - corners[0].y == Catch::Approx(-200));
+  const auto &rotated = frame.sprites[1].corners_pixels;
+  CHECK(rotated[1].x - rotated[0].x == Catch::Approx(0).margin(0.001));
+  CHECK(rotated[1].y - rotated[0].y == Catch::Approx(-100));
   CHECK(frame.lights[0].camera_relative_meters.x == Catch::Approx(0));
 }
