@@ -34,7 +34,8 @@ CraftSpriteBindings resolve_craft_sprite_bindings(const MaterialRecipe &recipe,
     unsigned matched = 0;
     for (const auto &input : recipe.inputs) {
       if (input.name == "albedo" && input.stage == ShaderStage::fragment &&
-          input.type == MaterialInputType::texture_2d && input.source == MaterialInputSource::authored) {
+          input.type == MaterialInputType::texture_2d && input.source == MaterialInputSource::authored &&
+          input.auto_input == AutoInput::none) {
         const auto textures = vertex.format == "dxil" ? f["resources"] : f["textures"];
         unsigned count = 0;
         for (const auto &texture : textures) {
@@ -48,7 +49,9 @@ CraftSpriteBindings resolve_craft_sprite_bindings(const MaterialRecipe &recipe,
         matched |= 1;
       } else if ((input.name == "origin_and_x_axis" || input.name == "y_axis_and_viewport") &&
                  input.stage == ShaderStage::vertex && input.type == MaterialInputType::float4 &&
-                 input.source == MaterialInputSource::renderer) {
+                 input.source == MaterialInputSource::renderer &&
+                 ((input.name == "origin_and_x_axis" && input.auto_input == AutoInput::sprite_projected_origin_and_x_axis) ||
+                  (input.name == "y_axis_and_viewport" && input.auto_input == AutoInput::sprite_projected_y_axis_and_viewport))) {
         unsigned count = 0;
         for (const auto &member : members) {
           if (member["name"].as<std::string>() != input.name) continue;

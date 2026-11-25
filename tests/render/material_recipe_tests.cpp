@@ -12,6 +12,10 @@ TEST_CASE("Craft recipe resolves reflected bindings and rejects incompatible inp
   const auto bindings = resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment);
   CHECK(bindings.uniform_slot == 2);
   CHECK(bindings.texture_slot == 3);
+  auto bad_inputs = craft_sprite_inputs;
+  bad_inputs[1].auto_input = AutoInput::sprite_projected_y_axis_and_viewport;
+  const MaterialRecipe bad_recipe{"craft/sprite", bad_inputs};
+  CHECK_THROWS_AS(resolve_craft_sprite_bindings(bad_recipe, vertex, fragment), std::runtime_error);
   fragment.reflection_json = R"({"stage":"fragment","textures":[]})";
   CHECK_THROWS_AS(resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment), std::runtime_error);
   fragment.reflection_json = fragment_json;

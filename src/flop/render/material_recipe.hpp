@@ -14,12 +14,29 @@ namespace flop::render {
 enum class MaterialInputSource : std::uint8_t { authored, renderer };
 enum class MaterialInputType : std::uint8_t { texture_2d, float4 };
 enum class ShaderStage : std::uint8_t { vertex, fragment };
+// per-draw float4 values in drawable pixels: origin and x axis, then y axis
+// and viewport size. sprite corners are relative to the upper-left of the viewport.
+enum class AutoInput : std::uint8_t {
+  none,
+  sprite_projected_origin_and_x_axis,
+  sprite_projected_y_axis_and_viewport,
+};
+
+constexpr std::string_view auto_input_name(AutoInput input) {
+  switch (input) {
+  case AutoInput::none: return {};
+  case AutoInput::sprite_projected_origin_and_x_axis: return "sprite.projected_origin_and_x_axis";
+  case AutoInput::sprite_projected_y_axis_and_viewport: return "sprite.projected_y_axis_and_viewport";
+  }
+  return {};
+}
 
 struct MaterialInput {
   std::string_view name;
   ShaderStage stage;
   MaterialInputType type;
   MaterialInputSource source;
+  AutoInput auto_input{AutoInput::none};
 };
 
 struct MaterialRecipe {
@@ -40,13 +57,15 @@ inline constexpr std::array craft_sprite_inputs{
         "origin_and_x_axis",
         ShaderStage::vertex,
         MaterialInputType::float4,
-        MaterialInputSource::renderer
+        MaterialInputSource::renderer,
+        AutoInput::sprite_projected_origin_and_x_axis
     },
     MaterialInput{
         "y_axis_and_viewport",
         ShaderStage::vertex,
         MaterialInputType::float4,
-        MaterialInputSource::renderer
+        MaterialInputSource::renderer,
+        AutoInput::sprite_projected_y_axis_and_viewport
     },
 };
 inline constexpr MaterialRecipe craft_sprite_recipe{"craft/sprite", craft_sprite_inputs};
