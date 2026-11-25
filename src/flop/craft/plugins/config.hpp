@@ -40,11 +40,20 @@ struct MaterialConfig {
   std::map<std::string, MaterialPropertyConfig> properties;
 };
 
+struct AssetSource {
+  std::string address;
+  std::string key;
+  int line{-1};
+  int column{-1};
+};
+
 struct SpriteMaterialConfig {
   std::string shader;
   // retained for a future lit shader, not yet sampled by craft/sprite
   std::string normal_map;
   std::string emission_map;
+  AssetSource normal_map_source;
+  AssetSource emission_map_source;
 };
 
 struct SpriteConfig {
@@ -53,6 +62,7 @@ struct SpriteConfig {
   Vec2d size_meters{};
   // normalized sprite pivot, from lower-left corner
   Vec2d pivot{0.5, 0.5};
+  AssetSource sprite_source;
 };
 
 struct LightConfig {

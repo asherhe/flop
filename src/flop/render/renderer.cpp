@@ -185,7 +185,12 @@ void Renderer::present(const view::FrameDrawData &frame) {
   for (const auto &sprite : frame.sprites) {
     if (sprite.visual.material.shader != craft_sprite_recipe.shader)
       throw std::runtime_error("unsupported sprite shader '" + sprite.visual.material.shader + "'");
-    sprite_textures.push_back(textures_->get_srgb(sprite.visual.sprite));
+    try {
+      sprite_textures.push_back(textures_->get_srgb(sprite.visual.sprite));
+    } catch (const std::exception &error) {
+      const auto &source = sprite.visual.sprite_source;
+      throw std::runtime_error(source.address + ": " + source.key + ": " + error.what());
+    }
   }
   SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(device_);
   if (!commands) {

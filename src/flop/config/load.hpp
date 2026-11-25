@@ -45,6 +45,7 @@ public:
   ConfigView(YAML::Node node, std::string source_address, std::string key_path = {});
 
   [[nodiscard]] YAML::NodeType::value type() const noexcept { return node_.Type(); }
+  [[nodiscard]] const std::string &source_address() const noexcept { return source_address_; }
   [[nodiscard]] YAML::Mark mark() const noexcept { return node_.Mark(); }
   [[nodiscard]] const std::string &key_path() const noexcept { return key_path_; }
 

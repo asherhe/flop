@@ -75,6 +75,10 @@ inline Vec2d decode_vec(const ConfigView &field) {
   return {field.required("x").as<double>(), field.required("y").as<double>()};
 }
 
+inline craft::plugin::AssetSource asset_source(const ConfigView &field) {
+  return {field.source_address(), field.key_path(), field.mark().line, field.mark().column};
+}
+
 inline craft::plugin::SpriteMaterialConfig decode_material(const ConfigView &value) {
   craft::plugin::SpriteMaterialConfig result;
   MapReader reader(value, PluginReadMode::create);
@@ -87,13 +91,21 @@ inline craft::plugin::SpriteMaterialConfig decode_material(const ConfigView &val
   reader.assign("properties", properties, [](const ConfigView &field) {
     craft::plugin::SpriteMaterialConfig properties;
     MapReader property_reader(field, PluginReadMode::create);
-    property_reader.assign("normal_map", properties.normal_map, &ConfigView::nonempty_string);
-    property_reader.assign("emission_map", properties.emission_map, &ConfigView::nonempty_string);
+    property_reader.assign("normal_map", properties.normal_map, [&](const ConfigView &value) {
+      properties.normal_map_source = asset_source(value);
+      return value.asset_path().address();
+    });
+    property_reader.assign("emission_map", properties.emission_map, [&](const ConfigView &value) {
+      properties.emission_map_source = asset_source(value);
+      return value.asset_path().address();
+    });
     property_reader.finish();
     return properties;
   });
   result.normal_map = std::move(properties.normal_map);
   result.emission_map = std::move(properties.emission_map);
+  result.normal_map_source = std::move(properties.normal_map_source);
+  result.emission_map_source = std::move(properties.emission_map_source);
   reader.finish();
   return result;
 }
@@ -139,7 +151,10 @@ inline void apply_fields(craft::plugin::ResourceConfig &container, MapReader &re
 }
 
 inline void apply_fields(craft::plugin::SpriteConfig &sprite, MapReader &reader) {
-  reader.assign("sprite", sprite.sprite, &ConfigView::nonempty_string, PluginRequired::on_create);
+  reader.assign("sprite", sprite.sprite, [&](const ConfigView &field) {
+    sprite.sprite_source = asset_source(field);
+    return field.asset_path().address();
+  }, PluginRequired::on_create);
   reader.assign("material", sprite.material, decode_material, PluginRequired::on_create);
   reader.assign("size_meters", sprite.size_meters, [](const ConfigView &field) {
     return Vec2d{field.required("x").positive_double(), field.required("y").positive_double()};

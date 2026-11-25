@@ -75,14 +75,17 @@ TEST_CASE("Visual plugin overrides update their own config types") {
   auto light =
       *std::ranges::find(pod.plugins, "LightPlugin", &flop::craft::plugin::PartPluginConfig::name);
   flop::config::apply_part_plugin_fields(
-      sprite, ConfigView(YAML::Load("sprite: replacement.png"), "assets/spacecraft/test.yaml")
+      sprite, ConfigView(YAML::Load("sprite: assets/replacement.png"), "assets/spacecraft/test.yaml")
   );
   flop::config::apply_part_plugin_fields(
       light, ConfigView(YAML::Load("intensity: 2"), "assets/spacecraft/test.yaml")
   );
   CHECK(
-      std::get<flop::craft::plugin::SpriteConfig>(sprite.values).sprite == "replacement.png"
+      std::get<flop::craft::plugin::SpriteConfig>(sprite.values).sprite == "assets/replacement.png"
   );
+  CHECK(std::get<flop::craft::plugin::SpriteConfig>(sprite.values).sprite_source.address ==
+        "assets/spacecraft/test.yaml");
+  CHECK(std::get<flop::craft::plugin::SpriteConfig>(sprite.values).sprite_source.key == "sprite");
   CHECK(
       std::get<flop::craft::plugin::SpriteConfig>(sprite.values).material.shader ==
       "craft/sprite"

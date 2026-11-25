@@ -84,6 +84,27 @@ inline void resolve_craft_plugins(
   root.validate_unique_keys();
   auto result = ConfigDecoder<craft::CraftConfig>::decode(root);
   resolve_craft_plugins(result, root, part_types);
+  for (const auto &part : result.parts) {
+    for (const auto &plugin : part.plugins) {
+      const auto *sprite = std::get_if<craft::plugin::SpriteConfig>(&plugin.values);
+      if (!sprite) continue;
+      const auto validate = [&](const std::string &address, const craft::plugin::AssetSource &source) {
+        if (address.empty()) return;
+        try {
+          static_cast<void>(resolver.resolve(AssetPath(address)));
+        } catch (const std::exception &error) {
+          YAML::Mark mark;
+          mark.pos = source.line < 0 ? -1 : 0;
+          mark.line = source.line;
+          mark.column = source.column;
+          throw ConfigError(source.address, source.key, mark, error.what());
+        }
+      };
+      validate(sprite->sprite, sprite->sprite_source);
+      validate(sprite->material.normal_map, sprite->material.normal_map_source);
+      validate(sprite->material.emission_map, sprite->material.emission_map_source);
+    }
+  }
   return result;
 }
 
