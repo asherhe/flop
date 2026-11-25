@@ -106,8 +106,23 @@ if(FLOP_BUILD_GAME)
         src/flop/render/texture_cache.cpp
     )
 
+    set_target_properties(flop PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
+    )
+
     target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)
     target_include_directories(flop SYSTEM PRIVATE "${stb_SOURCE_DIR}")
+
+    # copy assets alongside executable
+    add_custom_target(flop_assets
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+            "$<TARGET_FILE_DIR:flop>/assets"
+        COMMENT "Copying runtime assets"
+        VERBATIM
+    )
+    add_dependencies(flop flop_assets)
+
     include(cmake/shaders.cmake)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
     flop_add_shader(ID craft/sprite SOURCE craft/sprite.hlsl)
@@ -116,12 +131,38 @@ if(FLOP_BUILD_GAME)
 
     # package SDL3.dll alongside flop.exe on Windows.
     if(WIN32)
-        add_custom_command(TARGET flop POST_BUILD
+        add_custom_target(flop_sdl_runtime
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different
                 "$<TARGET_FILE:SDL3::SDL3-shared>"
                 "$<TARGET_FILE_DIR:flop>"
+            DEPENDS SDL3::SDL3-shared
+            COMMENT "Copying SDL runtime DLL"
             VERBATIM
         )
+        add_dependencies(flop flop_sdl_runtime)
+    endif()
+
+    if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        set(flop_gcc_runtime_dlls)
+        get_filename_component(flop_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        foreach(dll IN ITEMS libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll)
+            unset(dll_path CACHE)
+            find_file(dll_path NAMES "${dll}"
+                HINTS "${flop_compiler_dir}" ${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}
+                NO_DEFAULT_PATH
+            )
+            if(NOT dll_path)
+                message(FATAL_ERROR "Could not locate MinGW runtime ${dll} near ${CMAKE_CXX_COMPILER}")
+            endif()
+            list(APPEND flop_gcc_runtime_dlls "${dll_path}")
+        endforeach()
+        add_custom_target(flop_gcc_runtime
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                ${flop_gcc_runtime_dlls} "$<TARGET_FILE_DIR:flop>"
+            COMMENT "Copying MinGW runtime DLLs"
+            VERBATIM
+        )
+        add_dependencies(flop flop_gcc_runtime)
     endif()
 endif()
 
