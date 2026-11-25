@@ -5,6 +5,8 @@
 #include <span>
 #include <string_view>
 
+#include "flop/render/shader_library.hpp"
+
 namespace flop::render {
 
 // describes shader inputs separately from the serialized material format
@@ -48,5 +50,17 @@ inline constexpr std::array craft_sprite_inputs{
     },
 };
 inline constexpr MaterialRecipe craft_sprite_recipe{"craft/sprite", craft_sprite_inputs};
+
+struct CraftSpriteBindings {
+  unsigned texture_slot;
+  unsigned uniform_slot;
+  unsigned origin_offset;
+  unsigned viewport_offset;
+  unsigned uniform_size;
+};
+
+CraftSpriteBindings resolve_craft_sprite_bindings(const MaterialRecipe &recipe,
+                                                  const shaders::Entry &vertex,
+                                                  const shaders::Entry &fragment);
 
 } // namespace flop::render

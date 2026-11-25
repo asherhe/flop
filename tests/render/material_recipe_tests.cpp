@@ -1,0 +1,30 @@
+#include <catch2/catch_test_macros.hpp>
+
+#include "flop/render/material_recipe.hpp"
+
+using namespace flop::render;
+
+TEST_CASE("Craft recipe resolves reflected bindings and rejects incompatible inputs") {
+  const char *vertex_json = R"({"stage":"vertex","uniform_buffers":[{"binding":2,"size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})";
+  const char *fragment_json = R"({"stage":"fragment","textures":[{"name":"albedo","binding":3}]})";
+  shaders::Entry vertex{"craft/sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1, vertex_json};
+  shaders::Entry fragment{"craft/sprite", "fragment", "spirv", "fragment", nullptr, 0, 1, 0, 0, 0, fragment_json};
+  const auto bindings = resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment);
+  CHECK(bindings.uniform_slot == 2);
+  CHECK(bindings.texture_slot == 3);
+  fragment.reflection_json = R"({"stage":"fragment","textures":[]})";
+  CHECK_THROWS_AS(resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment), std::runtime_error);
+  fragment.reflection_json = fragment_json;
+  vertex.reflection_json = R"({"stage":"vertex","uniform_buffers":[{"binding":0,"size":16,"members":[]}]})";
+  CHECK_THROWS_AS(resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment), std::runtime_error);
+}
+
+TEST_CASE("Craft recipe resolves DXIL resource bindings") {
+  shaders::Entry vertex{"craft/sprite", "vertex", "dxil", "vertex", nullptr, 0, 0, 0, 0, 1,
+    R"({"stage":"vertex","resources":[{"name":"SpriteGeometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"SpriteGeometry","size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})"};
+  shaders::Entry fragment{"craft/sprite", "fragment", "dxil", "fragment", nullptr, 0, 1, 0, 0, 0,
+    R"({"stage":"fragment","resources":[{"name":"albedo_sampler","type":"sampler","binding":0},{"name":"albedo","type":"texture","binding":0}]})"};
+  const auto bindings = resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment);
+  CHECK(bindings.uniform_slot == 0);
+  CHECK(bindings.texture_slot == 0);
+}

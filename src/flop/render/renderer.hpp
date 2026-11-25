@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include "flop/render/material_recipe.hpp"
 
 struct SDL_GPUDevice;
 struct SDL_GPUGraphicsPipeline;
@@ -30,6 +31,7 @@ private:
   SDL_GPUGraphicsPipeline *pipeline_{};
   SDL_GPUGraphicsPipeline *craft_pipeline_{};
   SDL_GPUSampler *sprite_sampler_{};
+  CraftSpriteBindings craft_bindings_{};
   std::unique_ptr<TextureCache> textures_;
 };
 

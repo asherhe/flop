@@ -28,7 +28,8 @@ std::runtime_error failure(const char *operation) {
 }
 
 SDL_GPUGraphicsPipeline *create_pipeline(
-    SDL_GPUDevice *device, SDL_Window *window, const char *id, bool blend
+    SDL_GPUDevice *device, SDL_Window *window, const char *id, bool blend,
+    CraftSpriteBindings *bindings = nullptr
 ) {
   const auto formats = SDL_GetGPUShaderFormats(device);
   const bool spirv = (formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0 &&
@@ -43,6 +44,8 @@ SDL_GPUGraphicsPipeline *create_pipeline(
   const auto format = spirv ? "spirv" : "dxil";
   const auto &vertex_entry = shaders::find(shaders::manifest, id, "vertex", format);
   const auto &fragment_entry = shaders::find(shaders::manifest, id, "fragment", format);
+  if (bindings)
+    *bindings = resolve_craft_sprite_bindings(craft_sprite_recipe, vertex_entry, fragment_entry);
   SDL_GPUShaderCreateInfo info{};
   info.format = spirv ? SDL_GPU_SHADERFORMAT_SPIRV : SDL_GPU_SHADERFORMAT_DXIL;
   info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
@@ -135,7 +138,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     pipeline_ = create_pipeline(device_, window_, "test_tri", false);
     if (shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "spirv") ||
         shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "dxil")) {
-      craft_pipeline_ = create_pipeline(device_, window_, craft_sprite_recipe.shader.data(), true);
+      craft_pipeline_ = create_pipeline(device_, window_, craft_sprite_recipe.shader.data(), true, &craft_bindings_);
       SDL_GPUSamplerCreateInfo sampler{};
       sampler.min_filter = SDL_GPU_FILTER_NEAREST;
       sampler.mag_filter = SDL_GPU_FILTER_NEAREST;
@@ -218,9 +221,9 @@ void Renderer::present(const view::FrameDrawData &frame) {
             static_cast<float>(frame.camera.viewport_width),
             static_cast<float>(frame.camera.viewport_height)
         };
-        SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
+        SDL_PushGPUVertexUniformData(commands, craft_bindings_.uniform_slot, &geometry, sizeof(geometry));
         SDL_GPUTextureSamplerBinding binding{sprite_textures[i], sprite_sampler_};
-        SDL_BindGPUFragmentSamplers(pass, 0, &binding, 1);
+        SDL_BindGPUFragmentSamplers(pass, craft_bindings_.texture_slot, &binding, 1);
         SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
       }
     } else if (!craft_pipeline_) {

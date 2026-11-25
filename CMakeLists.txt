@@ -72,6 +72,7 @@ if(BUILD_TESTING)
     catch_discover_tests(flop_core_tests PROPERTIES LABELS core)
 
     add_executable(flop_app_tests
+        src/flop/render/material_recipe.cpp
         tests/app/game_scene_tests.cpp
         tests/app/frame_tests.cpp
         tests/app/tick_scheduler_tests.cpp
@@ -84,6 +85,7 @@ if(BUILD_TESTING)
         tests/config/save_decode_tests.cpp
         tests/config/config_tests.cpp
         tests/render/shader_library_tests.cpp
+        tests/render/material_recipe_tests.cpp
     )
     target_link_libraries(flop_app_tests PRIVATE flop_core Catch2::Catch2WithMain)
     target_include_directories(flop_app_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
@@ -94,6 +96,7 @@ endif()
 
 if(FLOP_BUILD_GAME)
     add_executable(flop
+        src/flop/render/material_recipe.cpp
         src/flop/app/app.cpp
         src/flop/app/main.cpp
         src/flop/input/pilot_control.cpp
