@@ -46,6 +46,8 @@ TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   const auto frame = camera.build_frame(world, {{"Root", "white", {}, {}, {}}});
   REQUIRE(frame.sprites.size() == 2);
   REQUIRE(frame.lights.size() == 1);
+  CHECK(frame.sprites[0].sun.color[0] == 0.0f); // no body named Sun
+  CHECK(frame.sprites[0].sun.direction[2] == 1.0f);
   CHECK(frame.sprites[1].center_pixels.x - frame.sprites[0].center_pixels.x == Catch::Approx(100));
   const auto &corners = frame.sprites[0].corners_pixels;
   CHECK(corners[0].x == Catch::Approx(frame.sprites[0].center_pixels.x));
@@ -56,4 +58,36 @@ TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   CHECK(rotated[1].x - rotated[0].x == Catch::Approx(0).margin(0.001));
   CHECK(rotated[1].y - rotated[0].y == Catch::Approx(-100));
   CHECK(frame.lights[0].camera_relative_meters.x == Catch::Approx(0));
+}
+
+TEST_CASE("Sprite sunlight is local to each part and independent of the camera") {
+  using namespace flop;
+  world::Universe world({{"Sun", 3e6, 9.8, 86400, {}}});
+  craft::plugin::SpriteConfig sprite{"sprite.png", {}};
+  sprite.size_meters = {2, 2};
+  sprite.pivot = {0.5, 0.5};
+  craft::CraftConfig config{"Test", craft::CraftOrbitState{"Sun", {{9.2e10, 0}, {0, 1}}, 0},
+      {0, 0}, {{"Pod", "a", "A", {0, 0}, 0, {}, {{"Sprite", true, sprite}}},
+               {"Pod", "b", "B", {2, 0}, 1.5707963267948966, {}, {{"Sprite", true, sprite}}}}, true};
+  const auto id = world.add_craft(config, {{"Pod", "Pod", 1, true, {}}});
+  view::CameraState camera;
+  camera.focus = id;
+  const auto frame = camera.build_frame(world, {{"Sun", "white", {}, {}, {}}});
+  REQUIRE(frame.sprites.size() == 2);
+  const auto &a = frame.sprites[0].sun;
+  const auto &b = frame.sprites[1].sun;
+  CHECK(a.color[0] == Catch::Approx(8.5e21 / (9.2e10 * 9.2e10)).epsilon(1e-5));
+  CHECK(a.color[1] == a.color[0]);
+  CHECK(a.color[2] == a.color[0]);
+  CHECK(a.color[3] == 0.0f);
+  CHECK(a.direction[0] == Catch::Approx(-1.0).epsilon(1e-5));
+  CHECK(a.direction[1] == Catch::Approx(0).margin(1e-6));
+  CHECK(b.direction[0] == Catch::Approx(0).margin(1e-6));
+  CHECK(b.direction[1] == Catch::Approx(-a.direction[0]).epsilon(1e-5));
+  CHECK(b.direction[2] == Catch::Approx(a.direction[2]));
+  camera.pan_meters = {12345, -6789};
+  camera.pixels_per_meter = 2;
+  const auto moved = camera.build_frame(world, {{"Sun", "white", {}, {}, {}}});
+  CHECK(moved.sprites[0].sun.direction == a.direction);
+  CHECK(moved.sprites[0].sun.color == a.color);
 }

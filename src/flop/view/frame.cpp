@@ -35,6 +35,43 @@ PointF project(Vec2d relative, const CameraState &camera) {
       static_cast<float>(camera.viewport_height * 0.5 - relative.y * camera.pixels_per_meter),
   };
 }
+
+// placeholder until body occlusion is implemented
+float sun_visibility() {
+  return 1.0f;
+}
+
+SpriteSunlight sprite_sunlight(Vec2d to_sun, double sprite_angle) {
+  SpriteSunlight result;
+
+  const auto x = static_cast<float>(to_sun.x);
+  const auto y = static_cast<float>(to_sun.y);
+  const float distance = std::hypot(x, y);
+  if (!(distance > 0.0f) || !std::isfinite(distance))
+    return result;
+
+  const auto angle = static_cast<float>(sprite_angle);
+  if (!std::isfinite(angle))
+    return result;
+  const float c = std::cos(angle), s = std::sin(angle);
+  const float world_x = x / distance, world_y = y / distance;
+
+  result.direction = {
+      c * world_x + s * world_y,
+      -s * world_x + c * world_y,
+      0,
+      0
+  };
+
+  // dividing before squaring avoids overflowing float at ordinary orbital distances
+  constexpr float reference_distance = 9.219544e10f; // sqrt(8.5e21) metres
+  const float ratio = reference_distance / distance;
+  const float intensity = ratio * ratio * sun_visibility();
+  if (!std::isfinite(intensity))
+    return SpriteSunlight{};
+  result.color = {intensity, intensity, intensity, 0};
+  return result;
+}
 } // namespace
 
 void CameraState::update(
@@ -50,18 +87,19 @@ void CameraState::update(
   const double sy = logical_height > 0 ? static_cast<double>(pixel_height) / logical_height : 1.0;
   pan_meters.x -= input.pan_x * sx / pixels_per_meter;
   pan_meters.y += input.pan_y * sy / pixels_per_meter;
-  pixels_per_meter =
-      std::clamp(pixels_per_meter * std::exp(input.zoom * 0.15), 1e-12, 1e12);
+  pixels_per_meter = std::clamp(pixels_per_meter * std::exp(input.zoom * 0.15), 1e-12, 1e12);
 }
 
 FrameDrawData CameraState::build_frame(
-    const world::Universe &universe,
-    const std::vector<config::BodyVisualConfig> &visuals
+    const world::Universe &universe, const std::vector<config::BodyVisualConfig> &visuals
 ) const {
   const CameraState &camera = *this;
   FrameDrawData result;
   result.ut_sec = universe.ut_sec();
   result.camera = camera;
+  const auto sun = std::ranges::find_if(universe.bodies(), [](const auto &body) {
+    return body.name() == "Sun";
+  });
   const FramePosition focus = focus_position(universe, camera.focus, result.ut_sec);
   const auto relative = [&](orbit::FrameId frame, Vec2d position) {
     const Vec2d offset =
@@ -85,7 +123,16 @@ FrameDrawData CameraState::build_frame(
   }
   for (const auto id : universe.craft_ids()) {
     const auto &craft = universe.craft(id);
-    const Vec2d center = relative(craft.frame_id(), craft.state_at(result.ut_sec).position);
+    const Vec2d craft_position = craft.state_at(result.ut_sec).position;
+    const Vec2d center = relative(craft.frame_id(), craft_position);
+    Vec2d to_sun{};
+    if (sun != universe.bodies().end()) {
+      // subtract positions in double before the lighting calculation narrows to float
+      to_sun = universe.reference_frames()
+                   .offset(universe.frame_id("Sun"), craft.frame_id(), result.ut_sec)
+                   .position -
+               craft_position;
+    }
     const Vec2d com = craft.mass_properties().center_of_mass_meters;
     const double angle = craft.newtonian().angle_rad();
     for (const auto &part : craft.parts()) {
@@ -107,6 +154,7 @@ FrameDrawData CameraState::build_frame(
           const auto size = visual.size_meters;
           const auto pivot = visual.pivot;
           const double sprite_angle = angle + part.angle_rad;
+          result.sprites.back().sun = sprite_sunlight(to_sun, sprite_angle);
           const std::array<Vec2d, 4> corners{{
               {-pivot.x * size.x, -pivot.y * size.y},
               {(1.0 - pivot.x) * size.x, -pivot.y * size.y},
@@ -133,4 +181,3 @@ FrameDrawData CameraState::build_frame(
   return result;
 }
 } // namespace flop::view
-

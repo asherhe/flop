@@ -44,6 +44,13 @@ struct ViewState {
 struct PointF {
   float x{}, y{};
 };
+// direction points toward the sun in sprite-local xy with zero z
+// color is linear rgb with intensity included and the fourth component reserved as zero
+// zero color means unavailable sunlight and direction defaults to +z
+struct SpriteSunlight {
+  std::array<float, 4> direction{0, 0, 1, 0};
+  std::array<float, 4> color{};
+};
 struct SpriteDraw {
   world::CraftId craft;
   craft::PartId part;
@@ -54,6 +61,7 @@ struct SpriteDraw {
   craft::plugin::SpriteConfig visual;
   // lower-left, lower-right, upper-right, upper-left in sprite-local coordinates
   std::array<PointF, 4> corners_pixels{};
+  SpriteSunlight sun;
 };
 struct LightDraw {
   world::CraftId craft;
