@@ -105,6 +105,12 @@ if(FLOP_BUILD_GAME)
     target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)
     include(cmake/shaders.cmake)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
+    if(TARGET flop_dxil_reflect)
+      # HACK: only DirectX shaders for now
+        flop_add_shader(ID craft/sprite SOURCE craft/sprite.hlsl)
+    else()
+        message(STATUS "Craft sprite shader unavailable: DXIL reflection is not supported on this host")
+    endif()
     flop_embed_shaders(flop)
     add_subdirectory(tools/gpu_probe EXCLUDE_FROM_ALL)
 

@@ -23,6 +23,7 @@ private:
   SDL_Window *window_{};
   SDL_GPUDevice *device_{};
   SDL_GPUGraphicsPipeline *pipeline_{};
+  SDL_GPUGraphicsPipeline *craft_pipeline_{};
 };
 
 } // namespace flop::render
