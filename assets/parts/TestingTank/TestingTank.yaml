@@ -16,11 +16,9 @@ plugins:
     size_meters: { x: 2.0, y: 2.0 }
     pivot: { x: 0.5, y: 0.5 }
     material:
-      path: assets/shared/materials/part.mat
+      shader: craft/sprite
       properties:
-        _NormalMap:
-          type: Texture2D
-          value: assets/parts/TestingTank/TestingTank-Normal.png
+        normal_map: assets/parts/TestingTank/TestingTank-Normal.png
   ResourceContainerPlugin:
     max_amount:
       NTO: 3600

@@ -49,10 +49,9 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   CHECK(sprite_config.size_meters.y == 2.0);
   CHECK(sprite_config.pivot.x == 0.5);
   CHECK(sprite_config.pivot.y == 0.5);
-  CHECK(sprite_config.material.path == "assets/shared/materials/part.mat");
-  CHECK(sprite_config.material.properties.at("_EmissionTex").type == "Texture2D");
+  CHECK(sprite_config.material.shader == "craft/sprite");
   CHECK(
-      sprite_config.material.properties.at("_EmissionTex").value ==
+      sprite_config.material.emission_map ==
       "assets/parts/TestingCommandPod/TestingCommandPod-Light.png"
   );
   const auto light =
@@ -85,12 +84,22 @@ TEST_CASE("Visual plugin overrides update their own config types") {
       std::get<flop::craft::plugin::SpriteConfig>(sprite.values).sprite == "replacement.png"
   );
   CHECK(
-      std::get<flop::craft::plugin::SpriteConfig>(sprite.values).material.path ==
-      "assets/shared/materials/part.mat"
+      std::get<flop::craft::plugin::SpriteConfig>(sprite.values).material.shader ==
+      "craft/sprite"
   );
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).intensity == 2);
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).color == "#FFECB1");
   CHECK(std::get<flop::craft::plugin::SpriteConfig>(sprite.values).size_meters.y == 2.0);
+}
+
+TEST_CASE("Sprite materials reject unsupported shaders and properties") {
+  using flop::config::ConfigView;
+  CHECK_THROWS(flop::config::detail::decode_material(
+      ConfigView(YAML::Load("shader: craft/unknown"), "assets/parts/test.yaml")));
+  CHECK_THROWS(flop::config::detail::decode_material(
+      ConfigView(YAML::Load("shader: craft/sprite\nproperties: {unknown: value}"), "assets/parts/test.yaml")));
+  CHECK_THROWS(flop::config::detail::decode_material(
+      ConfigView(YAML::Load("shader: craft/sprite\nproperties: {normal_map: [a, b]}"), "assets/parts/test.yaml")));
 }
 
 TEST_CASE("Sprite geometry rejects invalid dimensions and pivots") {

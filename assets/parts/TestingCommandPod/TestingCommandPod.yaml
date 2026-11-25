@@ -16,14 +16,10 @@ plugins:
     size_meters: { x: 2.0, y: 2.0 }
     pivot: { x: 0.5, y: 0.5 }
     material:
-      path: assets/shared/materials/part.mat
+      shader: craft/sprite
       properties:
-        _NormalMap:
-          type: Texture2D
-          value: assets/parts/TestingCommandPod/TestingCommandPod-Normal.png
-        _EmissionTex:
-          type: Texture2D
-          value: assets/parts/TestingCommandPod/TestingCommandPod-Light.png
+        normal_map: assets/parts/TestingCommandPod/TestingCommandPod-Normal.png
+        emission_map: assets/parts/TestingCommandPod/TestingCommandPod-Light.png
   LightPlugin:
     light_position: { x: 0, y: -0.125 }
     color: "#FFECB1"

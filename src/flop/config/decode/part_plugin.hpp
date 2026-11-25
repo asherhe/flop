@@ -75,25 +75,25 @@ inline Vec2d decode_vec(const ConfigView &field) {
   return {field.required("x").as<double>(), field.required("y").as<double>()};
 }
 
-inline craft::plugin::MaterialPropertyConfig decode_material_property(const ConfigView &value) {
-  craft::plugin::MaterialPropertyConfig result;
+inline craft::plugin::SpriteMaterialConfig decode_material(const ConfigView &value) {
+  craft::plugin::SpriteMaterialConfig result;
   MapReader reader(value, PluginReadMode::create);
-  reader.assign("type", result.type, &ConfigView::nonempty_string, PluginRequired::on_create);
-  reader.assign("value", result.value, &ConfigView::nonempty_string, PluginRequired::on_create);
-  reader.finish();
-  return result;
-}
-
-inline craft::plugin::MaterialConfig decode_material(const ConfigView &value) {
-  craft::plugin::MaterialConfig result;
-  MapReader reader(value, PluginReadMode::create);
-  reader.assign("path", result.path, &ConfigView::nonempty_string, PluginRequired::on_create);
-  reader.assign("properties", result.properties, [](const ConfigView &field) {
-    std::map<std::string, craft::plugin::MaterialPropertyConfig> properties;
-    for (const auto &entry : field.entries())
-      properties.emplace(entry.key, decode_material_property(entry.value));
+  reader.assign("shader", result.shader, [](const ConfigView &field) {
+    auto id = field.nonempty_string();
+    if (id != "craft/sprite") field.fail(field.mark(), "Unknown sprite shader");
+    return id;
+  }, PluginRequired::on_create);
+  auto properties = result;
+  reader.assign("properties", properties, [](const ConfigView &field) {
+    craft::plugin::SpriteMaterialConfig properties;
+    MapReader property_reader(field, PluginReadMode::create);
+    property_reader.assign("normal_map", properties.normal_map, &ConfigView::nonempty_string);
+    property_reader.assign("emission_map", properties.emission_map, &ConfigView::nonempty_string);
+    property_reader.finish();
     return properties;
   });
+  result.normal_map = std::move(properties.normal_map);
+  result.emission_map = std::move(properties.emission_map);
   reader.finish();
   return result;
 }

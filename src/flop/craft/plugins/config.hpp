@@ -40,9 +40,16 @@ struct MaterialConfig {
   std::map<std::string, MaterialPropertyConfig> properties;
 };
 
+struct SpriteMaterialConfig {
+  std::string shader;
+  // retained for a future lit shader, not yet sampled by craft/sprite
+  std::string normal_map;
+  std::string emission_map;
+};
+
 struct SpriteConfig {
   std::string sprite;
-  MaterialConfig material;
+  SpriteMaterialConfig material;
   Vec2d size_meters{};
   // normalized sprite pivot, from lower-left corner
   Vec2d pivot{0.5, 0.5};

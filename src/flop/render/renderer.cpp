@@ -182,8 +182,11 @@ Renderer::~Renderer() {
 void Renderer::present(const view::FrameDrawData &frame) {
   std::vector<SDL_GPUTexture *> sprite_textures;
   sprite_textures.reserve(frame.sprites.size());
-  for (const auto &sprite : frame.sprites)
+  for (const auto &sprite : frame.sprites) {
+    if (sprite.visual.material.shader != craft_sprite_recipe.shader)
+      throw std::runtime_error("unsupported sprite shader '" + sprite.visual.material.shader + "'");
     sprite_textures.push_back(textures_->get_srgb(sprite.visual.sprite));
+  }
   SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(device_);
   if (!commands) {
     throw failure("SDL_AcquireGPUCommandBuffer");
