@@ -7,6 +7,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "flop/render/material_recipe.hpp"
 #include "flop/render/shader_library.hpp"
 #include "flop/render/texture_cache.hpp"
 #include "flop/view/frame.hpp"
@@ -132,9 +133,9 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       throw failure("SDL_SetGPUSwapchainParameters (linear SDR)");
     }
     pipeline_ = create_pipeline(device_, window_, "test_tri", false);
-    if (shaders::contains(shaders::manifest, "craft/sprite", "vertex", "spirv") ||
-        shaders::contains(shaders::manifest, "craft/sprite", "vertex", "dxil")) {
-      craft_pipeline_ = create_pipeline(device_, window_, "craft/sprite", true);
+    if (shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "spirv") ||
+        shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "dxil")) {
+      craft_pipeline_ = create_pipeline(device_, window_, craft_sprite_recipe.shader.data(), true);
       SDL_GPUSamplerCreateInfo sampler{};
       sampler.min_filter = SDL_GPU_FILTER_NEAREST;
       sampler.mag_filter = SDL_GPU_FILTER_NEAREST;
