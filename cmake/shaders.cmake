@@ -36,11 +36,21 @@ if(CMAKE_HOST_WIN32 AND WIN32)
   add_executable(flop_dxil_reflect tools/reflection/dxil_reflect.cpp)
   target_include_directories(flop_dxil_reflect SYSTEM PRIVATE "${flop_dxc_SOURCE_DIR}/inc")
 endif()
+# Only package formats with the reflection support required to validate them.
+if(WIN32 AND TARGET flop_dxil_reflect)
+  set(FLOP_SHADER_FORMATS spirv dxil)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(FLOP_SHADER_FORMATS spirv)
+else()
+  message(FATAL_ERROR "No validated shader format policy for ${CMAKE_SYSTEM_NAME}")
+endif()
+message(STATUS "Packaged shader formats: ${FLOP_SHADER_FORMATS}")
 if(BUILD_TESTING)
   add_test(NAME shader_reflection_fixtures
     COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_spirv_reflect>"
       "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
       "-DEMBED=${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shaders.cmake"
+      "-DTEST_DXIL=$<BOOL:$<TARGET_EXISTS:flop_dxil_reflect>>"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/reflection_test.cmake")
   set_tests_properties(shader_reflection_fixtures PROPERTIES LABELS "app;shader")
   if(TARGET flop_dxil_reflect)
@@ -104,7 +114,7 @@ function(flop_add_shader)
     else()
       set(dxil_reflection "none")
     endif()
-    foreach(format IN ITEMS spirv dxil)
+    foreach(format IN LISTS FLOP_SHADER_FORMATS)
       set(output "${shader_dir}/${SHADER_ID}.${stage}.${format}")
       get_filename_component(output_dir "${output}" DIRECTORY)
       file(MAKE_DIRECTORY "${output_dir}")
@@ -161,4 +171,11 @@ function(flop_embed_shaders target)
     DEPENDS ${shader_outputs} "${shader_manifest}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shaders.cmake" VERBATIM)
   target_sources(${target} PRIVATE "${shader_header}")
   target_include_directories(${target} PRIVATE "${shader_dir}")
+  if(BUILD_TESTING)
+    add_test(NAME craft_shader_package
+      COMMAND "${CMAKE_COMMAND}" "-DINPUT=${shader_manifest}"
+        "-DEXPECT_DXIL=$<BOOL:$<TARGET_EXISTS:flop_dxil_reflect>>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/package_test.cmake")
+    set_tests_properties(craft_shader_package PROPERTIES LABELS "app;shader")
+  endif()
 endfunction()

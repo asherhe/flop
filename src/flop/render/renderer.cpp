@@ -39,7 +39,7 @@ SDL_GPUGraphicsPipeline *create_pipeline(
                     shaders::contains(shaders::manifest, id, "vertex", "dxil") &&
                     shaders::contains(shaders::manifest, id, "fragment", "dxil");
   if (!spirv && !dxil) {
-    throw std::runtime_error(std::string(id) + ": no supported packaged variant (SPIR-V, DXIL)");
+    throw std::runtime_error(std::string(id) + ": no complete packaged shader variant supported by the GPU device; rebuild with a supported shader format");
   }
   const auto format = spirv ? "spirv" : "dxil";
   const auto &vertex_entry = shaders::find(shaders::manifest, id, "vertex", format);
@@ -108,13 +108,17 @@ SDL_GPUGraphicsPipeline *create_pipeline(
 Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : window_(window) {
   SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_INVALID;
   if (shaders::contains(shaders::manifest, "test_tri", "vertex", "spirv") &&
-      shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv"))
+      shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv") &&
+      shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "spirv") &&
+      shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "fragment", "spirv"))
     formats |= SDL_GPU_SHADERFORMAT_SPIRV;
   if (shaders::contains(shaders::manifest, "test_tri", "vertex", "dxil") &&
-      shaders::contains(shaders::manifest, "test_tri", "fragment", "dxil"))
+      shaders::contains(shaders::manifest, "test_tri", "fragment", "dxil") &&
+      shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "dxil") &&
+      shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "fragment", "dxil"))
     formats |= SDL_GPU_SHADERFORMAT_DXIL;
   if (formats == SDL_GPU_SHADERFORMAT_INVALID) {
-    throw std::runtime_error("test_tri shader: no complete packaged shader variant");
+    throw std::runtime_error("test_tri and craft/sprite: no common complete packaged shader format; rebuild with shader reflection enabled");
   }
   device_ = SDL_CreateGPUDevice(formats, true, nullptr);
   if (!device_) {
@@ -136,8 +140,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       throw failure("SDL_SetGPUSwapchainParameters (linear SDR)");
     }
     pipeline_ = create_pipeline(device_, window_, "test_tri", false);
-    if (shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "spirv") ||
-        shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "dxil")) {
+    {
       const auto loaded_recipe = load_craft_sprite_recipe(resolver);
       if (loaded_recipe.shader != craft_sprite_recipe.shader)
         throw std::runtime_error("assets/shared/shaders/craft_sprite.yaml: unexpected shader ID");

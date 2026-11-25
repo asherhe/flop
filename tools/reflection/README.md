@@ -38,8 +38,7 @@ reflection is not implemented.
 
 The CMake shader pipeline runs SPIR-V reflection automatically. On Windows it
 also runs DXIL reflection, compares the supported resource layouts, and embeds
-each variant's metadata in the shader manifest. Linux DXIL packaging currently
-retains the explicit `RESOURCE_FREE` fallback.
+each variant's metadata in the shader manifest. Linux packages SPIR-V only; it does not compile or advertise DXIL variants.
 
 ## JSON schema
 

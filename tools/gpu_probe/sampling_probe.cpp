@@ -40,7 +40,11 @@ int main(int argc, char **argv) {
   try {
     check(SDL_Init(SDL_INIT_VIDEO), "SDL init");
     const char *driver = argc > 1 ? argv[1] : nullptr;
-    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL, true, driver);
+    SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_SPIRV;
+#ifdef FLOP_PROBE_DXIL
+    formats |= SDL_GPU_SHADERFORMAT_DXIL;
+#endif
+    device = SDL_CreateGPUDevice(formats, true, driver);
     check(device != nullptr, "create GPU device");
     std::printf("Backend: %s\n", SDL_GetGPUDeviceDriver(device));
     const bool spirv = (SDL_GetGPUShaderFormats(device) & SDL_GPU_SHADERFORMAT_SPIRV) != 0;

@@ -48,10 +48,13 @@ foreach(fixture IN ITEMS reflection reflection_invalid reflection_separate)
   endif()
 endforeach()
 
-# the Vulkan attribute must also compile for the Direct3D variant.
+# the Vulkan attribute must also compile for the Direct3D variant when packaged.
+if(TEST_DXIL)
 execute_process(COMMAND "${DXC}" -T ps_6_0 -E fragment
   -Fo "${OUTPUT_DIR}/reflection.dxil" "${FIXTURE_DIR}/reflection.hlsl"
   RESULT_VARIABLE result ERROR_VARIABLE error)
 if(NOT result EQUAL 0)
   message(FATAL_ERROR "DXIL fixture compilation failed: ${error}")
+endif()
+
 endif()
