@@ -1,8 +1,7 @@
-// Draw one sprite from six procedural vertices. Coordinates are drawable pixels;
-// the CPU has already projected the world position relative to the camera.
+// draw a unit quad through a camera-relative transform in drawable pixels
 cbuffer SpriteGeometry : register(b0, space1) {
-  float4 center_and_size_pixels; // center x/y, width, height
-  float4 viewport_and_rotation;   // width, height, cos(angle), sin(angle)
+  float4 origin_and_x_axis; // origin x/y, x-axis x/y
+  float4 y_axis_and_viewport; // y-axis x/y, viewport width/height
 };
 
 [[vk::combinedImageSampler]] Texture2D albedo : register(t0, space2);
@@ -15,20 +14,19 @@ struct VertexOutput {
 
 VertexOutput vertex(uint id : SV_VertexID) {
   const float2 corners[6] = {
-      float2(-0.5, -0.5), float2(0.5, -0.5), float2(0.5, 0.5),
-      float2(-0.5, -0.5), float2(0.5, 0.5), float2(-0.5, 0.5)};
-  float2 local = corners[id] * center_and_size_pixels.zw;
-  float c = viewport_and_rotation.z, s = viewport_and_rotation.w;
-  float2 pixel = center_and_size_pixels.xy + float2(c * local.x - s * local.y, s * local.x + c * local.y);
+      float2(0, 0), float2(1, 0), float2(1, 1),
+      float2(0, 0), float2(1, 1), float2(0, 1)};
+  float2 corner = corners[id];
+  float2 pixel = origin_and_x_axis.xy + corner.x * origin_and_x_axis.zw + corner.y * y_axis_and_viewport.xy;
   VertexOutput result;
-  result.position = float4(pixel.x / viewport_and_rotation.x * 2.0 - 1.0,
-                           1.0 - pixel.y / viewport_and_rotation.y * 2.0, 0.0, 1.0);
-  result.uv = corners[id] + 0.5;
+  result.position = float4(pixel.x / y_axis_and_viewport.z * 2.0 - 1.0,
+                           1.0 - pixel.y / y_axis_and_viewport.w * 2.0, 0.0, 1.0);
+  result.uv = float2(corner.x, 1.0 - corner.y);
   return result;
 }
 
 float4 fragment(VertexOutput input) : SV_Target0 {
-  // Keep SV_Position in the DXIL input signature for vertex/fragment linkage.
+  // keep position in the DXIL input signature for vertex/fragment linkage
   if (input.position.x < 0.0) return 0.0;
   return albedo.Sample(albedo_sampler, input.uv);
 }

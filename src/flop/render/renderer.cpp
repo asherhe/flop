@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 #include <string>
+#include <vector>
+#include <cstddef>
 
 #include <SDL3/SDL.h>
 #include "flop/render/shader_library.hpp"
@@ -11,6 +13,13 @@
 
 namespace flop::render {
 namespace {
+struct alignas(16) SpriteGeometry {
+  float origin_x, origin_y, x_axis_x, x_axis_y;
+  float y_axis_x, y_axis_y, viewport_width, viewport_height;
+};
+static_assert(sizeof(SpriteGeometry) == 8 * sizeof(float));
+static_assert(offsetof(SpriteGeometry, y_axis_x) == 4 * sizeof(float));
+
 std::runtime_error failure(const char *operation) {
   return std::runtime_error(std::string(operation) + ": " + SDL_GetError());
 }
@@ -108,10 +117,21 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
   try {
     pipeline_ = create_pipeline(device_, window_, "test_tri", false);
     if (shaders::contains(shaders::manifest, "craft/sprite", "vertex", "spirv") ||
-        shaders::contains(shaders::manifest, "craft/sprite", "vertex", "dxil"))
+        shaders::contains(shaders::manifest, "craft/sprite", "vertex", "dxil")) {
       craft_pipeline_ = create_pipeline(device_, window_, "craft/sprite", true);
+      SDL_GPUSamplerCreateInfo sampler{};
+      sampler.min_filter = SDL_GPU_FILTER_NEAREST;
+      sampler.mag_filter = SDL_GPU_FILTER_NEAREST;
+      sampler.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
+      sampler.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+      sampler.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+      sampler.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+      sprite_sampler_ = SDL_CreateGPUSampler(device_, &sampler);
+      if (!sprite_sampler_) throw failure("SDL_CreateGPUSampler");
+    }
     textures_ = std::make_unique<TextureCache>(device_, resolver);
   } catch (...) {
+    if (sprite_sampler_) SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
     if (pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
@@ -125,6 +145,7 @@ Renderer::~Renderer() {
   if (device_) {
     SDL_WaitForGPUIdle(device_);
     textures_.reset();
+    if (sprite_sampler_) SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
     SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
@@ -133,8 +154,10 @@ Renderer::~Renderer() {
 }
 
 void Renderer::present(const view::FrameDrawData &frame) {
+  std::vector<SDL_GPUTexture *> sprite_textures;
+  sprite_textures.reserve(frame.sprites.size());
   for (const auto &sprite : frame.sprites)
-    (void)textures_->get_srgb(sprite.visual.sprite);
+    sprite_textures.push_back(textures_->get_srgb(sprite.visual.sprite));
   SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(device_);
   if (!commands) {
     throw failure("SDL_AcquireGPUCommandBuffer");
@@ -158,8 +181,25 @@ void Renderer::present(const view::FrameDrawData &frame) {
       SDL_SubmitGPUCommandBuffer(commands);
       throw error;
     }
-    SDL_BindGPUGraphicsPipeline(pass, pipeline_);
-    SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+    if (craft_pipeline_ && frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
+      SDL_BindGPUGraphicsPipeline(pass, craft_pipeline_);
+      for (std::size_t i = 0; i < frame.sprites.size(); ++i) {
+        const auto &corners = frame.sprites[i].corners_pixels;
+        const SpriteGeometry geometry{
+            corners[0].x, corners[0].y,
+            corners[1].x - corners[0].x, corners[1].y - corners[0].y,
+            corners[3].x - corners[0].x, corners[3].y - corners[0].y,
+            static_cast<float>(frame.camera.viewport_width),
+            static_cast<float>(frame.camera.viewport_height)};
+        SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
+        SDL_GPUTextureSamplerBinding binding{sprite_textures[i], sprite_sampler_};
+        SDL_BindGPUFragmentSamplers(pass, 0, &binding, 1);
+        SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
+      }
+    } else if (!craft_pipeline_) {
+      SDL_BindGPUGraphicsPipeline(pass, pipeline_);
+      SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+    }
     SDL_EndGPURenderPass(pass);
   }
   if (!SDL_SubmitGPUCommandBuffer(commands)) {

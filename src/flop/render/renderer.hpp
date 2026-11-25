@@ -4,6 +4,7 @@
 
 struct SDL_GPUDevice;
 struct SDL_GPUGraphicsPipeline;
+struct SDL_GPUSampler;
 struct SDL_Window;
 
 namespace flop::view { struct FrameDrawData; }
@@ -28,6 +29,7 @@ private:
   SDL_GPUDevice *device_{};
   SDL_GPUGraphicsPipeline *pipeline_{};
   SDL_GPUGraphicsPipeline *craft_pipeline_{};
+  SDL_GPUSampler *sprite_sampler_{};
   std::unique_ptr<TextureCache> textures_;
 };
 
