@@ -10,6 +10,16 @@ TEST_CASE("Material recipes decode automatic semantics and reject unknown fields
   CHECK(recipe.view().inputs[1].auto_input == flop::render::AutoInput::sprite_projected_origin_and_x_axis);
   const auto invalid = YAML::Load("shader: craft/sprite\nproperties:\n  x: {stage: vertex, type: float4, auto: unknown.value}\n");
   CHECK_THROWS_AS(flop::render::decode_material_recipe(flop::config::ConfigView(invalid, "fixture.yaml")), flop::config::ConfigError);
+  for (const auto *yaml : {
+           "shader: craft/sprite\nshader: duplicate\nproperties: {}",
+           "shader: craft/sprite\nproperties: {}\nunknown: true",
+           "shader: craft/sprite\nproperties:\n  x: {stage: vertex, type: float4, extra: true}",
+           "shader: craft/sprite\nproperties:\n  x: {stage: invalid, type: float4}",
+           "shader: craft/sprite\nproperties:\n  x: {stage: vertex, type: invalid}"}) {
+    CHECK_THROWS_AS(flop::render::decode_material_recipe(
+                        flop::config::ConfigView(YAML::Load(yaml), "fixture.yaml")),
+                    flop::config::ConfigError);
+  }
 }
 
 using namespace flop::render;

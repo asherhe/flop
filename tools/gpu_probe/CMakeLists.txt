@@ -26,3 +26,32 @@ if(WIN32)
     add_custom_command(TARGET flop_gpu_probe POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_gpu_probe>" VERBATIM)
 endif()
+
+set(craft_probe_shaders)
+foreach(stage IN ITEMS vertex fragment)
+    if(stage STREQUAL vertex)
+        set(profile vs_6_0)
+    else()
+        set(profile ps_6_0)
+    endif()
+    foreach(format IN ITEMS spirv dxil)
+        set(flags)
+        if(format STREQUAL spirv)
+            list(APPEND flags -spirv -fspv-target-env=vulkan1.0)
+        endif()
+        set(output "${CMAKE_CURRENT_BINARY_DIR}/craft/${stage}.${format}")
+        set(source "${CMAKE_SOURCE_DIR}/src/flop/render/shaders/craft/sprite.hlsl")
+        add_custom_command(OUTPUT "${output}"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/craft"
+            COMMAND "${dxc}" -T "${profile}" -E "${stage}" ${flags} -Fo "${output}" "${source}"
+            DEPENDS "${source}" "${dxc}" ${shader_includes} VERBATIM)
+        list(APPEND craft_probe_shaders "${output}")
+    endforeach()
+endforeach()
+add_executable(flop_craft_probe craft_probe.cpp ${craft_probe_shaders})
+target_link_libraries(flop_craft_probe PRIVATE SDL3::SDL3)
+target_compile_definitions(flop_craft_probe PRIVATE FLOP_CRAFT_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/craft")
+if(WIN32)
+    add_custom_command(TARGET flop_craft_probe POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_craft_probe>" VERBATIM)
+endif()

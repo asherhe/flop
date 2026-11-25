@@ -19,3 +19,11 @@ working backend are required. It is excluded from the default build and CTest.
 This checks one combined image-sampler binding and one uniform buffer. It does
 not validate shader reflection metadata, texture loading, interpolation,
 multiple resource slots, color-space behavior, or presentation.
+# Craft shader probe
+
+Build with `cmake --build build/windows-debug --target flop_craft_probe` and run
+`build/windows-debug/tools/gpu_probe/flop_craft_probe.exe direct3d12 128` (use
+alpha 0, 128, or 255). It compiles the craft sprite shader and reads back a
+single sRGB texel blended over transparent black. This is an offscreen shader
+check; it does not exercise the game renderer, YAML recipe, PNG loading, UV
+orientation, or presentation.
