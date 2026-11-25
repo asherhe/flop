@@ -33,7 +33,7 @@ TEST_CASE("Frame extraction tracks camera and enabled visual plugins without adv
 TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   using namespace flop;
   world::Universe world({{"Root", 3e6, 9.8, 86400, {}}});
-  craft::plugin::SpriteRendererConfig sprite{"sprite.png", {}};
+  craft::plugin::SpriteConfig sprite{"sprite.png", {}};
   craft::plugin::LightConfig light{{1, 0}, "white", 1, 1, 2, 1};
   craft::CraftConfig config{"Test", craft::CraftOrbitState{"Root", {{1e11, 0}, {0, 1}}, 0},
       {0, 0}, {{"Pod", "a", "A", {0, 0}, 0, {}, {{"Sprite", true, sprite}, {"Light", true, light}}},

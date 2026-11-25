@@ -6,7 +6,7 @@
 #include <unordered_set>
 
 #include "flop/craft/craft_context.hpp"
-#include "flop/craft/plugins/resource_plugin.hpp"
+#include "flop/craft/plugins/resource.hpp"
 #include "flop/craft/resource_registry.hpp"
 #include "flop/craft/resource_type_config.hpp"
 

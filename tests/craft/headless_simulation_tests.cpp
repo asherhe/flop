@@ -20,10 +20,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/craft/craft.hpp"
-#include "flop/craft/plugins/behavior_plugins.hpp"
-#include "flop/craft/plugins/engine_plugin.hpp"
+#include "flop/craft/plugins/plugins.hpp"
+#include "flop/craft/plugins/engine.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
-#include "flop/craft/plugins/resource_plugin.hpp"
+#include "flop/craft/plugins/resource.hpp"
 #include "flop/math/utils.hpp"
 #include "flop/orbit/propagators/universal.hpp"
 #include "flop/orbit/state.hpp"

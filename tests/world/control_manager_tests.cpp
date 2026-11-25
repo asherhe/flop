@@ -10,7 +10,7 @@
 #include "flop/craft/config.hpp"
 #include "flop/craft/craft.hpp"
 #include "flop/craft/ids.hpp"
-#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/craft/plugins/config.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 #include "flop/craft/resource_type_config.hpp"

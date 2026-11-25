@@ -37,7 +37,7 @@ craft:
             attach_node: top
 
         plugins:
-          SpriteRendererPlugin:
+          SpritePlugin:
             enabled: true
           CommandPlugin:
             enabled: true
@@ -63,7 +63,7 @@ craft:
             attach_node: top
 
         plugins:
-          SpriteRendererPlugin:
+          SpritePlugin:
             enabled: true
           ResourceContainerPlugin:
             enabled: true
@@ -89,7 +89,7 @@ craft:
             attach_node: bottom
 
         plugins:
-          SpriteRendererPlugin:
+          SpritePlugin:
             enabled: true
           EnginePlugin:
             enabled: true

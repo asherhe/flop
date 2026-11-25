@@ -40,7 +40,7 @@ struct MaterialConfig {
   std::map<std::string, MaterialPropertyConfig> properties;
 };
 
-struct SpriteRendererConfig {
+struct SpriteConfig {
   std::string sprite;
   MaterialConfig material;
   Vec2d size_meters{};
@@ -62,7 +62,7 @@ using PluginValues = std::variant<
     ReactionWheelConfig,
     EngineConfig,
     ResourceConfig,
-    SpriteRendererConfig,
+    SpriteConfig,
     LightConfig>;
 
 struct PartPluginConfig {

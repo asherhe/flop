@@ -5,11 +5,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 #include "flop/craft/plugins/config.hpp"
 #include "flop/craft/plugins/plugin_factory.hpp"
-#include "flop/craft/plugins/resource_plugin.hpp"
+#include "flop/craft/plugins/resource.hpp"
 #include "flop/craft/resource_registry.hpp"
 #include "flop/craft/resource_type_config.hpp"
 
@@ -32,7 +32,7 @@ using flop::craft::plugin::ResourceConfig;
 using flop::craft::plugin::ResourcePlugin;
 using flop::craft::plugin::ResourceSlot;
 using flop::craft::plugin::SpritePlugin;
-using flop::craft::plugin::SpriteRendererConfig;
+using flop::craft::plugin::SpriteConfig;
 
 ResourceRegistry registry() {
   return ResourceRegistry(
@@ -122,7 +122,7 @@ TEST_CASE("make_plugin builds the runtime type matching each config alternative"
       make_plugin({"ResourceContainer", true, ResourceConfig{{{"NTO", 10}}, {}, {}}}, reg);
   CHECK(dynamic_cast<ResourcePlugin *>(container.get()) != nullptr);
 
-  const auto sprite = make_plugin({"Sprite", true, SpriteRendererConfig{}}, reg);
+  const auto sprite = make_plugin({"Sprite", true, SpriteConfig{}}, reg);
   CHECK(dynamic_cast<SpritePlugin *>(sprite.get()) != nullptr);
 
   const auto light = make_plugin({"Light", true, LightConfig{}}, reg);

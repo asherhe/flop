@@ -14,7 +14,7 @@
 #include "flop/config/decode/resources.hpp"
 #include "flop/config/decode/save.hpp"
 #include "flop/craft/craft.hpp"
-#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/world/universe.hpp"
 
 namespace {
@@ -40,10 +40,10 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   REQUIRE(engine.attachment_nodes.size() == 2);
   CHECK(engine.attachment_nodes[0].position_meters.y == 0.75);
   const auto sprite = std::ranges::find(
-      pod.plugins, "SpriteRendererPlugin", &flop::craft::plugin::PartPluginConfig::name
+      pod.plugins, "SpritePlugin", &flop::craft::plugin::PartPluginConfig::name
   );
   REQUIRE(sprite != pod.plugins.end());
-  const auto &sprite_config = std::get<flop::craft::plugin::SpriteRendererConfig>(sprite->values);
+  const auto &sprite_config = std::get<flop::craft::plugin::SpriteConfig>(sprite->values);
   CHECK(sprite_config.sprite == "assets/parts/TestingCommandPod/TestingCommandPod.png");
   CHECK(sprite_config.size_meters.x == 2.0);
   CHECK(sprite_config.size_meters.y == 2.0);
@@ -71,7 +71,7 @@ TEST_CASE("Visual plugin overrides update their own config types") {
   const AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
   const auto pod = load_part_type(resolver, "TestingCommandPod");
   auto sprite = *std::ranges::find(
-      pod.plugins, "SpriteRendererPlugin", &flop::craft::plugin::PartPluginConfig::name
+      pod.plugins, "SpritePlugin", &flop::craft::plugin::PartPluginConfig::name
   );
   auto light =
       *std::ranges::find(pod.plugins, "LightPlugin", &flop::craft::plugin::PartPluginConfig::name);
@@ -82,22 +82,22 @@ TEST_CASE("Visual plugin overrides update their own config types") {
       light, ConfigView(YAML::Load("intensity: 2"), "assets/spacecraft/test.yaml")
   );
   CHECK(
-      std::get<flop::craft::plugin::SpriteRendererConfig>(sprite.values).sprite == "replacement.png"
+      std::get<flop::craft::plugin::SpriteConfig>(sprite.values).sprite == "replacement.png"
   );
   CHECK(
-      std::get<flop::craft::plugin::SpriteRendererConfig>(sprite.values).material.path ==
+      std::get<flop::craft::plugin::SpriteConfig>(sprite.values).material.path ==
       "assets/shared/materials/part.mat"
   );
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).intensity == 2);
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).color == "#FFECB1");
-  CHECK(std::get<flop::craft::plugin::SpriteRendererConfig>(sprite.values).size_meters.y == 2.0);
+  CHECK(std::get<flop::craft::plugin::SpriteConfig>(sprite.values).size_meters.y == 2.0);
 }
 
 TEST_CASE("Sprite geometry rejects invalid dimensions and pivots") {
   const AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
   const auto pod = load_part_type(resolver, "TestingCommandPod");
   auto sprite = *std::ranges::find(
-      pod.plugins, "SpriteRendererPlugin", &flop::craft::plugin::PartPluginConfig::name
+      pod.plugins, "SpritePlugin", &flop::craft::plugin::PartPluginConfig::name
   );
   CHECK_THROWS_WITH(
       flop::config::apply_part_plugin_fields(

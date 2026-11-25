@@ -26,7 +26,7 @@ parts:
         attach_node: top # attachment node of attached part
 
     plugins:
-      SpriteRendererPlugin:
+      SpritePlugin:
         enabled: true
       CommandPlugin:
         enabled: true
@@ -52,7 +52,7 @@ parts:
         attach_node: top
 
     plugins:
-      SpriteRendererPlugin:
+      SpritePlugin:
         enabled: true
       ResourceContainerPlugin:
         enabled: true
@@ -78,7 +78,7 @@ parts:
         attach_node: bottom
 
     plugins:
-      SpriteRendererPlugin:
+      SpritePlugin:
         enabled: true
       EnginePlugin:
         enabled: true

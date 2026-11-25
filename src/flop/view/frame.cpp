@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 
 namespace flop::view {
 namespace {

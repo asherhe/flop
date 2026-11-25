@@ -5,7 +5,7 @@
 #include "flop/craft/control.hpp"
 #include "flop/craft/craft_context.hpp"
 #include "flop/craft/newtonian.hpp"
-#include "flop/craft/plugins/engine_plugin.hpp"
+#include "flop/craft/plugins/engine.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 #include "flop/craft/plugins/config.hpp"
 
@@ -54,15 +54,15 @@ private:
 // render-only in the full game; a no-op in the headless simulation.
 class SpritePlugin : public PartPlugin {
 public:
-  SpritePlugin(SpriteRendererConfig config, bool enabled) :
+  SpritePlugin(SpriteConfig config, bool enabled) :
       PartPlugin(enabled), config_(std::move(config)) {}
 
   void tick(CraftContext & /*ctx*/, double /*dt_sec*/) override {}
 
-  [[nodiscard]] const SpriteRendererConfig &config() const noexcept { return config_; }
+  [[nodiscard]] const SpriteConfig &config() const noexcept { return config_; }
 
 private:
-  SpriteRendererConfig config_;
+  SpriteConfig config_;
 };
 
 // render-only in the full game; a no-op in the headless simulation.

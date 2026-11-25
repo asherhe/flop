@@ -1,4 +1,4 @@
-#include "flop/craft/plugins/resource_plugin.hpp"
+#include "flop/craft/plugins/resource.hpp"
 
 #include <algorithm>
 #include <cmath>

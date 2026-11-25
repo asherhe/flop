@@ -138,7 +138,7 @@ inline void apply_fields(craft::plugin::ResourceConfig &container, MapReader &re
   reader.assign("priority", container.priority, decode_map<int>);
 }
 
-inline void apply_fields(craft::plugin::SpriteRendererConfig &sprite, MapReader &reader) {
+inline void apply_fields(craft::plugin::SpriteConfig &sprite, MapReader &reader) {
   reader.assign("sprite", sprite.sprite, &ConfigView::nonempty_string, PluginRequired::on_create);
   reader.assign("material", sprite.material, decode_material, PluginRequired::on_create);
   reader.assign("size_meters", sprite.size_meters, [](const ConfigView &field) {
@@ -191,8 +191,8 @@ inline craft::plugin::PartPluginConfig decode_part_plugin(std::string name, cons
     result.values = craft::plugin::EngineConfig{};
   } else if (result.name == "ResourceContainerPlugin") {
     result.values = craft::plugin::ResourceConfig{};
-  } else if (result.name == "SpriteRendererPlugin") {
-    result.values = craft::plugin::SpriteRendererConfig{};
+  } else if (result.name == "SpritePlugin") {
+    result.values = craft::plugin::SpriteConfig{};
   } else if (result.name == "LightPlugin") {
     result.values = craft::plugin::LightConfig{};
   } else {

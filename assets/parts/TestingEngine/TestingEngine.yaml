@@ -11,7 +11,7 @@ attachment_nodes:
     pos: { x: 0.0, y: -0.75 }
 
 plugins:
-  SpriteRendererPlugin:
+  SpritePlugin:
     sprite: assets/parts/TestingEngine/TestingEngine.png
     size_meters: { x: 2.0, y: 1.5 }
     pivot: { x: 0.5, y: 0.5 }

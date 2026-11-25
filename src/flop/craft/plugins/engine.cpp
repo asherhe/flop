@@ -1,4 +1,4 @@
-#include "flop/craft/plugins/engine_plugin.hpp"
+#include "flop/craft/plugins/engine.hpp"
 
 #include <algorithm>
 

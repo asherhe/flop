@@ -2,10 +2,10 @@
 
 #include <variant>
 
-#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 #include "flop/craft/plugins/config.hpp"
-#include "flop/craft/plugins/resource_plugin.hpp"
+#include "flop/craft/plugins/resource.hpp"
 
 namespace flop::craft::plugin {
 
@@ -24,7 +24,7 @@ std::unique_ptr<PartPlugin> make_plugin(
           return std::make_unique<EnginePlugin>(values, registry, enabled);
         } else if constexpr (std::is_same_v<Config, ResourceConfig>) {
           return std::make_unique<ResourcePlugin>(values, registry, enabled);
-        } else if constexpr (std::is_same_v<Config, SpriteRendererConfig>) {
+        } else if constexpr (std::is_same_v<Config, SpriteConfig>) {
           return std::make_unique<SpritePlugin>(values, enabled);
         } else if constexpr (std::is_same_v<Config, LightConfig>) {
           return std::make_unique<LightPlugin>(values, enabled);

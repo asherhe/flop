@@ -7,9 +7,9 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "flop/craft/craft.hpp"
-#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
-#include "flop/craft/plugins/resource_plugin.hpp"
+#include "flop/craft/plugins/resource.hpp"
 
 #include "support/stub_universe_context.hpp"
 

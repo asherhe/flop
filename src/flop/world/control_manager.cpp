@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "flop/craft/craft.hpp"
-#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 
 namespace flop::world {
 

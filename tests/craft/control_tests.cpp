@@ -4,7 +4,7 @@
 
 #include "flop/craft/control.hpp"
 #include "flop/craft/craft.hpp"
-#include "flop/craft/plugins/behavior_plugins.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
 
 #include "support/stub_craft_context.hpp"

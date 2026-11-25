@@ -50,7 +50,7 @@ struct SpriteDraw {
   Vec2d camera_relative_meters;
   PointF center_pixels;
   double angle_rad{};
-  craft::plugin::SpriteRendererConfig visual;
+  craft::plugin::SpriteConfig visual;
 };
 struct LightDraw {
   world::CraftId craft;

@@ -11,7 +11,7 @@ attachment_nodes:
     pos: { x: 0.0, y: -1.0 }
 
 plugins:
-  SpriteRendererPlugin:
+  SpritePlugin:
     sprite: assets/parts/TestingCommandPod/TestingCommandPod.png
     size_meters: { x: 2.0, y: 2.0 }
     pivot: { x: 0.5, y: 0.5 }
