@@ -13,6 +13,8 @@ attachment_nodes:
 plugins:
   SpriteRendererPlugin:
     sprite: assets/parts/TestingCommandPod/TestingCommandPod.png
+    size_meters: { x: 2.0, y: 2.0 }
+    pivot: { x: 0.5, y: 0.5 }
     material:
       path: assets/shared/materials/part.mat
       properties:

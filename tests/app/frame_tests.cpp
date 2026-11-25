@@ -11,6 +11,10 @@ TEST_CASE("Frame extraction tracks camera and enabled visual plugins without adv
   camera.focus = scene.craft.front();
   const auto first = camera.build_frame(world, scene.body_visuals);
   REQUIRE(first.sprites.size() == 3);
+  CHECK(first.sprites[0].visual.size_meters.y == 2.0);
+  CHECK(first.sprites[1].visual.size_meters.y == 2.0);
+  CHECK(first.sprites[2].visual.size_meters.y == 1.5);
+  CHECK(first.sprites[2].visual.pivot.x == 0.5);
   const auto &craft = world.craft(scene.craft.front());
   const auto &part = craft.parts().front();
   const auto expected = (part.position_meters - craft.mass_properties().center_of_mass_meters)

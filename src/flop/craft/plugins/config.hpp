@@ -43,6 +43,9 @@ struct MaterialConfig {
 struct SpriteRendererConfig {
   std::string sprite;
   MaterialConfig material;
+  Vec2d size_meters{};
+  // normalized sprite pivot, from lower-left corner
+  Vec2d pivot{0.5, 0.5};
 };
 
 struct LightConfig {

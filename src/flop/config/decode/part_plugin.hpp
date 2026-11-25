@@ -141,6 +141,18 @@ inline void apply_fields(craft::plugin::ResourceConfig &container, MapReader &re
 inline void apply_fields(craft::plugin::SpriteRendererConfig &sprite, MapReader &reader) {
   reader.assign("sprite", sprite.sprite, &ConfigView::nonempty_string, PluginRequired::on_create);
   reader.assign("material", sprite.material, decode_material, PluginRequired::on_create);
+  reader.assign("size_meters", sprite.size_meters, [](const ConfigView &field) {
+    return Vec2d{field.required("x").positive_double(), field.required("y").positive_double()};
+  }, PluginRequired::on_create);
+  reader.assign("pivot", sprite.pivot, [](const ConfigView &field) {
+    const auto component = [](const ConfigView &value) {
+      const double result = value.as<double>();
+      if (result < 0.0 || result > 1.0)
+        value.fail(value.mark(), "Pivot must be between 0 and 1");
+      return result;
+    };
+    return Vec2d{component(field.required("x")), component(field.required("y"))};
+  }, PluginRequired::on_create);
 }
 
 inline void apply_fields(craft::plugin::LightConfig &light, MapReader &reader) {

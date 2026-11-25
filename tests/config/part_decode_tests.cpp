@@ -45,6 +45,10 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   REQUIRE(sprite != pod.plugins.end());
   const auto &sprite_config = std::get<flop::craft::plugin::SpriteRendererConfig>(sprite->values);
   CHECK(sprite_config.sprite == "assets/parts/TestingCommandPod/TestingCommandPod.png");
+  CHECK(sprite_config.size_meters.x == 2.0);
+  CHECK(sprite_config.size_meters.y == 2.0);
+  CHECK(sprite_config.pivot.x == 0.5);
+  CHECK(sprite_config.pivot.y == 0.5);
   CHECK(sprite_config.material.path == "assets/shared/materials/part.mat");
   CHECK(sprite_config.material.properties.at("_EmissionTex").type == "Texture2D");
   CHECK(
@@ -86,6 +90,25 @@ TEST_CASE("Visual plugin overrides update their own config types") {
   );
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).intensity == 2);
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).color == "#FFECB1");
+  CHECK(std::get<flop::craft::plugin::SpriteRendererConfig>(sprite.values).size_meters.y == 2.0);
+}
+
+TEST_CASE("Sprite geometry rejects invalid dimensions and pivots") {
+  const AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
+  const auto pod = load_part_type(resolver, "TestingCommandPod");
+  auto sprite = *std::ranges::find(
+      pod.plugins, "SpriteRendererPlugin", &flop::craft::plugin::PartPluginConfig::name
+  );
+  CHECK_THROWS_WITH(
+      flop::config::apply_part_plugin_fields(
+          sprite, ConfigView(YAML::Load("size_meters: {x: 0, y: 2}"), "part.yaml")
+      ), ContainsSubstring("[size_meters.x]")
+  );
+  CHECK_THROWS_WITH(
+      flop::config::apply_part_plugin_fields(
+          sprite, ConfigView(YAML::Load("pivot: {x: 0.5, y: 1.1}"), "part.yaml")
+      ), ContainsSubstring("[pivot.y]")
+  );
 }
 
 TEST_CASE("Part type decoder reports invalid mass at the authored field") {
