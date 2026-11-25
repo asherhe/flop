@@ -4,8 +4,58 @@
 #include <string>
 
 #include <yaml-cpp/yaml.h>
+#include "flop/config/load.hpp"
 
 namespace flop::render {
+
+LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document) {
+  document.validate_unique_keys();
+  LoadedMaterialRecipe result;
+  result.shader = document.required("shader").nonempty_string();
+  const auto properties = document.required("properties");
+  for (const auto &entry : properties.entries()) result.names.push_back(entry.key);
+  result.inputs.reserve(result.names.size());
+  std::size_t index = 0;
+  for (const auto &entry : properties.entries()) {
+    const auto stage_field = entry.value.required("stage");
+    const auto stage_name = stage_field.nonempty_string();
+    ShaderStage stage;
+    if (stage_name == "vertex") stage = ShaderStage::vertex;
+    else if (stage_name == "fragment") stage = ShaderStage::fragment;
+    else stage_field.fail(stage_field.mark(), "Unknown shader stage");
+    const auto type_field = entry.value.required("type");
+    const auto type_name = type_field.nonempty_string();
+    MaterialInputType type;
+    if (type_name == "texture_2d") type = MaterialInputType::texture_2d;
+    else if (type_name == "float4") type = MaterialInputType::float4;
+    else type_field.fail(type_field.mark(), "Unknown material input type");
+    AutoInput semantic = AutoInput::none;
+    if (const auto field = entry.value.optional("auto")) {
+      const auto name = field->nonempty_string();
+      if (name == auto_input_name(AutoInput::sprite_projected_origin_and_x_axis))
+        semantic = AutoInput::sprite_projected_origin_and_x_axis;
+      else if (name == auto_input_name(AutoInput::sprite_projected_y_axis_and_viewport))
+        semantic = AutoInput::sprite_projected_y_axis_and_viewport;
+      else field->fail(field->mark(), "Unknown automatic input");
+    }
+    for (const auto &field : entry.value.entries())
+      if (field.key != "stage" && field.key != "type" && field.key != "auto")
+        field.value.fail(field.value.mark(), "Unknown recipe property field");
+    result.inputs.push_back({result.names[index++], stage, type,
+                             semantic == AutoInput::none ? MaterialInputSource::authored : MaterialInputSource::renderer,
+                             semantic});
+  }
+  for (const auto &entry : document.entries())
+    if (entry.key != "shader" && entry.key != "properties")
+      entry.value.fail(entry.value.mark(), "Unknown recipe field");
+  return result;
+}
+
+LoadedMaterialRecipe load_craft_sprite_recipe(const config::AssetResolver &resolver) {
+  const config::AssetPath path("assets/shared/shaders/craft_sprite.yaml");
+  const auto yaml = config::detail::read_config(resolver, path);
+  return decode_material_recipe(config::ConfigView(yaml, path.address()));
+}
 
 CraftSpriteBindings resolve_craft_sprite_bindings(const MaterialRecipe &recipe,
                                                   const shaders::Entry &vertex,

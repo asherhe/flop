@@ -4,8 +4,12 @@
 #include <cstdint>
 #include <span>
 #include <string_view>
+#include <string>
+#include <vector>
 
 #include "flop/render/shader_library.hpp"
+
+namespace flop::config { class ConfigView; class AssetResolver; }
 
 namespace flop::render {
 
@@ -43,6 +47,20 @@ struct MaterialRecipe {
   std::string_view shader;
   std::span<const MaterialInput> inputs;
 };
+
+struct LoadedMaterialRecipe {
+  std::string shader;
+  std::vector<std::string> names;
+  std::vector<MaterialInput> inputs;
+  LoadedMaterialRecipe() = default;
+  LoadedMaterialRecipe(const LoadedMaterialRecipe &) = delete;
+  LoadedMaterialRecipe &operator=(const LoadedMaterialRecipe &) = delete;
+  LoadedMaterialRecipe(LoadedMaterialRecipe &&) = default;
+  [[nodiscard]] MaterialRecipe view() const { return {shader, inputs}; }
+};
+
+LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document);
+LoadedMaterialRecipe load_craft_sprite_recipe(const config::AssetResolver &resolver);
 
 // the sprite image comes from SpriteConfig::sprite; geometry comes from the
 // projected corners and drawable viewport. the renderer owns the albedo sampler

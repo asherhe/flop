@@ -29,7 +29,7 @@ std::runtime_error failure(const char *operation) {
 
 SDL_GPUGraphicsPipeline *create_pipeline(
     SDL_GPUDevice *device, SDL_Window *window, const char *id, bool blend,
-    CraftSpriteBindings *bindings = nullptr
+    CraftSpriteBindings *bindings = nullptr, const MaterialRecipe *recipe = nullptr
 ) {
   const auto formats = SDL_GetGPUShaderFormats(device);
   const bool spirv = (formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0 &&
@@ -45,7 +45,7 @@ SDL_GPUGraphicsPipeline *create_pipeline(
   const auto &vertex_entry = shaders::find(shaders::manifest, id, "vertex", format);
   const auto &fragment_entry = shaders::find(shaders::manifest, id, "fragment", format);
   if (bindings)
-    *bindings = resolve_craft_sprite_bindings(craft_sprite_recipe, vertex_entry, fragment_entry);
+    *bindings = resolve_craft_sprite_bindings(*recipe, vertex_entry, fragment_entry);
   SDL_GPUShaderCreateInfo info{};
   info.format = spirv ? SDL_GPU_SHADERFORMAT_SPIRV : SDL_GPU_SHADERFORMAT_DXIL;
   info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
@@ -138,7 +138,15 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     pipeline_ = create_pipeline(device_, window_, "test_tri", false);
     if (shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "spirv") ||
         shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "dxil")) {
-      craft_pipeline_ = create_pipeline(device_, window_, craft_sprite_recipe.shader.data(), true, &craft_bindings_);
+      const auto loaded_recipe = load_craft_sprite_recipe(resolver);
+      if (loaded_recipe.shader != craft_sprite_recipe.shader)
+        throw std::runtime_error("assets/shared/shaders/craft_sprite.yaml: unexpected shader ID");
+      const auto recipe = loaded_recipe.view();
+      try {
+        craft_pipeline_ = create_pipeline(device_, window_, loaded_recipe.shader.c_str(), true, &craft_bindings_, &recipe);
+      } catch (const std::exception &error) {
+        throw std::runtime_error(std::string("assets/shared/shaders/craft_sprite.yaml: ") + error.what());
+      }
       SDL_GPUSamplerCreateInfo sampler{};
       sampler.min_filter = SDL_GPU_FILTER_NEAREST;
       sampler.mag_filter = SDL_GPU_FILTER_NEAREST;

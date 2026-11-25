@@ -1,6 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/render/material_recipe.hpp"
+#include "flop/config/load.hpp"
+
+TEST_CASE("Material recipes decode automatic semantics and reject unknown fields") {
+  const auto node = YAML::Load("shader: craft/sprite\nproperties:\n  albedo: {stage: fragment, type: texture_2d}\n  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}\n");
+  auto recipe = flop::render::decode_material_recipe(flop::config::ConfigView(node, "fixture.yaml"));
+  REQUIRE(recipe.view().inputs.size() == 2);
+  CHECK(recipe.view().inputs[1].auto_input == flop::render::AutoInput::sprite_projected_origin_and_x_axis);
+  const auto invalid = YAML::Load("shader: craft/sprite\nproperties:\n  x: {stage: vertex, type: float4, auto: unknown.value}\n");
+  CHECK_THROWS_AS(flop::render::decode_material_recipe(flop::config::ConfigView(invalid, "fixture.yaml")), flop::config::ConfigError);
+}
 
 using namespace flop::render;
 
