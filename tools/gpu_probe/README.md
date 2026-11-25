@@ -27,3 +27,21 @@ alpha 0, 128, or 255). It compiles the craft sprite shader and reads back a
 single sRGB texel blended over transparent black. This is an offscreen shader
 check; it does not exercise the game renderer, YAML recipe, PNG loading, UV
 orientation, or presentation.
+# Renderer path probe
+
+Build with `cmake --build build/windows-debug --target flop_renderer_probe` and
+run `build/windows-debug/tools/gpu_probe/flop_renderer_probe.exe`. It creates
+temporary recipe and PNG fixtures, exercises the renderer's recipe loading,
+texture cache, pipeline and sprite draw, and reads back one sRGB pixel for
+opaque, half-transparent and transparent inputs. It also checks the source
+context in an invalid-PNG error. The offscreen capture uses the selected
+swapchain format and normal renderer draw code; it does not test presentation,
+resize, or multi-pixel UV orientation. The craft shader must be packaged for
+the selected backend.
+
+# Invalid PNG probe
+
+Build with `cmake --build build/windows-debug --target flop_invalid_png_probe`
+and run `build/windows-debug/tools/gpu_probe/flop_invalid_png_probe.exe` to
+check texture-cache decoding diagnostics without a GPU.
+

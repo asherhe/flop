@@ -1,4 +1,7 @@
+#include <array>
 #include <filesystem>
+#include <fstream>
+#include <random>
 #include <string>
 #include <yaml-cpp/yaml.h>
 
@@ -87,4 +90,59 @@ TEST_CASE("Craft decoder locates malformed craft fields") {
   yaml = TEMPLATE_YAML;
   yaml.replace(yaml.find("momentum: -5"), 12, "momentum: .nan");
   CHECK_THROWS_WITH(decode(yaml), ContainsSubstring("[rotation.momentum]"));
+}
+
+TEST_CASE("Missing craft texture identifies the override file and key") {
+  namespace fs = std::filesystem;
+  struct TempDirectory {
+    fs::path path;
+    TempDirectory() {
+      do {
+        path = fs::temp_directory_path() / ("flop-texture-test-" + std::to_string(std::random_device{}()));
+      } while (!fs::create_directory(path));
+    }
+    ~TempDirectory() { std::error_code error; fs::remove_all(path, error); }
+  } temp;
+  fs::create_directory(temp.path / "assets");
+  { std::ofstream file(temp.path / "assets" / "present.png"); file << "fixture"; }
+  std::string override_yaml = "sprite: assets/missing.png";
+  std::string expected_key = "parts[0].plugins.SpritePlugin.sprite";
+  std::string missing = "missing.png";
+  SECTION("missing sprite") {}
+  SECTION("missing normal map") {
+    override_yaml = "sprite: assets/present.png\n        material: {shader: craft/sprite, properties: {normal_map: assets/missing_normal.png}}";
+    expected_key = "parts[0].plugins.SpritePlugin.material.properties.normal_map";
+    missing = "missing_normal.png";
+  }
+  SECTION("missing emission map") {
+    override_yaml = "sprite: assets/present.png\n        material: {shader: craft/sprite, properties: {emission_map: assets/missing_emission.png}}";
+    expected_key = "parts[0].plugins.SpritePlugin.material.properties.emission_map";
+    missing = "missing_emission.png";
+  }
+  {
+    std::ofstream file(temp.path / "assets" / "craft.yaml");
+    file << "name: Test\nrotation: {angle: 0, momentum: 0}\nparts:\n"
+            "  - type: Pod\n    id: pod\n    name: Pod\n"
+            "    transform: {pos: {x: 0, y: 0}, rot: 0}\n"
+            "    attachments: []\n    plugins:\n"
+            "      SpritePlugin:\n        " << override_yaml << "\n";
+  }
+  const auto part_yaml = YAML::Load(
+      "name: Pod\nmass: 1\ncrossfeed: true\nattachment_nodes: []\nplugins:\n"
+      "  SpritePlugin:\n    sprite: assets/original.png\n"
+      "    size_meters: {x: 1, y: 1}\n    pivot: {x: 0.5, y: 0.5}\n"
+      "    material: {shader: craft/sprite}\n");
+  auto part = ConfigDecoder<flop::craft::PartTypeConfig>::decode(
+      ConfigView(part_yaml, "assets/part.yaml"));
+  part.type_id = "Pod";
+  const std::array types{part};
+  try {
+    static_cast<void>(flop::config::load_craft_config(
+        AssetResolver(temp.path / "assets"), AssetPath("assets/craft.yaml"), types));
+    FAIL("Expected a missing texture error");
+  } catch (const flop::config::ConfigError &error) {
+    CHECK(error.address() == "assets/craft.yaml");
+    CHECK(error.key_path() == expected_key);
+    CHECK_THAT(error.what(), ContainsSubstring(missing));
+  }
 }

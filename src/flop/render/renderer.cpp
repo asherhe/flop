@@ -210,6 +210,26 @@ void Renderer::present(const view::FrameDrawData &frame) {
     SDL_CancelGPUCommandBuffer(commands);
     throw error;
   }
+#ifdef FLOP_RENDER_TESTING
+  SDL_GPUTexture *capture_texture = nullptr;
+  SDL_GPUTransferBuffer *download = nullptr;
+  if (capture_) {
+    SDL_GPUTextureCreateInfo info{};
+    info.type = SDL_GPU_TEXTURETYPE_2D;
+    info.format = SDL_GetGPUSwapchainTextureFormat(device_, window_);
+    info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+    info.width = info.height = info.layer_count_or_depth = info.num_levels = 1;
+    info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    capture_texture = SDL_CreateGPUTexture(device_, &info);
+    if (!capture_texture) { SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture texture"); }
+    SDL_GPUTransferBufferCreateInfo transfer{};
+    transfer.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
+    transfer.size = 4;
+    download = SDL_CreateGPUTransferBuffer(device_, &transfer);
+    if (!download) { SDL_ReleaseGPUTexture(device_, capture_texture); SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture buffer"); }
+    swapchain = capture_texture;
+  }
+#endif
   if (swapchain) {
     SDL_GPUColorTargetInfo target{};
     target.texture = swapchain;
@@ -248,8 +268,41 @@ void Renderer::present(const view::FrameDrawData &frame) {
     }
     SDL_EndGPURenderPass(pass);
   }
+#ifdef FLOP_RENDER_TESTING
+  if (capture_) {
+    auto *copy = SDL_BeginGPUCopyPass(commands);
+    if (!copy) throw failure("begin capture copy");
+    SDL_GPUTextureRegion region{};
+    region.texture = capture_texture;
+    region.w = region.h = region.d = 1;
+    SDL_GPUTextureTransferInfo destination{};
+    destination.transfer_buffer = download;
+    SDL_DownloadFromGPUTexture(copy, &region, &destination);
+    SDL_EndGPUCopyPass(copy);
+    auto *fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands);
+    if (!fence || !SDL_WaitForGPUFences(device_, true, &fence, 1)) throw failure("capture submission");
+    const auto *pixels = static_cast<const std::uint8_t *>(SDL_MapGPUTransferBuffer(device_, download, false));
+    if (!pixels) throw failure("map capture");
+    const auto format = SDL_GetGPUSwapchainTextureFormat(device_, window_);
+    const bool bgra = format == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB;
+    captured_ = {pixels[bgra ? 2 : 0], pixels[1], pixels[bgra ? 0 : 2], pixels[3]};
+    SDL_UnmapGPUTransferBuffer(device_, download);
+    SDL_ReleaseGPUFence(device_, fence);
+    SDL_ReleaseGPUTransferBuffer(device_, download);
+    SDL_ReleaseGPUTexture(device_, capture_texture);
+    return;
+  }
+#endif
   if (!SDL_SubmitGPUCommandBuffer(commands)) {
     throw failure("SDL_SubmitGPUCommandBuffer");
   }
 }
+#ifdef FLOP_RENDER_TESTING
+std::array<std::uint8_t, 4> Renderer::readback_pixel(const view::FrameDrawData &frame) {
+  capture_ = true;
+  try { present(frame); } catch (...) { capture_ = false; throw; }
+  capture_ = false;
+  return captured_;
+}
+#endif
 } // namespace flop::render

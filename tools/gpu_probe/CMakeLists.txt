@@ -27,6 +27,22 @@ if(WIN32)
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_gpu_probe>" VERBATIM)
 endif()
 
+if(TARGET flop_dxil_reflect)
+    add_executable(flop_renderer_probe renderer_probe.cpp
+        ${CMAKE_SOURCE_DIR}/src/flop/render/renderer.cpp
+        ${CMAKE_SOURCE_DIR}/src/flop/render/material_recipe.cpp
+        ${CMAKE_SOURCE_DIR}/src/flop/render/texture_cache.cpp)
+    add_dependencies(flop_renderer_probe flop)
+    target_link_libraries(flop_renderer_probe PRIVATE flop_core SDL3::SDL3)
+    target_include_directories(flop_renderer_probe PRIVATE "${shader_dir}")
+    target_include_directories(flop_renderer_probe SYSTEM PRIVATE "${stb_SOURCE_DIR}")
+    target_compile_definitions(flop_renderer_probe PRIVATE FLOP_RENDER_TESTING)
+    if(WIN32)
+        add_custom_command(TARGET flop_renderer_probe POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_renderer_probe>" VERBATIM)
+    endif()
+endif()
+
 set(craft_probe_shaders)
 foreach(stage IN ITEMS vertex fragment)
     if(stage STREQUAL vertex)
@@ -54,4 +70,12 @@ target_compile_definitions(flop_craft_probe PRIVATE FLOP_CRAFT_FIXTURE_DIR="${CM
 if(WIN32)
     add_custom_command(TARGET flop_craft_probe POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_craft_probe>" VERBATIM)
+endif()
+
+add_executable(flop_invalid_png_probe invalid_png_probe.cpp ${CMAKE_SOURCE_DIR}/src/flop/render/texture_cache.cpp)
+target_link_libraries(flop_invalid_png_probe PRIVATE flop_core SDL3::SDL3)
+target_include_directories(flop_invalid_png_probe SYSTEM PRIVATE "${stb_SOURCE_DIR}")
+if(WIN32)
+    add_custom_command(TARGET flop_invalid_png_probe POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_invalid_png_probe>" VERBATIM)
 endif()

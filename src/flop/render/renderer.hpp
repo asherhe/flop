@@ -1,6 +1,10 @@
 #pragma once
 
 #include <memory>
+#ifdef FLOP_RENDER_TESTING
+#include <array>
+#include <cstdint>
+#endif
 #include "flop/render/material_recipe.hpp"
 
 struct SDL_GPUDevice;
@@ -24,6 +28,9 @@ public:
   ~Renderer();
 
   void present(const view::FrameDrawData &frame);
+#ifdef FLOP_RENDER_TESTING
+  std::array<std::uint8_t, 4> readback_pixel(const view::FrameDrawData &frame);
+#endif
 
 private:
   SDL_Window *window_{};
@@ -33,6 +40,10 @@ private:
   SDL_GPUSampler *sprite_sampler_{};
   CraftSpriteBindings craft_bindings_{};
   std::unique_ptr<TextureCache> textures_;
+#ifdef FLOP_RENDER_TESTING
+  bool capture_{};
+  std::array<std::uint8_t, 4> captured_{};
+#endif
 };
 
 } // namespace flop::render
