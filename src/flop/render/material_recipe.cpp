@@ -36,7 +36,16 @@ LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document) 
         semantic = AutoInput::sprite_projected_origin_and_x_axis;
       else if (name == auto_input_name(AutoInput::sprite_projected_y_axis_and_viewport))
         semantic = AutoInput::sprite_projected_y_axis_and_viewport;
+      else if (name == auto_input_name(AutoInput::sun_direction))
+        semantic = AutoInput::sun_direction;
+      else if (name == auto_input_name(AutoInput::sun_color))
+        semantic = AutoInput::sun_color;
       else field->fail(field->mark(), "Unknown automatic input");
+      if (type != MaterialInputType::float4)
+        field->fail(field->mark(), "Automatic input requires float4");
+      const bool sun = semantic == AutoInput::sun_direction || semantic == AutoInput::sun_color;
+      if ((sun && stage != ShaderStage::fragment) || (!sun && stage != ShaderStage::vertex))
+        field->fail(field->mark(), "Automatic input has incompatible shader stage");
     }
     for (const auto &field : entry.value.entries())
       if (field.key != "stage" && field.key != "type" && field.key != "auto")

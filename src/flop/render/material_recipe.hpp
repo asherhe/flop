@@ -24,6 +24,8 @@ enum class AutoInput : std::uint8_t {
   none,
   sprite_projected_origin_and_x_axis,
   sprite_projected_y_axis_and_viewport,
+  sun_direction,
+  sun_color,
 };
 
 constexpr std::string_view auto_input_name(AutoInput input) {
@@ -31,6 +33,8 @@ constexpr std::string_view auto_input_name(AutoInput input) {
   case AutoInput::none: return {};
   case AutoInput::sprite_projected_origin_and_x_axis: return "sprite.projected_origin_and_x_axis";
   case AutoInput::sprite_projected_y_axis_and_viewport: return "sprite.projected_y_axis_and_viewport";
+  case AutoInput::sun_direction: return "sun.direction";
+  case AutoInput::sun_color: return "sun.color";
   }
   return {};
 }

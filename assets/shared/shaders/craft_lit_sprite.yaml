@@ -1,0 +1,9 @@
+shader: craft/lit_sprite
+properties:
+  albedo: {stage: fragment, type: texture_2d}
+  normal_map: {stage: fragment, type: texture_2d}
+  emission_map: {stage: fragment, type: texture_2d}
+  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}
+  y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}
+  sun_direction: {stage: fragment, type: float4, auto: sun.direction}
+  sun_color: {stage: fragment, type: float4, auto: sun.color}

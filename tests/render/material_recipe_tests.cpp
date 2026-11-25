@@ -24,6 +24,25 @@ TEST_CASE("Material recipes decode automatic semantics and reject unknown fields
   }
 }
 
+TEST_CASE("Sun semantics require fragment float4 inputs") {
+  const auto valid = YAML::Load("shader: craft/lit_sprite\nproperties:\n  direction: {stage: fragment, type: float4, auto: sun.direction}\n  color: {stage: fragment, type: float4, auto: sun.color}\n");
+  const auto recipe = flop::render::decode_material_recipe(flop::config::ConfigView(valid, "lighting.yaml"));
+  REQUIRE(recipe.inputs.size() == 2);
+  CHECK(recipe.inputs[0].auto_input == flop::render::AutoInput::sun_direction);
+  CHECK(recipe.inputs[1].auto_input == flop::render::AutoInput::sun_color);
+  for (const auto *yaml : {
+           "shader: craft/lit_sprite\nproperties:\n  x: {stage: vertex, type: float4, auto: sun.color}",
+           "shader: craft/lit_sprite\nproperties:\n  x: {stage: fragment, type: texture_2d, auto: sun.direction}"}) {
+    try {
+      (void)flop::render::decode_material_recipe(flop::config::ConfigView(YAML::Load(yaml), "lighting.yaml"));
+      FAIL("expected an invalid automatic input error");
+    } catch (const flop::config::ConfigError &error) {
+      CHECK(std::string(error.what()).find("lighting.yaml") != std::string::npos);
+      CHECK(std::string(error.what()).find("properties.x.auto") != std::string::npos);
+    }
+  }
+}
+
 using namespace flop::render;
 
 TEST_CASE("A missing material recipe reports its asset path") {
