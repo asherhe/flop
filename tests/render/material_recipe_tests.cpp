@@ -45,6 +45,30 @@ TEST_CASE("Sun semantics require fragment float4 inputs") {
 
 using namespace flop::render;
 
+TEST_CASE("Lit sprite bindings validate reflected light inputs") {
+  const auto yaml = YAML::Load(R"(shader: craft/lit_sprite
+properties:
+  albedo: {stage: fragment, type: texture_2d}
+  normal_map: {stage: fragment, type: texture_2d}
+  emission_map: {stage: fragment, type: texture_2d}
+  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}
+  y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}
+  sun_direction: {stage: fragment, type: float4, auto: sun.direction}
+  sun_color: {stage: fragment, type: float4, auto: sun.color}
+)");
+  const auto recipe = decode_material_recipe(flop::config::ConfigView(yaml, "fixture.yaml"));
+  shaders::Entry vertex{"craft/lit_sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1,
+    R"({"stage":"vertex","uniform_buffers":[{"binding":0,"size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})"};
+  shaders::Entry fragment{"craft/lit_sprite", "fragment", "spirv", "fragment", nullptr, 0, 3, 0, 0, 1,
+    R"({"stage":"fragment","textures":[{"name":"albedo","binding":0},{"name":"normal_map","binding":1},{"name":"emission_map","binding":2}],"uniform_buffers":[{"binding":0,"size":32,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16}]}]})"};
+  const auto bindings = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
+  CHECK(bindings.normal_slot == 1);
+  CHECK(bindings.emission_slot == 2);
+  CHECK(bindings.color_offset == 16);
+  fragment.reflection_json = R"({"stage":"fragment","textures":[],"uniform_buffers":[]})";
+  CHECK_THROWS_AS(resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment), std::runtime_error);
+}
+
 TEST_CASE("A missing material recipe reports its asset path") {
   namespace fs = std::filesystem;
   struct TempDirectory {

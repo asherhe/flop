@@ -65,6 +65,7 @@ struct LoadedMaterialRecipe {
 
 LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document);
 LoadedMaterialRecipe load_craft_sprite_recipe(const config::AssetResolver &resolver);
+LoadedMaterialRecipe load_craft_lit_sprite_recipe(const config::AssetResolver &resolver);
 
 // the sprite image comes from SpriteConfig::sprite; geometry comes from the
 // projected corners and drawable viewport. the renderer owns the albedo sampler
@@ -103,5 +104,14 @@ struct CraftSpriteBindings {
 CraftSpriteBindings resolve_craft_sprite_bindings(const MaterialRecipe &recipe,
                                                   const shaders::Entry &vertex,
                                                   const shaders::Entry &fragment);
+
+struct CraftLitSpriteBindings {
+  CraftSpriteBindings geometry;
+  unsigned normal_slot, emission_slot;
+  unsigned light_uniform_slot, light_uniform_size, direction_offset, color_offset;
+};
+
+CraftLitSpriteBindings resolve_craft_lit_sprite_bindings(const MaterialRecipe &recipe,
+    const shaders::Entry &vertex, const shaders::Entry &fragment);
 
 } // namespace flop::render
