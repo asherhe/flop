@@ -1,0 +1,48 @@
+// geometry and uv conventions match the unlit sprite shader
+cbuffer SpriteGeometry : register(b0, space1) {
+  float4 origin_and_x_axis;
+  float4 y_axis_and_viewport;
+};
+
+cbuffer SpriteLighting : register(b0, space3) {
+  float4 sun_direction;
+  float4 sun_color;
+};
+
+[[vk::combinedImageSampler]] Texture2D albedo : register(t0, space2);
+[[vk::combinedImageSampler]] SamplerState albedo_sampler : register(s0, space2);
+[[vk::combinedImageSampler]] Texture2D normal_map : register(t1, space2);
+[[vk::combinedImageSampler]] SamplerState normal_map_sampler : register(s1, space2);
+[[vk::combinedImageSampler]] Texture2D emission_map : register(t2, space2);
+[[vk::combinedImageSampler]] SamplerState emission_map_sampler : register(s2, space2);
+
+struct VertexOutput {
+  float4 position : SV_Position;
+  float2 uv : TEXCOORD0;
+};
+
+VertexOutput vertex(uint id : SV_VertexID) {
+  const float2 corners[6] = {
+      float2(0, 0), float2(1, 0), float2(1, 1),
+      float2(0, 0), float2(1, 1), float2(0, 1)};
+  float2 corner = corners[id];
+  float2 pixel = origin_and_x_axis.xy + corner.x * origin_and_x_axis.zw + corner.y * y_axis_and_viewport.xy;
+  VertexOutput result;
+  result.position = float4(pixel.x / y_axis_and_viewport.z * 2.0 - 1.0,
+                           1.0 - pixel.y / y_axis_and_viewport.w * 2.0, 0.0, 1.0);
+  result.uv = float2(corner.x, 1.0 - corner.y);
+  return result;
+}
+
+float4 fragment(VertexOutput input) : SV_Target0 {
+  if (input.position.x < 0.0) return 0.0;
+  float4 main = albedo.Sample(albedo_sampler, input.uv);
+  float3 normal = normalize(normal_map.Sample(normal_map_sampler, input.uv).xyz * 2.0 - 1.0);
+  // unity brightens craft sunlight by two and adds an artistic outward component
+  float3 light_direction = normalize(float3(sun_direction.xy, 0.3));
+  float3 shaded = main.rgb * sun_color.rgb * 2.0 * saturate(dot(normal, light_direction));
+  float4 emission = emission_map.Sample(emission_map_sampler, input.uv);
+  float alpha = emission.a + main.a * (1.0 - emission.a);
+  if (alpha <= 0.0) return 0.0;
+  return float4((emission.rgb * emission.a + shaded * main.a * (1.0 - emission.a)) / alpha, alpha);
+}

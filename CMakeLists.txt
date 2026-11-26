@@ -126,6 +126,7 @@ if(FLOP_BUILD_GAME)
     include(cmake/shaders.cmake)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
     flop_add_shader(ID craft/sprite SOURCE craft/sprite.hlsl)
+    flop_add_shader(ID craft/lit_sprite SOURCE craft/lit_sprite.hlsl)
     flop_embed_shaders(flop)
     add_subdirectory(tools/gpu_probe EXCLUDE_FROM_ALL)
 
