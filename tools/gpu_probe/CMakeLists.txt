@@ -54,6 +54,20 @@ if("craft/sprite" IN_LIST registered_shaders)
         add_custom_command(TARGET flop_renderer_probe POST_BUILD
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_renderer_probe>" VERBATIM)
     endif()
+
+    add_executable(flop_scene_lighting_probe scene_lighting_probe.cpp
+        ${CMAKE_SOURCE_DIR}/src/flop/render/renderer.cpp
+        ${CMAKE_SOURCE_DIR}/src/flop/render/material_recipe.cpp
+        ${CMAKE_SOURCE_DIR}/src/flop/render/texture_cache.cpp)
+    add_dependencies(flop_scene_lighting_probe flop)
+    target_link_libraries(flop_scene_lighting_probe PRIVATE flop_core SDL3::SDL3)
+    target_include_directories(flop_scene_lighting_probe PRIVATE "${shader_dir}")
+    target_include_directories(flop_scene_lighting_probe SYSTEM PRIVATE "${stb_SOURCE_DIR}")
+    target_compile_definitions(flop_scene_lighting_probe PRIVATE FLOP_RENDER_TESTING)
+    if(WIN32)
+        add_custom_command(TARGET flop_scene_lighting_probe POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_scene_lighting_probe>" VERBATIM)
+    endif()
 endif()
 
 set(craft_probe_shaders)

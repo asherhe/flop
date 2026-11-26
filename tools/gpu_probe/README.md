@@ -52,6 +52,40 @@ Laptop GPU, using Direct3D 12 (driver 32.0.15.7703) and Vulkan (SDL-reported
 driver 577.3.0.0). The readback checks allow up to three byte values of error.
 Linux and live-scene appearance have not been verified by this probe.
 
+# Shipped scene lighting probe
+
+Build with `cmake --build --preset windows-debug --target flop_scene_lighting_probe`
+and run `build/windows-debug/tools/gpu_probe/flop_scene_lighting_probe.exe assets`
+from the repository root. The probe loads the shipped scene and assets, drives
+the engine through actual world ticks, and reads back an engine sprite pixel at
+idle, under thrust, and after closing throttle. It isolates local lighting by
+zeroing sunlight and planet shine in its draw data; this is not a visual scene
+comparison. Use `SDL_GPU_DRIVER` as described above to select the backend.
+
+On Windows 10.0.26300, both Direct3D 12 and Vulkan passed on an NVIDIA GeForce
+RTX 4050 Laptop GPU (drivers 32.0.15.7703 and 577.3.0.0 respectively). Both
+returned RGB `(0, 0, 0)` idle, `(187, 129, 47)` under thrust and `(0, 0, 0)`
+after throttle closed. The comparison allows three byte values of tolerance.
+The Windows game executable also remained running for four seconds in a hidden
+startup smoke test on Direct3D 12; this did not inspect the displayed scene.
+
+For Linux, from the repository root:
+
+```sh
+cmake -S . -B build/linux-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON -DFLOP_BUILD_GAME=OFF
+cmake --build build/linux-tests
+ctest --test-dir build/linux-tests --output-on-failure
+cmake --preset linux-debug
+cmake --build --preset linux-debug --target flop_scene_lighting_probe flop_renderer_probe
+SDL_GPU_DRIVER=vulkan build/linux-debug/tools/gpu_probe/flop_renderer_probe
+SDL_GPU_DRIVER=vulkan build/linux-debug/tools/gpu_probe/flop_scene_lighting_probe "$PWD/assets"
+build/linux-debug/dist/flop
+```
+
+The final command opens the interactive scene for visual inspection; hold left
+Shift to raise throttle and left Ctrl to lower it. Linux and interactive visual
+appearance remain unverified in the Windows probe results above.
+
 # Invalid PNG probe
 
 Build with `cmake --build build/windows-debug --target flop_invalid_png_probe`
