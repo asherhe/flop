@@ -24,6 +24,10 @@ public:
     has_parts_ = true;
     return *this;
   }
+  StubCraftContext &with_mutable_parts(std::span<craft::Part> parts) {
+    mutable_parts_ = parts;
+    return *this;
+  }
   StubCraftContext &with_control(craft::CraftControl &control) {
     control_ = &control;
     return *this;
@@ -47,6 +51,10 @@ public:
       throw std::logic_error("StubCraftContext::parts() queried without parts set");
     }
     return parts_;
+  }
+  [[nodiscard]] std::span<craft::Part> mutable_parts() override {
+    if (mutable_parts_.empty()) throw std::logic_error("StubCraftContext has no mutable parts");
+    return mutable_parts_;
   }
 
   [[nodiscard]] const craft::CraftControl &control() const override { return require_control(); }
@@ -90,6 +98,7 @@ private:
   }
 
   std::span<const craft::Part> parts_{};
+  std::span<craft::Part> mutable_parts_{};
   bool has_parts_{false};
   craft::CraftControl *control_{nullptr};
   craft::CraftResources *resources_{nullptr};

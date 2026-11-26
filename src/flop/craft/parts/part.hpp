@@ -9,6 +9,7 @@
 
 #include "flop/craft/ids.hpp"
 #include "flop/craft/parts/config.hpp"
+#include "flop/craft/plugins/part_plugin.hpp"
 
 namespace flop::craft {
 
@@ -57,6 +58,18 @@ public:
   // the installed plugin with the given id, or nullptr if this part has none.
   [[nodiscard]] const plugin::PartPlugin *find_plugin(const PluginId &plugin_id) const;
   [[nodiscard]] plugin::PartPlugin *find_plugin(const PluginId &plugin_id);
+
+  // return the first plugin of the requested type, including derived types.
+  template <typename T> [[nodiscard]] T *get_plugin() {
+    for (const auto &plugin : installed_plugins_)
+      if (auto *match = dynamic_cast<T *>(plugin.get())) return match;
+    return nullptr;
+  }
+  template <typename T> [[nodiscard]] const T *get_plugin() const {
+    for (const auto &plugin : installed_plugins_)
+      if (const auto *match = dynamic_cast<const T *>(plugin.get())) return match;
+    return nullptr;
+  }
 
   // advance this part by one simulation step, ticking the enabled plugins whose
   // tick phase matches. the craft drives each phase across all parts in turn.

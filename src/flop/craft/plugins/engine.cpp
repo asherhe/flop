@@ -42,7 +42,7 @@ void EnginePlugin::tick(CraftContext &ctx, double dt_sec) {
     return;
   }
 
-  const Part &part = ctx.parts()[part_index()];
+  Part &part = ctx.mutable_parts()[part_index()];
   if (!craft_thrust_direction_.has_value()) {
     craft_thrust_direction_ = config_.thrust_direction.rotate(part.angle_rad);
   }
@@ -69,14 +69,9 @@ void EnginePlugin::tick(CraftContext &ctx, double dt_sec) {
   thrust *= prop_factor;
   prop_coeff *= prop_factor;
 
-  // unity's getplugin returns the first matching plugin on the owning part.
-  for (const auto &plugin : part.installed_plugins()) {
-    if (auto *emitter = dynamic_cast<ParticlePlugin *>(plugin.get())) {
-      if (emitter->enabled())
-        emitter->set_emission_strength(throttle * prop_factor);
-      break;
-    }
-  }
+  // todo: bind an explicit plugin id when authored multi-instance references exist.
+  if (auto *emitter = part.get_plugin<ParticlePlugin>(); emitter && emitter->enabled())
+    emitter->set_emission_strength(throttle * prop_factor);
 
   if (!(prop_factor > 0.0)) {
     // no propellant left to draw: shut the engine down.

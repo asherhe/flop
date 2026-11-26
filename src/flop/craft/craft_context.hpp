@@ -28,6 +28,7 @@ public:
   virtual ~CraftContext() = default;
 
   [[nodiscard]] virtual std::span<const Part> parts() const = 0;
+  [[nodiscard]] virtual std::span<Part> mutable_parts() = 0;
 
   // persistent control channel: the command plugin writes throttle/steering,
   // the actuators read them within the same step.

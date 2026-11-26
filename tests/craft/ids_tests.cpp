@@ -15,6 +15,7 @@
 #include "flop/craft/parts/part.hpp"
 #include "flop/craft/plugins/config.hpp"
 #include "flop/craft/plugins/part_plugin.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/craft/resource_registry.hpp"
 #include "flop/craft/resource_type_config.hpp"
 
@@ -82,6 +83,25 @@ TEST_CASE("An explicit plugin id overrides the plugin name") {
   CHECK(part.installed_plugins()[0]->id() == PluginId("primary_command"));
   CHECK(part.find_plugin(PluginId("primary_command")) != nullptr);
   CHECK(part.find_plugin(PluginId("CommandPlugin")) == nullptr);
+}
+
+TEST_CASE("typed plugin lookup returns the first matching plugin with const access") {
+  Part part;
+  part.id = "pod";
+  PartPluginConfig a{"CommandPlugin", false, CommandConfig{}};
+  PartPluginConfig b{"CommandPlugin", true, CommandConfig{}};
+  a.id = "first";
+  b.id = "second";
+  part.plugins = {a, b};
+  part.install_plugins(registry(), 0);
+  using flop::craft::plugin::CommandPlugin;
+  using flop::craft::plugin::SpritePlugin;
+  REQUIRE(part.get_plugin<CommandPlugin>());
+  CHECK(part.get_plugin<CommandPlugin>()->id() == PluginId("first"));
+  CHECK(part.get_plugin<SpritePlugin>() == nullptr);
+  const Part &const_part = part;
+  CHECK(const_part.get_plugin<CommandPlugin>() == part.get_plugin<CommandPlugin>());
+  CHECK(const_part.get_plugin<SpritePlugin>() == nullptr);
 }
 
 TEST_CASE("A part rejects two plugins that resolve to the same id") {

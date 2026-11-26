@@ -32,6 +32,7 @@ public:
   [[nodiscard]] const orbit::OrbitState &orbit_state() const noexcept { return orbit_state_; }
   [[nodiscard]] const orbit::OrbitPatchSegments &patches() const noexcept { return patches_; }
   [[nodiscard]] std::span<const Part> parts() const noexcept override { return parts_; }
+  [[nodiscard]] std::span<Part> mutable_parts() noexcept override { return parts_; }
   [[nodiscard]] const Part &part(std::string_view id) const;
   // mutable access to an installed part, for feeding pilot input into a part's
   // plugins (e.g. a command pod's throttle/steering).

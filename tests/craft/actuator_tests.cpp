@@ -75,7 +75,7 @@ std::vector<Part> engine_part(
   return parts;
 }
 
-EnginePlugin &engine_of(const std::vector<Part> &parts);
+EnginePlugin &engine_of(std::vector<Part> &parts);
 
 TEST_CASE("engine publishes actual propellant-limited emission") {
   const auto universe = context();
@@ -93,7 +93,7 @@ TEST_CASE("engine publishes actual propellant-limited emission") {
   CraftNewtonian newtonian;
   CraftResources resources(parts, universe);
   StubCraftContext ctx;
-  ctx.with_parts(parts).with_control(control).with_resources(resources).with_newtonian(newtonian);
+  ctx.with_parts(parts).with_mutable_parts(parts).with_control(control).with_resources(resources).with_newtonian(newtonian);
   engine_of(parts).tick(ctx, 1.0);
   CHECK(emitter->emission_strength() == Approx(0.25));
   emitter->reset_step();
@@ -102,12 +102,8 @@ TEST_CASE("engine publishes actual propellant-limited emission") {
   CHECK_FALSE(engine_of(parts).enabled());
 }
 
-EnginePlugin &engine_of(const std::vector<Part> &parts) {
-  for (const auto &plugin : parts[0].installed_plugins()) {
-    if (auto *engine = dynamic_cast<EnginePlugin *>(plugin.get())) {
-      return *engine;
-    }
-  }
+EnginePlugin &engine_of(std::vector<Part> &parts) {
+  if (auto *engine = parts[0].get_plugin<EnginePlugin>()) return *engine;
   FAIL("part has no engine plugin");
   throw std::logic_error("unreachable");
 }
@@ -175,7 +171,7 @@ TEST_CASE("EnginePlugin at full throttle thrusts and drains its propellant") {
   CraftNewtonian newtonian;
   CraftResources resources(parts, universe);
   StubCraftContext ctx;
-  ctx.with_parts(parts)
+  ctx.with_parts(parts).with_mutable_parts(parts)
       .with_control(control)
       .with_resources(resources)
       .with_newtonian(newtonian)
@@ -211,7 +207,7 @@ TEST_CASE("EnginePlugin scales thrust to the limiting propellant") {
   CraftNewtonian newtonian;
   CraftResources resources(parts, universe);
   StubCraftContext ctx;
-  ctx.with_parts(parts).with_control(control).with_resources(resources).with_newtonian(newtonian);
+  ctx.with_parts(parts).with_mutable_parts(parts).with_control(control).with_resources(resources).with_newtonian(newtonian);
 
   engine_of(parts).tick(ctx, 1.0);
 
@@ -234,7 +230,7 @@ TEST_CASE("EnginePlugin flames out and disables when the tank is empty") {
   CraftNewtonian newtonian;
   CraftResources resources(parts, universe);
   StubCraftContext ctx;
-  ctx.with_parts(parts)
+  ctx.with_parts(parts).with_mutable_parts(parts)
       .with_control(control)
       .with_resources(resources)
       .with_newtonian(newtonian)
@@ -262,7 +258,7 @@ TEST_CASE("EnginePlugin draws a propellant mixture in its configured ratio") {
   CraftNewtonian newtonian;
   CraftResources resources(parts, universe);
   StubCraftContext ctx;
-  ctx.with_parts(parts).with_control(control).with_resources(resources).with_newtonian(newtonian);
+  ctx.with_parts(parts).with_mutable_parts(parts).with_control(control).with_resources(resources).with_newtonian(newtonian);
 
   engine_of(parts).tick(ctx, 1.0);
 
