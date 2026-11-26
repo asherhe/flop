@@ -61,8 +61,8 @@ void InputMapper::handle_event(const SDL_Event &event) {
     }
     break;
   case SDL_EVENT_MOUSE_MOTION:
-    // right button held: drag pans. SDL reports a relative delta in logical px.
-    if ((event.motion.state & SDL_BUTTON_RMASK) != 0u) {
+    // left button held: drag pans. SDL reports a relative delta in logical px.
+    if ((event.motion.state & SDL_BUTTON_LMASK) != 0u) {
       frame_.camera.pan_x += event.motion.xrel;
       frame_.camera.pan_y += event.motion.yrel;
     }
