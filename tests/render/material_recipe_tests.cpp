@@ -65,8 +65,21 @@ properties:
   CHECK(bindings.normal_slot == 1);
   CHECK(bindings.emission_slot == 2);
   CHECK(bindings.color_offset == 16);
+  vertex.format = "dxil";
+  vertex.reflection_json = R"({"stage":"vertex","resources":[{"name":"Geometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"Geometry","size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})";
+  fragment.format = "dxil";
+  fragment.reflection_json = R"({"stage":"fragment","resources":[{"name":"albedo","type":"texture","binding":0},{"name":"normal_map","type":"texture","binding":1},{"name":"emission_map","type":"texture","binding":2},{"name":"Light","type":"uniform_buffer","binding":1}],"uniform_buffers":[{"name":"Light","size":32,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16}]}]})";
+  const auto dxil = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
+  CHECK(dxil.light_uniform_slot == 1);
+  CHECK(dxil.normal_slot == 1);
+  CHECK(dxil.emission_slot == 2);
   fragment.reflection_json = R"({"stage":"fragment","textures":[],"uniform_buffers":[]})";
-  CHECK_THROWS_AS(resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment), std::runtime_error);
+  try {
+    (void)resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
+    FAIL("expected invalid reflection");
+  } catch (const std::runtime_error &error) {
+    CHECK(std::string(error.what()).find("fixture.yaml") != std::string::npos);
+  }
 }
 
 TEST_CASE("A missing material recipe reports its asset path") {

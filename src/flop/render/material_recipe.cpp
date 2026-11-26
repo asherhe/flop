@@ -12,6 +12,7 @@ LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document) 
   document.validate_unique_keys();
 
   LoadedMaterialRecipe result;
+  result.source = document.source_address();
   result.shader = document.required("shader").nonempty_string();
 
   const auto properties = document.required("properties");
@@ -247,6 +248,7 @@ ResolvedInputs resolve_inputs(
     return result;
   } catch (const std::exception &error) {
     throw std::runtime_error(
+        (recipe.source.empty() ? std::string{} : std::string(recipe.source) + ": ") +
         "material '" + std::string(recipe.shader) + "' (" + std::string(vertex.format) +
         "): " + error.what()
     );

@@ -50,17 +50,19 @@ struct MaterialInput {
 struct MaterialRecipe {
   std::string_view shader;
   std::span<const MaterialInput> inputs;
+  std::string_view source{};
 };
 
 struct LoadedMaterialRecipe {
   std::string shader;
+  std::string source;
   std::vector<std::string> names;
   std::vector<MaterialInput> inputs;
   LoadedMaterialRecipe() = default;
   LoadedMaterialRecipe(const LoadedMaterialRecipe &) = delete;
   LoadedMaterialRecipe &operator=(const LoadedMaterialRecipe &) = delete;
   LoadedMaterialRecipe(LoadedMaterialRecipe &&) = default;
-  [[nodiscard]] MaterialRecipe view() const { return {shader, inputs}; }
+  [[nodiscard]] MaterialRecipe view() const { return {shader, inputs, source}; }
 };
 
 LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document);
