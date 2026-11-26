@@ -40,8 +40,9 @@ plugins:
       flicker_max: 1.9
 
   ParticlePlugin:
-    nozzle_pos: { x: 0.0, y: -0.75 }
-    nozzle_size: 1.0
+    line_pos: { x: 0.0, y: -0.75 }
+    line_width: 1.0
+    line_angle: 180.0 # degrees, local +y points out of the engine
     spread_angle: 0.0
 
     # below are particle settings

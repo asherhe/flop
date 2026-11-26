@@ -79,11 +79,11 @@ void ParticleScene::end_step(const world::Universe &universe, const Focus &focus
         }
         const auto &config = particle->config();
         const auto arm =
-            (part.position_meters + config.nozzle_position_meters.rotate(part.angle_rad) - com)
+            (part.position_meters + config.line_position_meters.rotate(part.angle_rad) - com)
                 .rotate(angle);
         entry->emitter.position_meters = state.position - focus_after + arm;
         entry->emitter.velocity_m_per_s = state.velocity + arm.perpendicular() * omega;
-        entry->emitter.angle_rad = angle + part.angle_rad;
+        entry->emitter.angle_rad = angle + part.angle_rad + config.line_angle_rad;
         entry->emitter.strength = particle->emission_strength();
         particles_.emit(entry->emitter, dt_sec);
       }

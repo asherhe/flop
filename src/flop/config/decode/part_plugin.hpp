@@ -236,8 +236,11 @@ KeyCurve<T> decode_particle_keys(const ConfigView &field, Decode decode) {
 }
 
 inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &reader) {
-  reader.assign("nozzle_pos", particle.nozzle_position_meters, decode_vec, PluginRequired::on_create);
-  reader.assign("nozzle_size", particle.nozzle_size_meters, &ConfigView::positive_double, PluginRequired::on_create);
+  reader.assign("line_pos", particle.line_position_meters, decode_vec, PluginRequired::on_create);
+  reader.assign("line_width", particle.line_width_meters, &ConfigView::positive_double, PluginRequired::on_create);
+  reader.assign("line_angle", particle.line_angle_rad, [](const ConfigView &field) {
+    return field.checked_finite(field.as<double>() * std::numbers::pi / 180.0);
+  });
   reader.assign("spread_angle", particle.spread_angle_rad, [](const ConfigView &field) {
     const double angle = field.as<double>();
     if (angle < 0 || angle > 180) field.fail(field.mark(), "Spread angle must be between 0 and 180 degrees");

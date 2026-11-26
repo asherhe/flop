@@ -42,6 +42,19 @@ TEST_CASE("particles reuse capacity and compensate for focus motion") {
   CHECK(particles.particles().empty());
 }
 
+TEST_CASE("line emitter emits along its rotated local positive y axis") {
+  auto config = std::make_shared<flop::craft::plugin::ParticleConfig>();
+  config->lifetime_sec = {1, 1};
+  config->rate_per_sec = {1, 1};
+  config->start_speed_m_per_s = {4, 4};
+  flop::view::ParticleSystem particles(1);
+  flop::view::ParticleEmitter emitter{{}, {}, std::numbers::pi / 2, 1, config};
+  particles.emit(emitter, 1);
+  REQUIRE(particles.particles().size() == 1);
+  CHECK(particles.particles()[0].velocity_m_per_s.x == Catch::Approx(-4));
+  CHECK(particles.particles()[0].velocity_m_per_s.y == Catch::Approx(0).margin(1e-12));
+}
+
 TEST_CASE("shipped engine emits particles on world steps and focus changes clear them") {
   const flop::config::AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
   auto scene = flop::app::load_game_scene(resolver);

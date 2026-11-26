@@ -5,6 +5,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "flop/config/decode/body.hpp"
@@ -98,13 +99,14 @@ TEST_CASE("Visual plugin overrides update their own config types") {
 TEST_CASE("Particle plugin decodes ranges and rejects invalid overrides at their source") {
   auto particle = flop::config::decode_part_plugin(
       "ParticlePlugin", ConfigView(YAML::Load(
-          "nozzle_pos: {x: 0, y: -1}\nnozzle_size: 1\nspread_angle: 30\n"
+          "line_pos: {x: 0, y: -1}\nline_width: 1\nline_angle: 180\nspread_angle: 30\n"
           "lifetime: [0.2, 0.3]\nrate: [300, 500]\n"
           "start: {size: [0.1, 0.4], speed: [20, 30]}\n"
           "life: {color: {color_keys: {0: '#ffffff'}, alpha_keys: {0: 0, 1: 1}}, size: {0: 1}}\n"),
           "part.yaml", "plugins.ParticlePlugin"));
   const auto &config = std::get<flop::craft::plugin::ParticleConfig>(particle.values);
   CHECK(config.rate_per_sec[0] == 300);
+  CHECK(config.line_angle_rad == Catch::Approx(std::acos(-1.0)));
   CHECK(config.start_speed_m_per_s[1] == 30);
   CHECK(config.color.evaluate(0).r == 1.0);
   CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(particle,

@@ -78,8 +78,10 @@ struct LightConfig {
 };
 
 struct ParticleConfig {
-  Vec2d nozzle_position_meters{};
-  double nozzle_size_meters{};
+  Vec2d line_position_meters{};
+  double line_width_meters{};
+  // line lies on local x; its normal and central emission direction are local +y.
+  double line_angle_rad{};
   double spread_angle_rad{};
   std::array<double, 2> lifetime_sec{};
   std::array<double, 2> rate_per_sec{};

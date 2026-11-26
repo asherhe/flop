@@ -50,13 +50,13 @@ void ParticleSystem::emit(ParticleEmitter &emitter, double dt_sec) {
     if (!(life > 0.0))
       continue;
     const double offset =
-        sample_random({-0.5 * config.nozzle_size_meters, 0.5 * config.nozzle_size_meters});
+        sample_random({-0.5 * config.line_width_meters, 0.5 * config.line_width_meters});
     const double angle =
         emitter.angle_rad + sample_random({-config.spread_angle_rad, config.spread_angle_rad});
     particles_.push_back(
         {emitter.position_meters + Vec2d{offset, 0}.rotate(emitter.angle_rad),
          emitter.velocity_m_per_s +
-             Vec2d{0, -sample_random(config.start_speed_m_per_s)}.rotate(angle),
+             Vec2d{0, sample_random(config.start_speed_m_per_s)}.rotate(angle),
          0.0,
          life,
          sample_random(config.start_size_meters),
