@@ -1,5 +1,7 @@
 #pragma once
 
+#include "flop/config/decode/color.hpp"
+
 #include <string>
 #include <utility>
 #include <yaml-cpp/yaml.h>
@@ -59,7 +61,7 @@ inline AtmosphereVisualConfig decode_atmosphere_visual(const ConfigView &atmosph
 
 inline PlanetShineConfig decode_planet_shine(const ConfigView &shine) {
   return {
-      shine.required("color").nonempty_string(),
+      decode_color(shine.required("color")),
       shine.required("intensity").as<double>(),
   };
 }

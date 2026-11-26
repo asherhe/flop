@@ -4,6 +4,7 @@
 #include <string>
 
 #include "flop/craft/plugins/config.hpp"
+#include "flop/config/color.hpp"
 
 namespace flop::config {
 
@@ -21,7 +22,7 @@ struct AtmosphereVisualConfig {
 // a soft fill light a body casts on nearby craft (planet shine). absent when a
 // body authors no planet_shine block.
 struct PlanetShineConfig {
-  std::string color;
+  Color color;
   double intensity{};
 };
 
