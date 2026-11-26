@@ -38,6 +38,13 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   CHECK(pod.mass_kg == 800);
   CHECK(tank.mass_kg == 600);
   CHECK(engine.mass_kg == 1200);
+  const auto engine_light = std::ranges::find(
+      engine.plugins, "LightPlugin", &flop::craft::plugin::PartPluginConfig::name);
+  REQUIRE(engine_light != engine.plugins.end());
+  const auto &engine_light_config = std::get<flop::craft::plugin::LightConfig>(engine_light->values);
+  CHECK(engine_light_config.light_position_meters.y == -0.75);
+  CHECK(engine_light_config.strength == 0.0);
+  CHECK(engine_light_config.outer_radius_meters == 4.5);
   REQUIRE(engine.attachment_nodes.size() == 2);
   CHECK(engine.attachment_nodes[0].position_meters.y == 0.75);
   const auto sprite = std::ranges::find(
@@ -66,6 +73,26 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   CHECK(light_config.outer_radius_meters == 1.68);
   CHECK(light_config.falloff == 0.89);
   CHECK(light_config.strength == 1.0);
+}
+
+TEST_CASE("light and engine flicker validation reports source fields") {
+  auto light = flop::config::decode_part_plugin("LightPlugin", ConfigView(YAML::Load(
+      "light_position: {x: 0, y: 0}\ncolor: '#ffffff'\nintensity: 1\n"
+      "inner_radius: 0\nouter_radius: 1\nfalloff: 0.5\n"), "part.yaml", "plugins.LightPlugin"));
+  for (const auto *invalid : {"outer_radius: -1", "intensity: -1", "falloff: 1.1", "color: nope"}) {
+    auto copy = light;
+    CHECK_THROWS(flop::config::apply_part_plugin_fields(copy,
+        ConfigView(YAML::Load(invalid), "save.yaml", "plugins.LightPlugin")));
+  }
+  CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(light,
+      ConfigView(YAML::Load("inner_radius: 2"), "save.yaml", "plugins.LightPlugin")),
+      ContainsSubstring("[plugins.LightPlugin.inner_radius]"));
+  auto engine = flop::config::decode_part_plugin("EnginePlugin", ConfigView(YAML::Load(
+      "isp: 100\nthrust: 1\nthrust_dir: {x: 0, y: 1}\npropellant_ratio: {NTO: 1}\n"),
+      "part.yaml", "plugins.EnginePlugin"));
+  CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(engine,
+      ConfigView(YAML::Load("flicker_min: 2"), "save.yaml", "plugins.EnginePlugin")),
+      ContainsSubstring("[plugins.EnginePlugin.flicker_min]"));
 }
 
 TEST_CASE("light initial strength is configurable and rejects invalid overrides") {

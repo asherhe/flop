@@ -1,6 +1,7 @@
 #pragma once
 
 #include <span>
+#include <cstdint>
 
 // self-contained accessor interface for the members of one craft that its
 // resource, rigid-body, and (later) plugin behavior read while stepping. kept
@@ -26,6 +27,9 @@ public:
   CraftContext &operator=(const CraftContext &) = default;
   CraftContext &operator=(CraftContext &&) = default;
   virtual ~CraftContext() = default;
+
+  [[nodiscard]] virtual double ut_sec() const noexcept = 0;
+  [[nodiscard]] virtual std::uint64_t runtime_id() const noexcept = 0;
 
   [[nodiscard]] virtual std::span<const Part> parts() const = 0;
   [[nodiscard]] virtual std::span<Part> mutable_parts() = 0;

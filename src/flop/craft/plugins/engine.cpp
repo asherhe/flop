@@ -1,6 +1,7 @@
 #include "flop/craft/plugins/engine.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 #include "flop/craft/control.hpp"
 #include "flop/craft/craft_context.hpp"
@@ -9,6 +10,7 @@
 #include "flop/craft/plugins/plugins.hpp"
 #include "flop/craft/resource_registry.hpp"
 #include "flop/craft/resources.hpp"
+#include "flop/utils/noise.hpp"
 
 namespace flop::craft::plugin {
 namespace {
@@ -78,9 +80,20 @@ void EnginePlugin::tick(CraftContext &ctx, double dt_sec) {
   thrust *= prop_factor;
   prop_coeff *= prop_factor;
 
+  const double output = config_.thrust_newtons > 0.0 ? thrust / config_.thrust_newtons : 0.0;
   // todo: bind an explicit plugin id when authored multi-instance references exist.
   if (auto *emitter = part.get_plugin<ParticlePlugin>(); emitter && emitter->enabled())
-    emitter->set_emission_strength(throttle * prop_factor);
+    emitter->set_emission_strength(output);
+
+  if (auto *light = part.get_plugin<LightPlugin>(); light && light->enabled()) {
+    auto seed = noise_seed(14695981039346656037ULL ^ ctx.runtime_id(), part.id);
+    seed = detail::noise_mix(seed ^ static_cast<std::uint64_t>(part.id.size()));
+    seed = noise_seed(seed, light->id().value());
+    const double phase = std::ldexp(static_cast<double>(seed >> 11), -37);
+    const double noise = perlin_noise(ctx.ut_sec() * config_.flicker_speed + phase, seed);
+    const double flicker = config_.flicker_min + (config_.flicker_max - config_.flicker_min) * noise;
+    light->set_strength(output * flicker);
+  }
 
   if (!(prop_factor > 0.0)) {
     // no propellant left to draw: shut the engine down.

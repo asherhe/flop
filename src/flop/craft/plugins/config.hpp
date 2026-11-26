@@ -25,6 +25,9 @@ struct EngineConfig {
   double thrust_newtons{};
   Vec2d thrust_direction{};
   std::map<std::string, double> propellant_ratio;
+  double flicker_speed{};
+  double flicker_min{1.0};
+  double flicker_max{1.0};
 };
 
 struct ResourceConfig {

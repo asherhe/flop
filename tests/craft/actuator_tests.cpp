@@ -134,6 +134,72 @@ TEST_CASE("engine transitions clear controlled outputs without a simulation step
   CHECK(light->strength() == 0.0);
 }
 
+TEST_CASE("engine light follows propellant-limited thrust and simulation time") {
+  const auto universe = context();
+  const double prop_flow = 1000.0 / (200.0 * standard_gravity);
+  EngineConfig config{200.0, 1000.0, {0, 1}, {{"NTO", 1.0}}};
+  config.flicker_speed = 2.0;
+  config.flicker_min = 1.3;
+  config.flicker_max = 1.3;
+  auto parts = engine_part(universe, config,
+      ResourceConfig{{{"NTO", 1000}}, {{"NTO", 0.25 * prop_flow}}, {}}, true);
+  flop::craft::plugin::LightConfig light_config;
+  light_config.strength = 0.0;
+  parts[0].plugins.push_back({"LightPlugin", true, light_config});
+  parts[0].install_plugins(universe.resources(), 0);
+  auto *light = parts[0].get_plugin<flop::craft::plugin::LightPlugin>();
+  auto *emitter = parts[0].get_plugin<flop::craft::plugin::ParticlePlugin>();
+  REQUIRE(light);
+  REQUIRE(emitter);
+  flop::craft::CraftControl control;
+  control.set_throttle(1.0);
+  CraftNewtonian newtonian;
+  CraftResources resources(parts, universe);
+  StubCraftContext ctx;
+  ctx.with_parts(parts).with_mutable_parts(parts).with_control(control)
+      .with_resources(resources).with_newtonian(newtonian).with_time(0.0).with_runtime_id(7);
+  engine_of(parts).tick(ctx, 1.0);
+  CHECK(light->strength() == Approx(0.25 * 1.3));
+  CHECK(emitter->emission_strength() == Approx(0.25));
+  const auto retained = light->strength();
+  CHECK(light->strength() == retained); // a frame with no tick keeps the last output
+  engine_of(parts).reset_step();
+  CHECK(light->strength() == 0.0);
+  engine_of(parts).tick(ctx.with_time(0.5), 1.0);
+  CHECK_FALSE(engine_of(parts).enabled());
+  CHECK(light->strength() == 0.0);
+}
+
+TEST_CASE("engine flicker is deterministic and independent across craft") {
+  const auto universe = context();
+  EngineConfig config{200.0, 1000.0, {0, 1}, {{"NTO", 1.0}}};
+  config.flicker_speed = 1.0;
+  config.flicker_min = 0.0;
+  config.flicker_max = 2.0;
+  auto parts = engine_part(universe, config, ResourceConfig{{{"NTO", 1000}}, {{"NTO", 1000}}, {}});
+  flop::craft::plugin::LightConfig light_config;
+  light_config.strength = 0.0;
+  parts[0].plugins.push_back({"LightPlugin", true, light_config});
+  parts[0].install_plugins(universe.resources(), 0);
+  auto *light = parts[0].get_plugin<flop::craft::plugin::LightPlugin>();
+  REQUIRE(light);
+  flop::craft::CraftControl control;
+  control.set_throttle(1.0);
+  CraftNewtonian newtonian;
+  CraftResources resources(parts, universe);
+  StubCraftContext ctx;
+  ctx.with_parts(parts).with_mutable_parts(parts).with_control(control)
+      .with_resources(resources).with_newtonian(newtonian).with_time(0.25).with_runtime_id(1);
+  engine_of(parts).tick(ctx, 0.01);
+  const double first = light->strength();
+  engine_of(parts).tick(ctx, 0.01);
+  CHECK(light->strength() == Approx(first));
+  engine_of(parts).tick(ctx.with_runtime_id(2), 0.01);
+  CHECK(light->strength() != Approx(first));
+  engine_of(parts).tick(ctx.with_runtime_id(1).with_time(0.5), 0.01);
+  CHECK(light->strength() != Approx(first));
+}
+
 TEST_CASE("part moves rebind installed plugins to their owner") {
   const auto universe = context();
   auto parts = engine_part(universe, EngineConfig{}, ResourceConfig{}, true);

@@ -143,7 +143,14 @@ inline void apply_fields(craft::plugin::EngineConfig &engine, MapReader &reader)
       "propellant_ratio", engine.propellant_ratio, decode_map<double>, PluginRequired::on_create
   );
   reader.ignore_mapping("plume");
-  reader.ignore_mapping("light");
+  const auto nonnegative = [](const ConfigView &field) {
+    const auto value = field.as<double>();
+    if (value < 0.0) field.fail(field.mark(), "Expected a nonnegative value");
+    return value;
+  };
+  reader.assign("flicker_speed", engine.flicker_speed, nonnegative);
+  reader.assign("flicker_min", engine.flicker_min, nonnegative);
+  reader.assign("flicker_max", engine.flicker_max, nonnegative);
 }
 
 inline void apply_fields(craft::plugin::ResourceConfig &container, MapReader &reader) {
@@ -175,18 +182,30 @@ inline void apply_fields(craft::plugin::SpriteConfig &sprite, MapReader &reader)
 }
 
 inline void apply_fields(craft::plugin::LightConfig &light, MapReader &reader) {
+  const auto nonnegative = [](const ConfigView &field) {
+    const auto value = field.as<double>();
+    if (value < 0.0) field.fail(field.mark(), "Expected a nonnegative value");
+    return value;
+  };
   reader.assign(
       "light_position", light.light_position_meters, decode_vec, PluginRequired::on_create
   );
-  reader.assign("color", light.color, &ConfigView::nonempty_string, PluginRequired::on_create);
-  reader.assign("intensity", light.intensity, &ConfigView::as<double>, PluginRequired::on_create);
+  reader.assign("color", light.color, [](const ConfigView &field) {
+    (void)ConfigDecoder<Color>::decode(field);
+    return field.nonempty_string();
+  }, PluginRequired::on_create);
+  reader.assign("intensity", light.intensity, nonnegative, PluginRequired::on_create);
   reader.assign(
-      "inner_radius", light.inner_radius_meters, &ConfigView::as<double>, PluginRequired::on_create
+      "inner_radius", light.inner_radius_meters, nonnegative, PluginRequired::on_create
   );
   reader.assign(
-      "outer_radius", light.outer_radius_meters, &ConfigView::as<double>, PluginRequired::on_create
+      "outer_radius", light.outer_radius_meters, nonnegative, PluginRequired::on_create
   );
-  reader.assign("falloff", light.falloff, &ConfigView::as<double>, PluginRequired::on_create);
+  reader.assign("falloff", light.falloff, [](const ConfigView &field) {
+    const auto value = field.as<double>();
+    if (value < 0.0 || value > 1.0) field.fail(field.mark(), "Expected a value between 0 and 1");
+    return value;
+  }, PluginRequired::on_create);
   reader.assign("strength", light.strength, [](const ConfigView &field) {
     const auto value = field.checked_finite(field.as<double>());
     if (value < 0.0) field.fail(field.mark(), "Expected a nonnegative strength");
@@ -248,6 +267,18 @@ inline void apply_fields(
   reader.assign("enabled", config.enabled, &ConfigView::as<bool>);
   std::visit([&reader](auto &values) { apply_fields(values, reader); }, config.values);
   reader.finish();
+  if (const auto *light = std::get_if<craft::plugin::LightConfig>(&config.values);
+      light && light->inner_radius_meters > light->outer_radius_meters) {
+    const auto field = value.optional("inner_radius").value_or(
+        value.optional("outer_radius").value_or(value));
+    field.fail(field.mark(), "Inner radius must not exceed outer radius");
+  }
+  if (const auto *engine = std::get_if<craft::plugin::EngineConfig>(&config.values);
+      engine && engine->flicker_min > engine->flicker_max) {
+    const auto field = value.optional("flicker_min").value_or(
+        value.optional("flicker_max").value_or(value));
+    field.fail(field.mark(), "Flicker minimum must not exceed maximum");
+  }
 }
 
 } // namespace detail

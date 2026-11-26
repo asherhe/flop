@@ -18,6 +18,10 @@ namespace flop::testing {
 class StubCraftContext : public craft::CraftContext {
 public:
   StubCraftContext() = default;
+  StubCraftContext &with_time(double ut) { ut_sec_ = ut; return *this; }
+  StubCraftContext &with_runtime_id(std::uint64_t id) { runtime_id_ = id; return *this; }
+  [[nodiscard]] double ut_sec() const noexcept override { return ut_sec_; }
+  [[nodiscard]] std::uint64_t runtime_id() const noexcept override { return runtime_id_; }
 
   StubCraftContext &with_parts(std::span<const craft::Part> parts) {
     parts_ = parts;
@@ -78,6 +82,8 @@ public:
   }
 
 private:
+  double ut_sec_{};
+  std::uint64_t runtime_id_{};
   [[nodiscard]] craft::CraftControl &require_control() const {
     if (control_ == nullptr) {
       throw std::logic_error("StubCraftContext::control() queried without control set");

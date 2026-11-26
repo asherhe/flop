@@ -121,7 +121,8 @@ CraftId Universe::add_craft(
   const auto id = static_cast<CraftId>(next_craft_id_);
   // build before recording so a construction failure leaves the world and the
   // id counter unchanged.
-  auto craft = std::make_unique<craft::Craft>(std::move(config), *this, std::move(part_types));
+  auto craft = std::make_unique<craft::Craft>(
+      std::move(config), *this, std::move(part_types), static_cast<std::uint64_t>(id));
   craft_.emplace(id, std::move(craft));
   craft_order_.push_back(id);
   ++next_craft_id_;

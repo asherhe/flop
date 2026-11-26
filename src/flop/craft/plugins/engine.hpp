@@ -26,6 +26,7 @@ public:
   EnginePlugin(EngineConfig config, const ResourceRegistry &registry, bool enabled);
 
   void tick(CraftContext &ctx, double dt_sec) override;
+  void reset_step() override { clear_effect_strengths(); }
 
   [[nodiscard]] const EngineConfig &config() const noexcept { return config_; }
 

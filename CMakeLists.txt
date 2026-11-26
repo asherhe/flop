@@ -61,6 +61,7 @@ if(BUILD_TESTING)
         tests/craft/resource_registry_tests.cpp
         tests/math/vec2_tests.cpp
         tests/math/key_curve_tests.cpp
+        tests/math/noise_tests.cpp
         tests/orbit/encounter_tests.cpp
         tests/orbit/patched_conics_tests.cpp
         tests/orbit/propagation_tests.cpp

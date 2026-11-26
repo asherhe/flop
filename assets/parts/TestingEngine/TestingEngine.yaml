@@ -29,15 +29,18 @@ plugins:
       NTO: 1.5
       Hydrazine: 1.0
 
-    light:
-      color: "#FFA43B"
-      intensity: 3.83
-      radius: 4.50
-      falloff: 0.73
+    flicker_speed: 12.8
+    flicker_min: 0.7
+    flicker_max: 1.9
 
-      flicker_frequency: 12.8
-      flicker_min: 0.7
-      flicker_max: 1.9
+  LightPlugin:
+    light_position: { x: 0.0, y: -0.75 }
+    color: "#FFA43B"
+    intensity: 3.83
+    inner_radius: 0.0
+    outer_radius: 4.50
+    falloff: 0.73
+    strength: 0.0
 
   ParticlePlugin:
     line_pos: { x: 0.0, y: -0.75 }

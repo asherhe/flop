@@ -6,6 +6,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/app/game_scene.hpp"
+#include "flop/craft/craft.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/view/particle_scene.hpp"
 #include "flop/view/particles.hpp"
 #include "flop/world/control_manager.hpp"
@@ -118,4 +120,27 @@ TEST_CASE("shipped engine emits particles on world steps and focus changes clear
   CHECK(frame.particles[0].angle_rad == Catch::Approx(particles.system().particles()[0].angle_rad));
   particles.set_focus(std::string("Sun"));
   CHECK(particles.system().particles().empty());
+}
+
+TEST_CASE("shipped engine light uses world time and remains stable between ticks") {
+  const flop::config::AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
+  auto scene = flop::app::load_game_scene(resolver);
+  auto &world = *scene.universe;
+  const auto id = scene.craft.front();
+  const auto *light = world.craft(id).part("TestingEngine_3")
+      .get_plugin<flop::craft::plugin::LightPlugin>();
+  REQUIRE(light);
+  CHECK(light->strength() == 0.0);
+  world.controls().submit(flop::world::ControlManager::SelectCraft{id});
+  world.controls().submit(flop::world::ControlManager::SetThrottle{1.0});
+  (void)world.controls().apply_commands();
+  world.tick(0.02);
+  const auto first = light->strength();
+  CHECK(first > 0.0);
+  CHECK(light->strength() == first);
+  world.tick(0.2);
+  const auto second = light->strength();
+  CHECK(second != Catch::Approx(first));
+  world.tick(0.02);
+  CHECK(light->strength() != Catch::Approx(second));
 }

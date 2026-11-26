@@ -25,10 +25,13 @@ public:
   Craft(
       CraftConfig config,
       const world::UniverseContext &context,
-      std::vector<PartTypeConfig> part_types = {}
+      std::vector<PartTypeConfig> part_types = {},
+      std::uint64_t runtime_id = 0
   );
 
   [[nodiscard]] std::string_view name() const noexcept { return name_; }
+  [[nodiscard]] double ut_sec() const noexcept override { return context_->ut_sec(); }
+  [[nodiscard]] std::uint64_t runtime_id() const noexcept override { return runtime_id_; }
   [[nodiscard]] const orbit::OrbitState &orbit_state() const noexcept { return orbit_state_; }
   [[nodiscard]] const orbit::OrbitPatchSegments &patches() const noexcept { return patches_; }
   [[nodiscard]] std::span<const Part> parts() const noexcept override { return parts_; }
@@ -85,6 +88,7 @@ private:
   void reseed_orbit(double now_ut, const orbit::StateVectors &state);
 
   const world::UniverseContext *context_;
+  std::uint64_t runtime_id_{};
   std::string name_;
   orbit::OrbitState orbit_state_;
   orbit::OrbitPatchSegments patches_;

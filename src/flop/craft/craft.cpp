@@ -14,8 +14,9 @@ namespace flop::craft {
 Craft::Craft(
     CraftConfig config,
     const world::UniverseContext &context,
-    std::vector<PartTypeConfig> part_types
-) : context_(&context), name_(std::move(config.name)) {
+    std::vector<PartTypeConfig> part_types,
+    std::uint64_t runtime_id
+) : context_(&context), runtime_id_(runtime_id), name_(std::move(config.name)) {
   const auto &frames = context.reference_frames();
   if (!config.orbit.has_value()) {
     throw std::invalid_argument(
