@@ -236,7 +236,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
   if (swapchain) {
     SDL_GPUColorTargetInfo target{};
     target.texture = swapchain;
-    target.clear_color = SDL_FColor{0.02f, 0.05f, 0.12f, 1.0f};
+    target.clear_color = SDL_FColor{0.0f, 0.0f, 0.0f, 1.0f};
     target.load_op = SDL_GPU_LOADOP_CLEAR;
     target.store_op = SDL_GPU_STOREOP_STORE;
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(commands, &target, 1, nullptr);
