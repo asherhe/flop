@@ -31,6 +31,67 @@ TextureCache::~TextureCache() {
   }
 }
 
+SDL_GPUTexture *TextureCache::get_default(DefaultTexture kind) {
+  const std::string key = kind == DefaultTexture::flat_normal ? "default:normal" : "default:transparent";
+  if (const auto found = textures_.find(key); found != textures_.end())
+    return found->second;
+  SDL_GPUTextureCreateInfo info{};
+  info.type = SDL_GPU_TEXTURETYPE_2D;
+  info.format = kind == DefaultTexture::flat_normal ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+                                                     : SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB;
+  info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+  info.width = info.height = info.layer_count_or_depth = info.num_levels = 1;
+  info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+  auto *texture = SDL_CreateGPUTexture(device_, &info);
+  if (!texture) throw failure(key, SDL_GetError());
+  SDL_GPUTransferBufferCreateInfo transfer{};
+  transfer.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+  transfer.size = 4;
+  auto *upload = SDL_CreateGPUTransferBuffer(device_, &transfer);
+  if (!upload) {
+    const auto error = failure(key, SDL_GetError());
+    SDL_ReleaseGPUTexture(device_, texture);
+    throw error;
+  }
+  void *mapped = SDL_MapGPUTransferBuffer(device_, upload, false);
+  if (!mapped) {
+    const auto error = failure(key, SDL_GetError());
+    SDL_ReleaseGPUTransferBuffer(device_, upload);
+    SDL_ReleaseGPUTexture(device_, texture);
+    throw error;
+  }
+  const unsigned char normal[4]{128, 128, 255, 255};
+  const unsigned char transparent[4]{0, 0, 0, 0};
+  SDL_memcpy(mapped, kind == DefaultTexture::flat_normal ? normal : transparent, 4);
+  SDL_UnmapGPUTransferBuffer(device_, upload);
+  auto *commands = SDL_AcquireGPUCommandBuffer(device_);
+  auto *pass = commands ? SDL_BeginGPUCopyPass(commands) : nullptr;
+  if (!pass) {
+    const auto error = failure(key, SDL_GetError());
+    if (commands) SDL_CancelGPUCommandBuffer(commands);
+    SDL_ReleaseGPUTransferBuffer(device_, upload);
+    SDL_ReleaseGPUTexture(device_, texture);
+    throw error;
+  }
+  SDL_GPUTextureTransferInfo source{};
+  source.transfer_buffer = upload;
+  SDL_GPUTextureRegion destination{};
+  destination.texture = texture;
+  destination.w = destination.h = destination.d = 1;
+  SDL_UploadToGPUTexture(pass, &source, &destination, false);
+  SDL_EndGPUCopyPass(pass);
+  const bool submitted = SDL_SubmitGPUCommandBuffer(commands);
+  const std::string error = submitted ? "" : SDL_GetError();
+  SDL_ReleaseGPUTransferBuffer(device_, upload);
+  if (!submitted) {
+    SDL_ReleaseGPUTexture(device_, texture);
+    throw failure(key, error);
+  }
+  try { textures_.emplace(key, texture); }
+  catch (...) { SDL_ReleaseGPUTexture(device_, texture); throw; }
+  return texture;
+}
+
 SDL_GPUTexture *TextureCache::get(const std::string &address, TextureColorSpace color_space) {
   const bool srgb = color_space == TextureColorSpace::srgb;
   const std::string key = (srgb ? "srgb:" : "linear:") + address;

@@ -29,7 +29,8 @@ std::runtime_error failure(const char *operation) {
 
 SDL_GPUGraphicsPipeline *create_pipeline(
     SDL_GPUDevice *device, SDL_Window *window, const char *id, bool blend,
-    CraftSpriteBindings *bindings = nullptr, const MaterialRecipe *recipe = nullptr
+    CraftSpriteBindings *bindings = nullptr, const MaterialRecipe *recipe = nullptr,
+    CraftLitSpriteBindings *lit_bindings = nullptr
 ) {
   const auto formats = SDL_GetGPUShaderFormats(device);
   const bool spirv = (formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0 &&
@@ -42,10 +43,12 @@ SDL_GPUGraphicsPipeline *create_pipeline(
     throw std::runtime_error(std::string(id) + ": no complete packaged shader variant supported by the GPU device; rebuild with a supported shader format");
   }
   const auto format = spirv ? "spirv" : "dxil";
-  const auto &vertex_entry = shaders::find(shaders::manifest, id, "vertex", format);
+    const auto &vertex_entry = shaders::find(shaders::manifest, id, "vertex", format);
   const auto &fragment_entry = shaders::find(shaders::manifest, id, "fragment", format);
   if (bindings)
     *bindings = resolve_craft_sprite_bindings(*recipe, vertex_entry, fragment_entry);
+  if (lit_bindings)
+    *lit_bindings = resolve_craft_lit_sprite_bindings(*recipe, vertex_entry, fragment_entry);
   SDL_GPUShaderCreateInfo info{};
   info.format = spirv ? SDL_GPU_SHADERFORMAT_SPIRV : SDL_GPU_SHADERFORMAT_DXIL;
   info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
@@ -105,7 +108,7 @@ SDL_GPUGraphicsPipeline *create_pipeline(
 }
 } // namespace
 
-Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : window_(window) {
+Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : window_(window), resolver_(resolver) {
   SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_INVALID;
   if (shaders::contains(shaders::manifest, "test_tri", "vertex", "spirv") &&
       shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv") &&
@@ -167,6 +170,8 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
+    if (lit_pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, lit_pipeline_);
     if (pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
@@ -184,6 +189,8 @@ Renderer::~Renderer() {
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
+    if (lit_pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, lit_pipeline_);
     SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
     SDL_DestroyGPUDevice(device_);
@@ -191,17 +198,38 @@ Renderer::~Renderer() {
 }
 
 void Renderer::present(const view::FrameDrawData &frame) {
-  std::vector<SDL_GPUTexture *> sprite_textures;
+  struct SpriteTextures { SDL_GPUTexture *albedo{}, *normal{}, *emission{}; bool lit{}; };
+  std::vector<SpriteTextures> sprite_textures;
   sprite_textures.reserve(frame.sprites.size());
   for (const auto &sprite : frame.sprites) {
-    if (sprite.visual.material.shader != craft_sprite_recipe.shader)
+    const auto &material = sprite.visual.material;
+    const bool lit = material.shader == "craft/lit_sprite";
+    if (!lit && material.shader != craft_sprite_recipe.shader)
       throw std::runtime_error("unsupported sprite shader '" + sprite.visual.material.shader + "'");
+    if (lit && !lit_pipeline_) {
+      const auto loaded = load_craft_lit_sprite_recipe(resolver_);
+      const auto recipe = loaded.view();
+      lit_pipeline_ = create_pipeline(device_, window_, "craft/lit_sprite", true, nullptr, &recipe, &lit_bindings_);
+    }
+    SpriteTextures maps{};
+    maps.lit = lit;
     try {
-      sprite_textures.push_back(textures_->get(sprite.visual.sprite, TextureColorSpace::srgb));
+      maps.albedo = textures_->get(sprite.visual.sprite, TextureColorSpace::srgb);
     } catch (const std::exception &error) {
       const auto &source = sprite.visual.sprite_source;
       throw std::runtime_error(source.address + ": " + source.key + ": " + error.what());
     }
+    if (lit) {
+      const auto load_map = [&](const std::string &path, const auto &source, TextureColorSpace space, DefaultTexture fallback) {
+        try { return path.empty() ? textures_->get_default(fallback) : textures_->get(path, space); }
+        catch (const std::exception &error) {
+          throw std::runtime_error(source.address + ": " + source.key + ": " + error.what());
+        }
+      };
+      maps.normal = load_map(material.normal_map, material.normal_map_source, TextureColorSpace::linear, DefaultTexture::flat_normal);
+      maps.emission = load_map(material.emission_map, material.emission_map_source, TextureColorSpace::srgb, DefaultTexture::transparent);
+    }
+    sprite_textures.push_back(maps);
   }
   SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(device_);
   if (!commands) {
@@ -247,8 +275,9 @@ void Renderer::present(const view::FrameDrawData &frame) {
       throw error;
     }
     if (craft_pipeline_ && frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
-      SDL_BindGPUGraphicsPipeline(pass, craft_pipeline_);
       for (std::size_t i = 0; i < frame.sprites.size(); ++i) {
+        const auto &maps = sprite_textures[i];
+        SDL_BindGPUGraphicsPipeline(pass, maps.lit ? lit_pipeline_ : craft_pipeline_);
         const auto &corners = frame.sprites[i].corners_pixels;
         const SpriteGeometry geometry{
             corners[0].x,
@@ -260,9 +289,20 @@ void Renderer::present(const view::FrameDrawData &frame) {
             static_cast<float>(frame.camera.viewport_width),
             static_cast<float>(frame.camera.viewport_height)
         };
-        SDL_PushGPUVertexUniformData(commands, craft_bindings_.uniform_slot, &geometry, sizeof(geometry));
-        SDL_GPUTextureSamplerBinding binding{sprite_textures[i], sprite_sampler_};
-        SDL_BindGPUFragmentSamplers(pass, craft_bindings_.texture_slot, &binding, 1);
+        const auto &bindings = maps.lit ? lit_bindings_.geometry : craft_bindings_;
+        SDL_PushGPUVertexUniformData(commands, bindings.uniform_slot, &geometry, sizeof(geometry));
+        SDL_GPUTextureSamplerBinding binding{maps.albedo, sprite_sampler_};
+        SDL_BindGPUFragmentSamplers(pass, bindings.texture_slot, &binding, 1);
+        if (maps.lit) {
+          SDL_GPUTextureSamplerBinding normal{maps.normal, sprite_sampler_};
+          SDL_GPUTextureSamplerBinding emission{maps.emission, sprite_sampler_};
+          SDL_BindGPUFragmentSamplers(pass, lit_bindings_.normal_slot, &normal, 1);
+          SDL_BindGPUFragmentSamplers(pass, lit_bindings_.emission_slot, &emission, 1);
+          const auto &sun = frame.sprites[i].sun;
+          struct Lighting { std::array<float, 4> direction, color; };
+          const Lighting light{sun.direction, sun.color};
+          SDL_PushGPUFragmentUniformData(commands, lit_bindings_.light_uniform_slot, &light, sizeof(light));
+        }
         SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
       }
     } else if (!craft_pipeline_) {

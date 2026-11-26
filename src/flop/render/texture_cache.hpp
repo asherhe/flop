@@ -11,6 +11,7 @@ struct SDL_GPUTexture;
 namespace flop::render {
 
 enum class TextureColorSpace { linear, srgb };
+enum class DefaultTexture { flat_normal, transparent };
 
 // owns uploaded GPU textures
 class TextureCache {
@@ -21,6 +22,7 @@ public:
   ~TextureCache();
 
   SDL_GPUTexture *get(const std::string &address, TextureColorSpace color_space);
+  SDL_GPUTexture *get_default(DefaultTexture kind);
 
 private:
   SDL_GPUDevice *device_;

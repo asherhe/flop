@@ -6,6 +6,7 @@
 #include <cstdint>
 #endif
 #include "flop/render/material_recipe.hpp"
+#include "flop/config/asset_path.hpp"
 
 struct SDL_GPUDevice;
 struct SDL_GPUGraphicsPipeline;
@@ -37,8 +38,11 @@ private:
   SDL_GPUDevice *device_{};
   SDL_GPUGraphicsPipeline *pipeline_{};
   SDL_GPUGraphicsPipeline *craft_pipeline_{};
+  SDL_GPUGraphicsPipeline *lit_pipeline_{};
   SDL_GPUSampler *sprite_sampler_{};
   CraftSpriteBindings craft_bindings_{};
+  CraftLitSpriteBindings lit_bindings_{};
+  config::AssetResolver resolver_;
   std::unique_ptr<TextureCache> textures_;
 #ifdef FLOP_RENDER_TESTING
   bool capture_{};
