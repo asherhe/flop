@@ -6,6 +6,8 @@
 #include <array>
 
 #include "flop/math/vec2.hpp"
+#include "flop/math/key_curve.hpp"
+#include "flop/craft/plugins/particle_rgb.hpp"
 
 namespace flop::craft::plugin {
 
@@ -83,9 +85,9 @@ struct ParticleConfig {
   std::array<double, 2> rate_per_sec{};
   std::array<double, 2> start_size_meters{};
   std::array<double, 2> start_speed_m_per_s{};
-  std::map<double, std::string> color_keys;
-  std::map<double, double> alpha_keys;
-  std::map<double, double> size_keys;
+  KeyCurve<ParticleRgb> color;
+  KeyCurve<double> alpha;
+  KeyCurve<double> size;
 };
 
 using PluginValues = std::variant<

@@ -106,13 +106,17 @@ TEST_CASE("Particle plugin decodes ranges and rejects invalid overrides at their
   const auto &config = std::get<flop::craft::plugin::ParticleConfig>(particle.values);
   CHECK(config.rate_per_sec[0] == 300);
   CHECK(config.start_speed_m_per_s[1] == 30);
-  CHECK(config.color_keys.at(0) == "#ffffff");
+  CHECK(config.color.evaluate(0).r == 1.0);
   CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(particle,
       ConfigView(YAML::Load("lifetime: [0, 1]"), "save.yaml", "plugins.ParticlePlugin")),
       ContainsSubstring("[plugins.ParticlePlugin.lifetime]"));
   CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(particle,
       ConfigView(YAML::Load("spread_angle: -1"), "save.yaml", "plugins.ParticlePlugin")),
       ContainsSubstring("[plugins.ParticlePlugin.spread_angle]"));
+  CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(particle,
+      ConfigView(YAML::Load("life: {color: {color_keys: {0: '#GG0000'}, alpha_keys: {0: 1}}, size: {0: 1}}"),
+                 "save.yaml", "plugins.ParticlePlugin")),
+      ContainsSubstring("[plugins.ParticlePlugin.life.color.color_keys.0]"));
 }
 
 TEST_CASE("Sprite materials reject unsupported shaders and properties") {

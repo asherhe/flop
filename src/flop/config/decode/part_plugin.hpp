@@ -194,7 +194,24 @@ inline std::array<double, 2> decode_particle_range(const ConfigView &field) {
   return {values[0], values[1]};
 }
 
-template <typename T> std::map<double, T> decode_particle_keys(const ConfigView &field) {
+inline craft::plugin::ParticleRgb decode_particle_rgb(const ConfigView &field) {
+  const auto value = field.as<std::string>();
+  if (value.size() != 7 || value[0] != '#')
+    field.fail(field.mark(), "Expected a #RRGGBB color");
+  const auto digit = [&](char c) -> unsigned {
+    if (c >= '0' && c <= '9') return static_cast<unsigned>(c - '0');
+    if (c >= 'a' && c <= 'f') return static_cast<unsigned>(c - 'a' + 10);
+    if (c >= 'A' && c <= 'F') return static_cast<unsigned>(c - 'A' + 10);
+    field.fail(field.mark(), "Expected a #RRGGBB color");
+  };
+  const auto channel = [&](std::size_t index) {
+    return static_cast<float>(digit(value[index]) * 16 + digit(value[index + 1])) / 255.0f;
+  };
+  return {channel(1), channel(3), channel(5)};
+}
+
+template <typename T, typename Decode>
+KeyCurve<T> decode_particle_keys(const ConfigView &field, Decode decode) {
   std::map<double, T> result;
   for (const auto &entry : field.entries()) {
     double key{};
@@ -208,11 +225,14 @@ template <typename T> std::map<double, T> decode_particle_keys(const ConfigView 
     } catch (const std::out_of_range &) {
       entry.value.fail(entry.value.mark(), "Invalid curve key");
     }
-    if (!result.emplace(key, entry.value.as<T>()).second)
+    if (!result.emplace(key, std::invoke(decode, entry.value)).second)
       entry.value.fail(entry.value.mark(), "Duplicate curve key");
   }
   if (result.empty()) field.fail(field.mark(), "Curve must have at least one key");
-  return result;
+  std::vector<CurveKey<T>> keys;
+  keys.reserve(result.size());
+  for (auto &[time, value] : result) keys.push_back({time, std::move(value)});
+  return KeyCurve<T>(std::move(keys));
 }
 
 inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &reader) {
@@ -240,14 +260,14 @@ inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &rea
   reader.assign("life", life, [](const ConfigView &field) {
     craft::plugin::ParticleConfig result;
     const auto color = field.required("color");
-    result.color_keys = decode_particle_keys<std::string>(color.required("color_keys"));
-    result.alpha_keys = decode_particle_keys<double>(color.required("alpha_keys"));
-    result.size_keys = decode_particle_keys<double>(field.required("size"));
+    result.color = decode_particle_keys<craft::plugin::ParticleRgb>(color.required("color_keys"), decode_particle_rgb);
+    result.alpha = decode_particle_keys<double>(color.required("alpha_keys"), &ConfigView::as<double>);
+    result.size = decode_particle_keys<double>(field.required("size"), &ConfigView::as<double>);
     return result;
   }, PluginRequired::on_create);
-  particle.color_keys = std::move(life.color_keys);
-  particle.alpha_keys = std::move(life.alpha_keys);
-  particle.size_keys = std::move(life.size_keys);
+  particle.color = std::move(life.color);
+  particle.alpha = std::move(life.alpha);
+  particle.size = std::move(life.size);
 }
 
 inline void apply_fields(

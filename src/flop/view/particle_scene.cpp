@@ -37,32 +37,6 @@ Vec2d focus_position(const world::Universe &universe, const Focus &focus) {
   );
 }
 
-template <typename T, typename Blend>
-T curve_value(const std::map<double, T> &keys, double t, Blend blend) {
-  auto upper = keys.lower_bound(t);
-  if (upper == keys.begin())
-    return upper->second;
-  if (upper == keys.end())
-    return std::prev(upper)->second;
-  const auto lower = std::prev(upper);
-  return blend(lower->second, upper->second, (t - lower->first) / (upper->first - lower->first));
-}
-
-std::array<float, 3> color_value(const std::string &value) {
-  if (value.size() != 7 || value[0] != '#')
-    return {1, 1, 1};
-  try {
-    const auto rgb = std::stoul(value.substr(1), nullptr, 16);
-    return {
-        static_cast<float>((rgb >> 16) & 255) / 255.0f,
-        static_cast<float>((rgb >> 8) & 255) / 255.0f,
-        static_cast<float>(rgb & 255) / 255.0f
-    };
-  } catch (...) {
-    return {1, 1, 1};
-  }
-}
-
 } // namespace
 
 void ParticleScene::set_focus(const Focus &focus) {
@@ -120,25 +94,12 @@ void ParticleScene::end_step(const world::Universe &universe, const Focus &focus
 void ParticleScene::append_draw_data(FrameDrawData &frame) const {
   for (const auto &particle : particles_.particles()) {
     const auto &config = *particle.config;
-    if (config.color_keys.empty() || config.alpha_keys.empty() || config.size_keys.empty())
+    if (config.color.empty() || config.alpha.empty() || config.size.empty())
       continue;
     const double t = std::clamp(particle.age_sec / particle.lifetime_sec, 0.0, 1.0);
-    const auto scalar = [](double a, double b, double f) { return a + (b - a) * f; };
-    const double size = particle.start_size_meters * curve_value(config.size_keys, t, scalar);
-    const double alpha = curve_value(config.alpha_keys, t, scalar);
-    auto upper = config.color_keys.lower_bound(t);
-    std::array<float, 3> color;
-    if (upper == config.color_keys.begin())
-      color = color_value(upper->second);
-    else if (upper == config.color_keys.end())
-      color = color_value(std::prev(upper)->second);
-    else {
-      const auto lower = std::prev(upper);
-      const auto a = color_value(lower->second), b = color_value(upper->second);
-      const float f = static_cast<float>((t - lower->first) / (upper->first - lower->first));
-      for (std::size_t i = 0; i < 3; ++i)
-        color[i] = a[i] + (b[i] - a[i]) * f;
-    }
+    const double size = particle.start_size_meters * config.size.evaluate(t);
+    const double alpha = config.alpha.evaluate(t);
+    const auto color = config.color.evaluate(t);
     const auto relative = particle.position_meters - frame.camera.pan_meters;
     frame.particles.push_back(
         {{static_cast<float>(
@@ -148,7 +109,10 @@ void ParticleScene::append_draw_data(FrameDrawData &frame) const {
               frame.camera.viewport_height * 0.5 - relative.y * frame.camera.pixels_per_meter
           )},
          static_cast<float>(size * frame.camera.pixels_per_meter),
-         {color[0], color[1], color[2], static_cast<float>(alpha)}}
+         {static_cast<float>(color.r),
+          static_cast<float>(color.g),
+          static_cast<float>(color.b),
+          static_cast<float>(alpha)}}
     );
   }
 }
