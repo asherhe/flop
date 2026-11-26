@@ -44,6 +44,7 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   const auto &engine_light_config = std::get<flop::craft::plugin::LightConfig>(engine_light->values);
   CHECK(engine_light_config.light_position_meters.y == -0.75);
   CHECK(engine_light_config.strength == 0.0);
+  CHECK(engine_light_config.normal_distance_meters == 1.5);
   CHECK(engine_light_config.outer_radius_meters == 4.5);
   REQUIRE(engine.attachment_nodes.size() == 2);
   CHECK(engine.attachment_nodes[0].position_meters.y == 0.75);
@@ -70,6 +71,7 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   CHECK(light_config.color.r == 1.0f);
   CHECK(light_config.color.g == Catch::Approx(236.0 / 255.0));
   CHECK(light_config.intensity == 0.13);
+  CHECK(light_config.normal_distance_meters == 1.5);
   CHECK(light_config.inner_radius_meters == 0.25);
   CHECK(light_config.outer_radius_meters == 1.68);
   CHECK(light_config.falloff == 0.89);
@@ -78,7 +80,7 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
 
 TEST_CASE("light and engine flicker validation reports source fields") {
   auto light = flop::config::decode_part_plugin("LightPlugin", ConfigView(YAML::Load(
-      "light_position: {x: 0, y: 0}\ncolor: '#ffffff'\nintensity: 1\n"
+      "light_position: {x: 0, y: 0}\ncolor: '#ffffff'\nintensity: 1\nnormal_distance: 1.5\n"
       "inner_radius: 0\nouter_radius: 1\nfalloff: 0.5\n"), "part.yaml", "plugins.LightPlugin"));
   for (const auto *invalid : {"outer_radius: -1", "intensity: -1", "falloff: 1.1", "color: nope"}) {
     auto copy = light;
@@ -99,13 +101,43 @@ TEST_CASE("light and engine flicker validation reports source fields") {
 TEST_CASE("light initial strength is configurable and rejects invalid overrides") {
   auto light = flop::config::decode_part_plugin(
       "LightPlugin", ConfigView(YAML::Load(
-          "light_position: {x: 0, y: 0}\ncolor: '#ffffff'\nintensity: 1\n"
+          "light_position: {x: 0, y: 0}\ncolor: '#ffffff'\nintensity: 1\nnormal_distance: 1.5\n"
           "inner_radius: 0\nouter_radius: 1\nfalloff: 0.5\nstrength: 0\n"),
           "part.yaml", "plugins.LightPlugin"));
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).strength == 0.0);
   CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(light,
       ConfigView(YAML::Load("strength: -1"), "save.yaml", "plugins.LightPlugin")),
       ContainsSubstring("[plugins.LightPlugin.strength]"));
+}
+
+TEST_CASE("light normal distance is required, nonnegative and overrideable") {
+  const char *without_distance =
+      "light_position: {x: 0, y: 0}\ncolor: '#ffffff'\nintensity: 1\n"
+      "inner_radius: 0\nouter_radius: 1\nfalloff: 0.5\n";
+  CHECK_THROWS_WITH(flop::config::decode_part_plugin("LightPlugin",
+      ConfigView(YAML::Load(without_distance), "part.yaml", "plugins.LightPlugin")),
+      ContainsSubstring("normal_distance"));
+
+  const AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
+  const auto pod = load_part_type(resolver, "TestingCommandPod");
+  const auto original = *std::ranges::find(
+      pod.plugins, "LightPlugin", &flop::craft::plugin::PartPluginConfig::name);
+  for (const auto *invalid : {"normal_distance: -1", "normal_distance: .nan", "normal_distance: .inf"}) {
+    auto light = original;
+    CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(light,
+        ConfigView(YAML::Load(invalid), "save.yaml", "plugins.LightPlugin")),
+        ContainsSubstring("[plugins.LightPlugin.normal_distance]"));
+  }
+  auto light = original;
+  flop::config::apply_part_plugin_fields(light,
+      ConfigView(YAML::Load("intensity: 2"), "craft.yaml", "plugins.LightPlugin"));
+  CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).normal_distance_meters == 1.5);
+  flop::config::apply_part_plugin_fields(light,
+      ConfigView(YAML::Load("normal_distance: 0"), "save.yaml", "plugins.LightPlugin"));
+  CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).normal_distance_meters == 0.0);
+  flop::config::apply_part_plugin_fields(light,
+      ConfigView(YAML::Load("normal_distance: 3.25"), "save.yaml", "plugins.LightPlugin"));
+  CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).normal_distance_meters == 3.25);
 }
 
 TEST_CASE("Visual plugin overrides update their own config types") {

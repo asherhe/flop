@@ -183,7 +183,8 @@ FrameDrawData CameraState::build_frame(const FrameBuildContext &context) const {
           result.lights.push_back({id, part.part_id(), plugin->id(), pos,
               {static_cast<float>(x), static_cast<float>(y)},
               static_cast<float>(visual.inner_radius_meters * camera.pixels_per_meter),
-              static_cast<float>(radius), static_cast<float>(visual.falloff), {rgb.r, rgb.g, rgb.b}});
+              static_cast<float>(radius), static_cast<float>(visual.falloff), {rgb.r, rgb.g, rgb.b},
+              static_cast<float>(visual.normal_distance_meters * camera.pixels_per_meter)});
         }
       }
     }

@@ -24,6 +24,7 @@ plugins:
     light_position: { x: 0, y: -0.125 }
     color: "#FFECB1"
     intensity: 0.13
+    normal_distance: 1.5 # m above the sprite plane
     inner_radius: 0.25
     outer_radius: 1.68
     falloff: 0.89

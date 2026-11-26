@@ -80,6 +80,8 @@ struct LightConfig {
   double outer_radius_meters{};
   double falloff{};
   double strength{1.0};
+  // distance above the sprite plane used for normal-aware lighting
+  double normal_distance_meters{};
 };
 
 struct ParticleConfig {
