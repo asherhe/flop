@@ -29,6 +29,7 @@ add_library(flop_core STATIC
     src/flop/orbit/propagators/universal.cpp
     src/flop/view/frame.cpp
     src/flop/view/lighting.cpp
+    src/flop/view/particle_scene.cpp
     src/flop/view/particles.cpp
     src/flop/world/control_manager.cpp
     src/flop/world/celestial_body.cpp
@@ -130,6 +131,7 @@ if(FLOP_BUILD_GAME)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
     flop_add_shader(ID craft/sprite SOURCE craft/sprite.hlsl)
     flop_add_shader(ID craft/lit_sprite SOURCE craft/lit_sprite.hlsl)
+    flop_add_shader(ID particle SOURCE particle.hlsl)
     flop_embed_shaders(flop)
     add_subdirectory(tools/gpu_probe EXCLUDE_FROM_ALL)
 

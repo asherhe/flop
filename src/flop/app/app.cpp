@@ -20,6 +20,7 @@
 #include "flop/platform/sdl_platform.hpp"
 #include "flop/render/renderer.hpp"
 #include "flop/view/frame.hpp"
+#include "flop/view/particle_scene.hpp"
 #include "flop/world/control_manager.hpp"
 #include "flop/world/universe.hpp"
 
@@ -100,6 +101,7 @@ int App::run(int argc, char **argv) {
   view::ViewState views;
   views.flight.focus = scene.craft.empty() ? view::Focus{scene.body_visuals.front().name}
                                            : view::Focus{scene.craft.front()};
+  view::ParticleScene particles;
 
   int exit_code = 0;
   bool running = true;
@@ -137,13 +139,16 @@ int App::run(int argc, char **argv) {
     // advance simulation; each step covers its simulation time at the current warp.
     const double real_dt = TickScheduler::REAL_TIME_STEP_SEC;
     const double sim_dt = TickScheduler::REAL_TIME_STEP_SEC * schedule.warp;
+    particles.set_focus(views.flight.focus);
     for (int step = 0; step < schedule.fixed_step_count; ++step) {
       const double current_throttle = active != nullptr ? active->control().throttle() : 0.0;
       pilot_control.update(frame.pilot, current_throttle, real_dt);
       univ_controls.set_pilot_sample(pilot_control.sample());
       // Apply held input immediately before each world step.
       univ_controls.apply_pilot_sample();
+      particles.begin_step(universe, views.flight.focus);
       universe.tick(sim_dt);
+      particles.end_step(universe, views.flight.focus, sim_dt);
     }
 
     int logical_width = 0, logical_height = 0, pixel_width = 0, pixel_height = 0;
@@ -152,7 +157,8 @@ int App::run(int argc, char **argv) {
     views.flight.update(
         frame.camera, logical_width, logical_height, pixel_width, pixel_height
     );
-    const auto draw_data = views.flight.build_frame(universe, scene.body_visuals);
+    auto draw_data = views.flight.build_frame(universe, scene.body_visuals);
+    particles.append_draw_data(draw_data);
     try {
       renderer->present(draw_data);
     } catch (const std::exception &error) {

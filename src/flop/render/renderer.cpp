@@ -143,6 +143,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       throw failure("SDL_SetGPUSwapchainParameters (linear SDR)");
     }
     pipeline_ = create_pipeline(device_, window_, "test_tri", false);
+    particle_pipeline_ = create_pipeline(device_, window_, "particle", true);
     {
       const auto loaded_recipe = load_craft_sprite_recipe(resolver);
       if (loaded_recipe.shader != craft_sprite_recipe.shader)
@@ -170,6 +171,8 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
+    if (particle_pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, particle_pipeline_);
     if (lit_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, lit_pipeline_);
     if (pipeline_)
@@ -189,6 +192,8 @@ Renderer::~Renderer() {
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
+    if (particle_pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, particle_pipeline_);
     if (lit_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, lit_pipeline_);
     SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
@@ -275,6 +280,18 @@ void Renderer::present(const view::FrameDrawData &frame) {
       throw error;
     }
     if (craft_pipeline_ && frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
+      SDL_BindGPUGraphicsPipeline(pass, particle_pipeline_);
+      for (const auto &particle : frame.particles) {
+        struct ParticleGeometry { std::array<float, 4> rect, viewport, color; };
+        const float size = particle.size_pixels;
+        const ParticleGeometry geometry{
+            {particle.center_pixels.x - size * 0.5f, particle.center_pixels.y - size * 0.5f, size, size},
+            {static_cast<float>(frame.camera.viewport_width), static_cast<float>(frame.camera.viewport_height), 0, 0},
+            particle.color
+        };
+        SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
+        SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
+      }
       for (std::size_t i = 0; i < frame.sprites.size(); ++i) {
         const auto &maps = sprite_textures[i];
         SDL_BindGPUGraphicsPipeline(pass, maps.lit ? lit_pipeline_ : craft_pipeline_);

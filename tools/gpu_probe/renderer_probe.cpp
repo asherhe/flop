@@ -78,6 +78,15 @@ int main() {
       flop::render::Renderer renderer(window, flop::config::AssetResolver(assets));
       flop::view::FrameDrawData frame;
       frame.camera.viewport_width = frame.camera.viewport_height = 1;
+      frame.particles.push_back({{0.5f, 0.5f}, 1.0f, {1, 0, 0, 0.5f}});
+      const auto particle_pixel = renderer.readback_pixel(frame);
+      if (std::abs(int(particle_pixel[0]) - 188) > 3 || particle_pixel[1] > 2 || particle_pixel[2] > 2)
+        throw std::runtime_error("particle alpha blending mismatch");
+      frame.particles[0].center_pixels = {3, 3};
+      const auto control_pixel = renderer.readback_pixel(frame);
+      if (control_pixel[0] > 2 || control_pixel[1] > 2 || control_pixel[2] > 2)
+        throw std::runtime_error("particle control pixel should remain black");
+      frame.particles.clear();
       flop::view::SpriteDraw sprite{};
       sprite.visual.material.shader = "craft/sprite";
       sprite.visual.sprite_source.address = "assets/test_part.yaml";

@@ -1,9 +1,13 @@
 #include <memory>
+#include <filesystem>
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "flop/view/particles.hpp"
+#include "flop/view/particle_scene.hpp"
+#include "flop/app/game_scene.hpp"
+#include "flop/world/control_manager.hpp"
 
 TEST_CASE("particles reuse capacity and compensate for focus motion") {
   auto config = std::make_shared<flop::craft::plugin::ParticleConfig>();
@@ -27,4 +31,25 @@ TEST_CASE("particles reuse capacity and compensate for focus motion") {
   CHECK(particles.particles().size() == flop::view::ParticleSystem::capacity);
   particles.clear();
   CHECK(particles.particles().empty());
+}
+
+TEST_CASE("shipped engine emits particles on world steps and focus changes clear them") {
+  const flop::config::AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
+  auto scene = flop::app::load_game_scene(resolver);
+  auto &world = *scene.universe;
+  const flop::view::Focus focus = scene.craft.front();
+  world.controls().submit(flop::world::ControlManager::SelectCraft{scene.craft.front()});
+  world.controls().submit(flop::world::ControlManager::SetThrottle{1.0});
+  (void)world.controls().apply_commands();
+  flop::view::ParticleScene particles;
+  particles.begin_step(world, focus);
+  world.tick(0.02);
+  particles.end_step(world, focus, 0.02);
+  REQUIRE_FALSE(particles.system().particles().empty());
+  const auto count = particles.system().particles().size();
+  flop::view::FrameDrawData frame;
+  particles.append_draw_data(frame);
+  CHECK(frame.particles.size() == count);
+  particles.set_focus(std::string("Sun"));
+  CHECK(particles.system().particles().empty());
 }

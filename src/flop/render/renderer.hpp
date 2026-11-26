@@ -39,6 +39,7 @@ private:
   SDL_GPUGraphicsPipeline *pipeline_{};
   SDL_GPUGraphicsPipeline *craft_pipeline_{};
   SDL_GPUGraphicsPipeline *lit_pipeline_{};
+  SDL_GPUGraphicsPipeline *particle_pipeline_{};
   SDL_GPUSampler *sprite_sampler_{};
   CraftSpriteBindings craft_bindings_{};
   CraftLitSpriteBindings lit_bindings_{};

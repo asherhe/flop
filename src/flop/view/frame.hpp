@@ -84,12 +84,18 @@ struct TextDraw {
   std::string text;
   PointF position_pixels;
 };
+struct ParticleDraw {
+  PointF center_pixels;
+  float size_pixels{};
+  std::array<float, 4> color{};
+};
 struct FrameDrawData {
   double ut_sec{};
   CameraState camera;
   std::vector<PlanetDraw> planets;
   std::vector<SpriteDraw> sprites;
   std::vector<LightDraw> lights;
+  std::vector<ParticleDraw> particles;
   std::vector<TextDraw> text;
 };
 
