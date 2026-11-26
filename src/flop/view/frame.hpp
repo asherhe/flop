@@ -88,6 +88,7 @@ struct ParticleDraw {
   PointF center_pixels;
   float size_pixels{};
   std::array<float, 4> color{};
+  float angle_rad{};
 };
 struct FrameDrawData {
   double ut_sec{};

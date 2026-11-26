@@ -1,6 +1,7 @@
 #include "flop/render/renderer.hpp"
 
 #include <cstddef>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -282,11 +283,13 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (craft_pipeline_ && frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
       SDL_BindGPUGraphicsPipeline(pass, particle_pipeline_);
       for (const auto &particle : frame.particles) {
-        struct ParticleGeometry { std::array<float, 4> rect, viewport, color; };
+        struct ParticleGeometry { std::array<float, 4> origin_and_x_axis, y_axis_and_viewport, color; };
         const float size = particle.size_pixels;
+        const float c = std::cos(particle.angle_rad) * size;
+        const float s = std::sin(particle.angle_rad) * size;
         const ParticleGeometry geometry{
-            {particle.center_pixels.x - size * 0.5f, particle.center_pixels.y - size * 0.5f, size, size},
-            {static_cast<float>(frame.camera.viewport_width), static_cast<float>(frame.camera.viewport_height), 0, 0},
+            {particle.center_pixels.x - 0.5f * (c + s), particle.center_pixels.y - 0.5f * (c - s), c, -s},
+            {s, c, static_cast<float>(frame.camera.viewport_width), static_cast<float>(frame.camera.viewport_height)},
             particle.color
         };
         SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));

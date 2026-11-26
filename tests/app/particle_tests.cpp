@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <memory>
+#include <numbers>
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -19,8 +20,16 @@ TEST_CASE("particles reuse capacity and compensate for focus motion") {
   flop::view::ParticleEmitter emitter{{0, 0}, {4, 0}, 0, 1, config};
   particles.emit(emitter, 0.25);
   REQUIRE(particles.particles().size() == 2);
+  flop::view::ParticleSystem repeat(1);
+  flop::view::ParticleEmitter same_emitter{{0, 0}, {4, 0}, 0, 1, config};
+  repeat.emit(same_emitter, 0.25);
+  const double angle = particles.particles()[0].angle_rad;
+  CHECK(angle >= 0);
+  CHECK(angle < 2.0 * std::numbers::pi);
+  CHECK(repeat.particles()[0].angle_rad == angle);
   CHECK(emitter.remainder == Catch::Approx(0.5));
   particles.advance(0.5, {1, 0});
+  CHECK(particles.particles()[0].angle_rad == angle);
   CHECK(particles.particles()[0].position_meters.x == Catch::Approx(1));
   particles.emit(emitter, 0.05);
   CHECK(particles.particles().size() == 3);
@@ -50,6 +59,7 @@ TEST_CASE("shipped engine emits particles on world steps and focus changes clear
   flop::view::FrameDrawData frame;
   particles.append_draw_data(frame);
   CHECK(frame.particles.size() == count);
+  CHECK(frame.particles[0].angle_rad == Catch::Approx(particles.system().particles()[0].angle_rad));
   particles.set_focus(std::string("Sun"));
   CHECK(particles.system().particles().empty());
 }

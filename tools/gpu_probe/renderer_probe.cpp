@@ -87,6 +87,13 @@ int main() {
       if (control_pixel[0] > 2 || control_pixel[1] > 2 || control_pixel[2] > 2)
         throw std::runtime_error("particle control pixel should remain black");
       frame.particles.clear();
+      frame.particles.push_back({{1.08f, 0.5f}, 1.0f, {1, 0, 0, 1}, 0.0f});
+      const auto unrotated = renderer.readback_pixel(frame);
+      if (unrotated[0] > 2) throw std::runtime_error("unrotated particle should miss control pixel");
+      frame.particles[0].angle_rad = 0.785398163f;
+      const auto rotated = renderer.readback_pixel(frame);
+      if (rotated[0] < 250) throw std::runtime_error("rotated particle should cover control pixel");
+      frame.particles.clear();
       flop::view::SpriteDraw sprite{};
       sprite.visual.material.shader = "craft/sprite";
       sprite.visual.sprite_source.address = "assets/test_part.yaml";

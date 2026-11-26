@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace flop::view {
 
@@ -59,6 +60,7 @@ void ParticleSystem::emit(ParticleEmitter &emitter, double dt_sec) {
          0.0,
          life,
          sample_random(config.start_size_meters),
+         sample_random({0.0, 2.0 * std::numbers::pi}),
          emitter.config}
     );
   }

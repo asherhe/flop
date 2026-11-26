@@ -26,6 +26,7 @@ struct Particle {
   double age_sec{};
   double lifetime_sec{};
   double start_size_meters{};
+  double angle_rad{};
   std::shared_ptr<const craft::plugin::ParticleConfig> config;
 };
 

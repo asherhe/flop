@@ -112,7 +112,8 @@ void ParticleScene::append_draw_data(FrameDrawData &frame) const {
          {static_cast<float>(color.r),
           static_cast<float>(color.g),
           static_cast<float>(color.b),
-          static_cast<float>(alpha)}}
+          static_cast<float>(alpha)},
+         static_cast<float>(particle.angle_rad)}
     );
   }
 }
