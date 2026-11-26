@@ -43,6 +43,20 @@ TEST_CASE("Sun semantics require fragment float4 inputs") {
   }
 }
 
+TEST_CASE("Local light texture semantic requires a fragment texture") {
+  const auto valid = YAML::Load("shader: craft/lit_sprite\nproperties:\n  local_light: {stage: fragment, type: texture_2d, auto: local_light.texture}\n");
+  const auto recipe = flop::render::decode_material_recipe(flop::config::ConfigView(valid, "lighting.yaml"));
+  REQUIRE(recipe.inputs.size() == 1);
+  CHECK(recipe.inputs[0].auto_input == flop::render::AutoInput::local_light_texture);
+  for (const auto *yaml : {
+           "shader: craft/lit_sprite\nproperties:\n  x: {stage: vertex, type: texture_2d, auto: local_light.texture}",
+           "shader: craft/lit_sprite\nproperties:\n  x: {stage: fragment, type: float4, auto: local_light.texture}"}) {
+    CHECK_THROWS_AS(flop::render::decode_material_recipe(
+                        flop::config::ConfigView(YAML::Load(yaml), "lighting.yaml")),
+                    flop::config::ConfigError);
+  }
+}
+
 using namespace flop::render;
 
 TEST_CASE("Lit sprite bindings validate reflected light inputs") {
@@ -51,6 +65,7 @@ properties:
   albedo: {stage: fragment, type: texture_2d}
   normal_map: {stage: fragment, type: texture_2d}
   emission_map: {stage: fragment, type: texture_2d}
+  local_light: {stage: fragment, type: texture_2d, auto: local_light.texture}
   origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}
   y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}
   sun_direction: {stage: fragment, type: float4, auto: sun.direction}
@@ -61,20 +76,22 @@ properties:
   const auto recipe = decode_material_recipe(flop::config::ConfigView(yaml, "fixture.yaml"));
   shaders::Entry vertex{"craft/lit_sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1,
     R"({"stage":"vertex","uniform_buffers":[{"binding":0,"size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})"};
-  shaders::Entry fragment{"craft/lit_sprite", "fragment", "spirv", "fragment", nullptr, 0, 3, 0, 0, 1,
-    R"({"stage":"fragment","textures":[{"name":"albedo","binding":0},{"name":"normal_map","binding":1},{"name":"emission_map","binding":2}],"uniform_buffers":[{"binding":0,"size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})"};
+  shaders::Entry fragment{"craft/lit_sprite", "fragment", "spirv", "fragment", nullptr, 0, 4, 0, 0, 1,
+    R"({"stage":"fragment","textures":[{"name":"albedo","binding":0},{"name":"normal_map","binding":1},{"name":"emission_map","binding":2},{"name":"local_light","binding":3}],"uniform_buffers":[{"binding":0,"size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})"};
   const auto bindings = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
   CHECK(bindings.normal_slot == 1);
   CHECK(bindings.emission_slot == 2);
+  CHECK(bindings.local_light_slot == 3);
   CHECK(bindings.color_offset == 16);
   vertex.format = "dxil";
   vertex.reflection_json = R"({"stage":"vertex","resources":[{"name":"Geometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"Geometry","size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})";
   fragment.format = "dxil";
-  fragment.reflection_json = R"({"stage":"fragment","resources":[{"name":"albedo","type":"texture","binding":0},{"name":"normal_map","type":"texture","binding":1},{"name":"emission_map","type":"texture","binding":2},{"name":"Light","type":"uniform_buffer","binding":1}],"uniform_buffers":[{"name":"Light","size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})";
+  fragment.reflection_json = R"({"stage":"fragment","resources":[{"name":"albedo","type":"texture","binding":0},{"name":"normal_map","type":"texture","binding":1},{"name":"emission_map","type":"texture","binding":2},{"name":"local_light","type":"texture","binding":3},{"name":"Light","type":"uniform_buffer","binding":1}],"uniform_buffers":[{"name":"Light","size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})";
   const auto dxil = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
   CHECK(dxil.light_uniform_slot == 1);
   CHECK(dxil.normal_slot == 1);
   CHECK(dxil.emission_slot == 2);
+  CHECK(dxil.local_light_slot == 3);
   fragment.reflection_json = R"({"stage":"fragment","textures":[],"uniform_buffers":[]})";
   try {
     (void)resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);

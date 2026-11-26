@@ -11,6 +11,7 @@
 struct SDL_GPUDevice;
 struct SDL_GPUGraphicsPipeline;
 struct SDL_GPUSampler;
+struct SDL_GPUTexture;
 struct SDL_Window;
 
 namespace flop::view { struct FrameDrawData; }
@@ -40,6 +41,9 @@ private:
   SDL_GPUGraphicsPipeline *craft_pipeline_{};
   SDL_GPUGraphicsPipeline *lit_pipeline_{};
   SDL_GPUGraphicsPipeline *particle_pipeline_{};
+  SDL_GPUGraphicsPipeline *point_light_pipeline_{};
+  SDL_GPUTexture *light_texture_{};
+  unsigned light_width_{}, light_height_{};
   SDL_GPUSampler *sprite_sampler_{};
   CraftSpriteBindings craft_bindings_{};
   CraftLitSpriteBindings lit_bindings_{};

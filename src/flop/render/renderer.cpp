@@ -1,5 +1,6 @@
 #include "flop/render/renderer.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cmath>
 #include <stdexcept>
@@ -31,7 +32,9 @@ std::runtime_error failure(const char *operation) {
 SDL_GPUGraphicsPipeline *create_pipeline(
     SDL_GPUDevice *device, SDL_Window *window, const char *id, bool blend,
     CraftSpriteBindings *bindings = nullptr, const MaterialRecipe *recipe = nullptr,
-    CraftLitSpriteBindings *lit_bindings = nullptr
+    CraftLitSpriteBindings *lit_bindings = nullptr,
+    SDL_GPUTextureFormat target_format = SDL_GPU_TEXTUREFORMAT_INVALID,
+    bool additive = false
 ) {
   const auto formats = SDL_GetGPUShaderFormats(device);
   const bool spirv = (formats & SDL_GPU_SHADERFORMAT_SPIRV) != 0 &&
@@ -78,8 +81,17 @@ SDL_GPUGraphicsPipeline *create_pipeline(
     throw error;
   }
   SDL_GPUColorTargetDescription target{};
-  target.format = SDL_GetGPUSwapchainTextureFormat(device, window);
-  if (blend) {
+  target.format = target_format == SDL_GPU_TEXTUREFORMAT_INVALID
+      ? SDL_GetGPUSwapchainTextureFormat(device, window) : target_format;
+  if (additive) {
+    target.blend_state.enable_blend = true;
+    target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+  } else if (blend) {
     target.blend_state.enable_blend = true;
     target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
     target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
@@ -135,6 +147,10 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     throw error;
   }
   SDL_Log("GPU backend: %s", SDL_GetGPUDeviceDriver(device_));
+  const auto device_properties = SDL_GetGPUDeviceProperties(device_);
+  SDL_Log("GPU device: %s; driver: %s",
+      SDL_GetStringProperty(device_properties, SDL_PROP_GPU_DEVICE_NAME_STRING, "unknown"),
+      SDL_GetStringProperty(device_properties, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "unknown"));
   try {
     // Sampled sRGB textures yield linear RGB. An sRGB swapchain encodes the
     // blended linear result for display; SDL's default SDR swapchain does not.
@@ -145,6 +161,8 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     }
     pipeline_ = create_pipeline(device_, window_, "test_tri", false);
     particle_pipeline_ = create_pipeline(device_, window_, "particle", true);
+    point_light_pipeline_ = create_pipeline(device_, window_, "point_light", false,
+        nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, true);
     {
       const auto loaded_recipe = load_craft_sprite_recipe(resolver);
       if (loaded_recipe.shader != craft_sprite_recipe.shader)
@@ -174,6 +192,8 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
     if (particle_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, particle_pipeline_);
+    if (point_light_pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, point_light_pipeline_);
     if (lit_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, lit_pipeline_);
     if (pipeline_)
@@ -189,12 +209,16 @@ Renderer::~Renderer() {
   if (device_) {
     SDL_WaitForGPUIdle(device_);
     textures_.reset();
+    if (light_texture_)
+      SDL_ReleaseGPUTexture(device_, light_texture_);
     if (sprite_sampler_)
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, craft_pipeline_);
     if (particle_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, particle_pipeline_);
+    if (point_light_pipeline_)
+      SDL_ReleaseGPUGraphicsPipeline(device_, point_light_pipeline_);
     if (lit_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, lit_pipeline_);
     SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
@@ -242,7 +266,8 @@ void Renderer::present(const view::FrameDrawData &frame) {
     throw failure("SDL_AcquireGPUCommandBuffer");
   }
   SDL_GPUTexture *swapchain = nullptr;
-  if (!SDL_WaitAndAcquireGPUSwapchainTexture(commands, window_, &swapchain, nullptr, nullptr)) {
+  Uint32 width = 0, height = 0;
+  if (!SDL_WaitAndAcquireGPUSwapchainTexture(commands, window_, &swapchain, &width, &height)) {
     const auto error = failure("SDL_WaitAndAcquireGPUSwapchainTexture");
     SDL_CancelGPUCommandBuffer(commands);
     throw error;
@@ -255,7 +280,11 @@ void Renderer::present(const view::FrameDrawData &frame) {
     info.type = SDL_GPU_TEXTURETYPE_2D;
     info.format = SDL_GetGPUSwapchainTextureFormat(device_, window_);
     info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
-    info.width = info.height = info.layer_count_or_depth = info.num_levels = 1;
+    width = static_cast<Uint32>(std::max(1, frame.camera.viewport_width));
+    height = static_cast<Uint32>(std::max(1, frame.camera.viewport_height));
+    info.width = width;
+    info.height = height;
+    info.layer_count_or_depth = info.num_levels = 1;
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
     capture_texture = SDL_CreateGPUTexture(device_, &info);
     if (!capture_texture) { SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture texture"); }
@@ -268,6 +297,51 @@ void Renderer::present(const view::FrameDrawData &frame) {
   }
 #endif
   if (swapchain) {
+    if (!light_texture_ || width != light_width_ || height != light_height_) {
+      SDL_GPUTextureCreateInfo info{};
+      info.type = SDL_GPU_TEXTURETYPE_2D;
+      info.format = SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT;
+      info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+      info.width = width;
+      info.height = height;
+      info.layer_count_or_depth = info.num_levels = 1;
+      info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+      auto *replacement = SDL_CreateGPUTexture(device_, &info);
+      if (!replacement) {
+        const auto error = failure("create light texture");
+        SDL_SubmitGPUCommandBuffer(commands);
+        throw error;
+      }
+      if (light_texture_) SDL_ReleaseGPUTexture(device_, light_texture_);
+      light_texture_ = replacement;
+      light_width_ = width;
+      light_height_ = height;
+    }
+    SDL_GPUColorTargetInfo light_target{};
+    light_target.texture = light_texture_;
+    light_target.clear_color = SDL_FColor{0, 0, 0, 0};
+    light_target.load_op = SDL_GPU_LOADOP_CLEAR;
+    light_target.store_op = SDL_GPU_STOREOP_STORE;
+    auto *light_pass = SDL_BeginGPURenderPass(commands, &light_target, 1, nullptr);
+    if (!light_pass) {
+      const auto error = failure("begin light render pass");
+      SDL_SubmitGPUCommandBuffer(commands);
+      throw error;
+    }
+    SDL_BindGPUGraphicsPipeline(light_pass, point_light_pipeline_);
+    if (frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
+      for (const auto &light : frame.lights) {
+        if (!(light.outer_radius_pixels > 0.0f)) continue;
+        struct LightGeometry { std::array<float, 4> center_radii, viewport_falloff, color; };
+        const LightGeometry geometry{
+            {light.center_pixels.x, light.center_pixels.y, light.inner_radius_pixels, light.outer_radius_pixels},
+            {static_cast<float>(width), static_cast<float>(height), light.falloff, 0},
+            {light.color[0], light.color[1], light.color[2], 0}};
+        SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
+        SDL_DrawGPUPrimitives(light_pass, 6, 1, 0, 0);
+      }
+    }
+    SDL_EndGPURenderPass(light_pass);
     SDL_GPUColorTargetInfo target{};
     target.texture = swapchain;
     target.clear_color = SDL_FColor{0.0f, 0.0f, 0.0f, 1.0f};
@@ -316,8 +390,10 @@ void Renderer::present(const view::FrameDrawData &frame) {
         if (maps.lit) {
           SDL_GPUTextureSamplerBinding normal{maps.normal, sprite_sampler_};
           SDL_GPUTextureSamplerBinding emission{maps.emission, sprite_sampler_};
+          SDL_GPUTextureSamplerBinding local_light{light_texture_, sprite_sampler_};
           SDL_BindGPUFragmentSamplers(pass, lit_bindings_.normal_slot, &normal, 1);
           SDL_BindGPUFragmentSamplers(pass, lit_bindings_.emission_slot, &emission, 1);
+          SDL_BindGPUFragmentSamplers(pass, lit_bindings_.local_light_slot, &local_light, 1);
           const auto &sun = frame.sprites[i].sun;
           struct Lighting { std::array<float, 4> direction, color, shine_direction, shine_color; };
           const auto &shine = frame.sprites[i].planet_shine;

@@ -33,11 +33,24 @@ Build with `cmake --build build/windows-debug --target flop_renderer_probe` and
 run `build/windows-debug/tools/gpu_probe/flop_renderer_probe.exe`. It creates
 temporary recipe and PNG fixtures, exercises the renderer's recipe loading,
 texture cache, pipeline and sprite draw, and reads back one sRGB pixel for
-opaque, half-transparent and transparent inputs. It also checks the source
-context in an invalid-PNG error. The offscreen capture uses the selected
-swapchain format and normal renderer draw code; it does not test presentation,
-resize, or multi-pixel UV orientation. The craft shader must be packaged for
-the selected backend.
+opaque, half-transparent and transparent inputs. It checks local-light center,
+falloff, outside-radius, additive overlap above one, sprite alpha, unaffected
+unlit sprites and particles, clearing, and target resize. Color comparisons
+use a tolerance of up to three byte values. It also checks the source context
+in an invalid-PNG error. The offscreen capture uses the selected swapchain
+format and normal renderer draw code; it does not test presentation or
+multi-pixel UV orientation. The shaders must be packaged for the selected
+backend.
+
+On Windows, set `$env:SDL_GPU_DRIVER = 'direct3d12'` or `'vulkan'` before
+running the executable. On Linux, build with
+`cmake --build --preset linux-debug --target flop_renderer_probe` and run
+`SDL_GPU_DRIVER=vulkan build/linux-debug/tools/gpu_probe/flop_renderer_probe`.
+
+The renderer probe passed on Windows 10.0.26300 with an NVIDIA GeForce RTX 4050
+Laptop GPU, using Direct3D 12 (driver 32.0.15.7703) and Vulkan (SDL-reported
+driver 577.3.0.0). The readback checks allow up to three byte values of error.
+Linux and live-scene appearance have not been verified by this probe.
 
 # Invalid PNG probe
 

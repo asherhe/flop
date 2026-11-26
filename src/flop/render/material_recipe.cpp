@@ -59,13 +59,16 @@ LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document) 
         semantic = AutoInput::planet_shine_direction_and_spread;
       else if (name == auto_input_name(AutoInput::planet_shine_color))
         semantic = AutoInput::planet_shine_color;
+      else if (name == auto_input_name(AutoInput::local_light_texture))
+        semantic = AutoInput::local_light_texture;
       else
         field->fail(field->mark(), "Unknown automatic input");
 
-      if (type != MaterialInputType::float4)
-        field->fail(field->mark(), "Automatic input requires float4");
+      const bool texture = semantic == AutoInput::local_light_texture;
+      if (type != (texture ? MaterialInputType::texture_2d : MaterialInputType::float4))
+        field->fail(field->mark(), "Automatic input has incompatible type");
       const bool sun = semantic == AutoInput::sun_direction || semantic == AutoInput::sun_color ||
-          semantic == AutoInput::planet_shine_direction_and_spread || semantic == AutoInput::planet_shine_color;
+          semantic == AutoInput::planet_shine_direction_and_spread || semantic == AutoInput::planet_shine_color || texture;
       if ((sun && stage != ShaderStage::fragment) || (!sun && stage != ShaderStage::vertex))
         field->fail(field->mark(), "Automatic input has incompatible shader stage");
     }
@@ -165,7 +168,7 @@ struct ReflectedStage {
 
 struct ResolvedInputs {
   CraftSpriteBindings geometry{};
-  unsigned normal{}, emission{}, light_slot{}, light_size{}, direction{}, color{}, shine_direction{}, shine_color{};
+  unsigned normal{}, emission{}, local_light{}, light_slot{}, light_size{}, direction{}, color{}, shine_direction{}, shine_color{};
 };
 
 ResolvedInputs resolve_inputs(
@@ -179,7 +182,7 @@ ResolvedInputs resolve_inputs(
         fragment.stage != "fragment" || vertex.format != fragment.format ||
         (vertex.format != "spirv" && vertex.format != "dxil"))
       throw std::runtime_error("incompatible shader variants");
-    if (recipe.inputs.size() != (lit ? 9u : 3u))
+    if (recipe.inputs.size() != (lit ? 10u : 3u))
       throw std::runtime_error("unexpected recipe input count");
     const ReflectedStage v{YAML::Load(std::string(vertex.reflection_json)), vertex.format};
     const ReflectedStage f{YAML::Load(std::string(fragment.reflection_json)), fragment.format};
@@ -210,6 +213,12 @@ ResolvedInputs resolve_inputs(
           bit = 16;
           result.emission = f.texture(input.name);
         }
+      } else if (lit && input.stage == ShaderStage::fragment &&
+                 input.source == MaterialInputSource::renderer &&
+                 input.type == MaterialInputType::texture_2d && input.name == "local_light" &&
+                 input.auto_input == AutoInput::local_light_texture) {
+        bit = 512;
+        result.local_light = f.texture(input.name);
       } else if (
           input.source == MaterialInputSource::renderer && input.type == MaterialInputType::float4
       ) {
@@ -251,7 +260,7 @@ ResolvedInputs resolve_inputs(
         );
       matched |= bit;
     }
-    if (matched != (lit ? 511u : 7u))
+    if (matched != (lit ? 1023u : 7u))
       throw std::runtime_error("missing recipe input");
     if (result.geometry.uniform_size != 32 || result.geometry.origin_offset != 0 ||
         result.geometry.viewport_offset != 16)
@@ -286,6 +295,7 @@ CraftLitSpriteBindings resolve_craft_lit_sprite_bindings(
       inputs.geometry,
       inputs.normal,
       inputs.emission,
+      inputs.local_light,
       inputs.light_slot,
       inputs.light_size,
       inputs.direction,

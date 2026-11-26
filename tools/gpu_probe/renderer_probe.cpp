@@ -43,6 +43,12 @@ int lit_expected(int srgb, double multiplier) {
   const double v = std::clamp(linear * multiplier, 0.0, 1.0);
   return static_cast<int>(std::lround(255 * (v <= .0031308 ? 12.92 * v : 1.055 * std::pow(v, 1.0 / 2.4) - .055)));
 }
+int lit_blended_expected(int srgb, double multiplier, int alpha) {
+  const double s = srgb / 255.0;
+  const double linear = s <= .04045 ? s / 12.92 : std::pow((s + .055) / 1.055, 2.4);
+  const double v = std::clamp(linear * multiplier * alpha / 255.0, 0.0, 1.0);
+  return static_cast<int>(std::lround(255 * (v <= .0031308 ? 12.92 * v : 1.055 * std::pow(v, 1.0 / 2.4) - .055)));
+}
 }
 
 int main() {
@@ -60,6 +66,7 @@ int main() {
              "  albedo: {stage: fragment, type: texture_2d}\n"
              "  normal_map: {stage: fragment, type: texture_2d}\n"
              "  emission_map: {stage: fragment, type: texture_2d}\n"
+             "  local_light: {stage: fragment, type: texture_2d, auto: local_light.texture}\n"
              "  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}\n"
              "  y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}\n"
              "  sun_direction: {stage: fragment, type: float4, auto: sun.direction}\n"
@@ -122,6 +129,76 @@ int main() {
       auto pixel = renderer.readback_pixel(frame);
       for (int i = 0; i < 3; ++i)
         if (pixel[i] > 2) throw std::runtime_error("unlit default maps should produce black");
+      flop::view::LightDraw local{};
+      local.center_pixels = {0.5f, 0.5f};
+      local.inner_radius_pixels = 0.2f;
+      local.outer_radius_pixels = 1.0f;
+      local.falloff = 0.5f;
+      local.color = {0.25f, 0.25f, 0.25f};
+      frame.lights.push_back(local);
+      pixel = renderer.readback_pixel(frame);
+      const int albedo[3]{200, 100, 40};
+      for (int i = 0; i < 3; ++i)
+        if (std::abs(int(pixel[i]) - lit_expected(albedo[i], .25)) > 3)
+          throw std::runtime_error("local light center mismatch");
+      frame.lights[0].center_pixels = {1.1f, 0.5f}; // t = 0.5, u = 0.625
+      pixel = renderer.readback_pixel(frame);
+      for (int i = 0; i < 3; ++i)
+        if (std::abs(int(pixel[i]) - lit_expected(albedo[i], .25 * .31640625)) > 3)
+          throw std::runtime_error("local light falloff mismatch");
+      frame.lights[0].center_pixels = {2.0f, 0.5f};
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)
+        throw std::runtime_error("outside-radius control should be dark");
+      frame.lights[0] = local;
+      frame.lights[0].color = {0, 1, 0};
+      frame.lights.push_back(frame.lights[0]);
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] > 2 || std::abs(int(pixel[1]) - lit_expected(100, 2.0)) > 3 || pixel[2] > 2)
+        throw std::runtime_error("additive light overlap mismatch");
+      frame.sprites[0].visual.sprite = "assets/half.png";
+      pixel = renderer.readback_pixel(frame);
+      if (std::abs(int(pixel[1]) - lit_blended_expected(100, 2.0, 128)) > 3 || pixel[3] != 255)
+        throw std::runtime_error("local light alpha mismatch");
+      frame.sprites[0].visual.sprite = "assets/opaque.png";
+      frame.sprites[0].visual.material.shader = "craft/sprite";
+      pixel = renderer.readback_pixel(frame);
+      if (std::abs(int(pixel[0]) - 200) > 2 || std::abs(int(pixel[1]) - 100) > 2)
+        throw std::runtime_error("unlit sprite should ignore local lights");
+      frame.sprites.clear();
+      frame.particles.push_back({{0.5f, 0.5f}, 1.0f, {1, 0, 0, 1}});
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] < 250 || pixel[1] > 2) throw std::runtime_error("particles should ignore local lights");
+      frame.particles.clear();
+      frame.sprites.push_back(sprite);
+      frame.sprites[0].visual.material.shader = "craft/lit_sprite";
+      frame.sprites[0].visual.sprite = "assets/opaque.png";
+      frame.sprites[0].sun.direction = {1, 0, 0, 0};
+      frame.sprites[0].sun.color = {0, 0, 0, 0};
+      frame.lights.clear();
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)
+        throw std::runtime_error("empty light pass must clear without resize");
+      frame.lights.push_back(local);
+      frame.lights[0].outer_radius_pixels = 0;
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)
+        throw std::runtime_error("zero-radius light should be dark");
+      frame.lights[0] = local;
+      frame.lights[0].color = {0, 1, 0};
+      frame.lights.push_back(frame.lights[0]);
+      frame.camera.viewport_width = frame.camera.viewport_height = 2;
+      frame.sprites[0].corners_pixels = {{{0, 2}, {2, 2}, {2, 0}, {0, 0}}};
+      pixel = renderer.readback_pixel(frame);
+      if (std::abs(int(pixel[1]) - lit_expected(100, 2.0)) > 3)
+        throw std::runtime_error("resized light texture mismatch");
+      frame.camera.viewport_width = frame.camera.viewport_height = 1;
+      frame.sprites[0].corners_pixels = {{{0, 1}, {1, 1}, {1, 0}, {0, 0}}};
+      frame.lights.clear();
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)
+        throw std::runtime_error("empty light pass must clear previous contributions");
+      std::cout << "local lights, falloff, overlap, alpha, controls and resize: passed\n";
       frame.sprites[0].visual.material.emission_map = "assets/opaque.png";
       pixel = renderer.readback_pixel(frame);
       const std::array<int, 3> emission{200, 100, 40};

@@ -17,6 +17,8 @@ cbuffer SpriteLighting : register(b0, space3) {
 [[vk::combinedImageSampler]] SamplerState normal_map_sampler : register(s1, space2);
 [[vk::combinedImageSampler]] Texture2D emission_map : register(t2, space2);
 [[vk::combinedImageSampler]] SamplerState emission_map_sampler : register(s2, space2);
+[[vk::combinedImageSampler]] Texture2D local_light : register(t3, space2);
+[[vk::combinedImageSampler]] SamplerState local_light_sampler : register(s3, space2);
 
 struct VertexOutput {
   float4 position : SV_Position;
@@ -48,6 +50,9 @@ float4 fragment(VertexOutput input) : SV_Target0 {
   float spread = planet_shine_direction_and_spread.w;
   float shine = saturate(spread + (1.0 - spread) * dot(normal.xy, planet_shine_direction_and_spread.xy));
   shaded += main.rgb * planet_shine_color.rgb * shine;
+  uint light_width, light_height;
+  local_light.GetDimensions(light_width, light_height);
+  shaded += main.rgb * local_light.Sample(local_light_sampler, input.position.xy / float2(light_width, light_height)).rgb;
   float4 emission = emission_map.Sample(emission_map_sampler, input.uv);
   // overlay rgba of emission onto shaded
   float alpha = emission.a + main.a * (1.0 - emission.a);

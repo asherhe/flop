@@ -3,6 +3,7 @@ properties:
   albedo: {stage: fragment, type: texture_2d}
   normal_map: {stage: fragment, type: texture_2d}
   emission_map: {stage: fragment, type: texture_2d}
+  local_light: {stage: fragment, type: texture_2d, auto: local_light.texture}
   origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}
   y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}
   sun_direction: {stage: fragment, type: float4, auto: sun.direction}
