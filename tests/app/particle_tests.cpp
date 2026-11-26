@@ -55,6 +55,26 @@ TEST_CASE("line emitter emits along its rotated local positive y axis") {
   CHECK(particles.particles()[0].velocity_m_per_s.y == Catch::Approx(0).margin(1e-12));
 }
 
+TEST_CASE("new particles currently start together at the end of a tick") {
+  auto config = std::make_shared<flop::craft::plugin::ParticleConfig>();
+  config->lifetime_sec = {1, 1};
+  config->rate_per_sec = {100, 100};
+  config->start_speed_m_per_s = {10, 10};
+  flop::view::ParticleSystem particles(7);
+  flop::view::ParticleEmitter emitter{{0, 0}, {}, 0, 1, config};
+  particles.emit(emitter, 0.02);
+  REQUIRE(particles.particles().size() == 2);
+  for (const auto &particle : particles.particles()) {
+    CHECK(particle.age_sec == 0);
+    CHECK(particle.position_meters.y == 0);
+  }
+  particles.advance(0.02, {});
+  for (const auto &particle : particles.particles()) {
+    CHECK(particle.age_sec == Catch::Approx(0.02));
+    CHECK(particle.position_meters.y == Catch::Approx(0.2));
+  }
+}
+
 TEST_CASE("shipped engine emits particles on world steps and focus changes clear them") {
   const flop::config::AssetResolver resolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT));
   auto scene = flop::app::load_game_scene(resolver);
