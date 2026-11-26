@@ -13,7 +13,7 @@ void ParticleSystem::clear() {
   particles_.clear();
 }
 
-double ParticleSystem::sample(const std::array<double, 2> &range) {
+double ParticleSystem::sample_random(const std::array<double, 2> &range) {
   return std::uniform_real_distribution<double>(range[0], range[1])(random_);
 }
 
@@ -35,7 +35,8 @@ void ParticleSystem::emit(ParticleEmitter &emitter, double dt_sec) {
     return;
   const auto &config = *emitter.config;
   const double expected =
-      sample(config.rate_per_sec) * std::min(emitter.strength, 1.0) * dt_sec + emitter.remainder;
+      sample_random(config.rate_per_sec) * std::min(emitter.strength, 1.0) * dt_sec +
+      emitter.remainder;
   if (!std::isfinite(expected)) {
     emitter.remainder = 0.0;
     return;
@@ -44,19 +45,20 @@ void ParticleSystem::emit(ParticleEmitter &emitter, double dt_sec) {
   emitter.remainder = expected - whole;
   const auto count = static_cast<std::size_t>(std::min(whole, static_cast<double>(capacity)));
   for (std::size_t i = 0; i < count && particles_.size() < capacity; ++i) {
-    const double life = sample(config.lifetime_sec);
+    const double life = sample_random(config.lifetime_sec);
     if (!(life > 0.0))
       continue;
     const double offset =
-        sample({-0.5 * config.nozzle_size_meters, 0.5 * config.nozzle_size_meters});
+        sample_random({-0.5 * config.nozzle_size_meters, 0.5 * config.nozzle_size_meters});
     const double angle =
-        emitter.angle_rad + sample({-config.spread_angle_rad, config.spread_angle_rad});
+        emitter.angle_rad + sample_random({-config.spread_angle_rad, config.spread_angle_rad});
     particles_.push_back(
         {emitter.position_meters + Vec2d{offset, 0}.rotate(emitter.angle_rad),
-         emitter.velocity_m_per_s + Vec2d{0, -sample(config.start_speed_m_per_s)}.rotate(angle),
+         emitter.velocity_m_per_s +
+             Vec2d{0, -sample_random(config.start_speed_m_per_s)}.rotate(angle),
          0.0,
          life,
-         sample(config.start_size_meters),
+         sample_random(config.start_size_meters),
          emitter.config}
     );
   }

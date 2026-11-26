@@ -42,7 +42,7 @@ public:
 private:
   std::vector<Particle> particles_;
   std::mt19937 random_;
-  [[nodiscard]] double sample(const std::array<double, 2> &range);
+  [[nodiscard]] double sample_random(const std::array<double, 2> &range);
 };
 
 } // namespace flop::view
