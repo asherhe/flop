@@ -55,12 +55,17 @@ LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document) 
         semantic = AutoInput::sun_direction;
       else if (name == auto_input_name(AutoInput::sun_color))
         semantic = AutoInput::sun_color;
+      else if (name == auto_input_name(AutoInput::planet_shine_direction_and_spread))
+        semantic = AutoInput::planet_shine_direction_and_spread;
+      else if (name == auto_input_name(AutoInput::planet_shine_color))
+        semantic = AutoInput::planet_shine_color;
       else
         field->fail(field->mark(), "Unknown automatic input");
 
       if (type != MaterialInputType::float4)
         field->fail(field->mark(), "Automatic input requires float4");
-      const bool sun = semantic == AutoInput::sun_direction || semantic == AutoInput::sun_color;
+      const bool sun = semantic == AutoInput::sun_direction || semantic == AutoInput::sun_color ||
+          semantic == AutoInput::planet_shine_direction_and_spread || semantic == AutoInput::planet_shine_color;
       if ((sun && stage != ShaderStage::fragment) || (!sun && stage != ShaderStage::vertex))
         field->fail(field->mark(), "Automatic input has incompatible shader stage");
     }
@@ -140,8 +145,8 @@ struct ReflectedStage {
 
   unsigned member(const YAML::Node &buffer, std::string_view name) const {
     const auto members = buffer["members"];
-    if (!members.IsSequence() || members.size() != 2)
-      throw std::runtime_error("expected two uniform members");
+    if (!members.IsSequence())
+      throw std::runtime_error("expected uniform members");
     unsigned count = 0, offset = 0;
     for (const auto &item : members) {
       if (item["name"].as<std::string>() != name)
@@ -160,7 +165,7 @@ struct ReflectedStage {
 
 struct ResolvedInputs {
   CraftSpriteBindings geometry{};
-  unsigned normal{}, emission{}, light_slot{}, light_size{}, direction{}, color{};
+  unsigned normal{}, emission{}, light_slot{}, light_size{}, direction{}, color{}, shine_direction{}, shine_color{};
 };
 
 ResolvedInputs resolve_inputs(
@@ -174,7 +179,7 @@ ResolvedInputs resolve_inputs(
         fragment.stage != "fragment" || vertex.format != fragment.format ||
         (vertex.format != "spirv" && vertex.format != "dxil"))
       throw std::runtime_error("incompatible shader variants");
-    if (recipe.inputs.size() != (lit ? 7u : 3u))
+    if (recipe.inputs.size() != (lit ? 9u : 3u))
       throw std::runtime_error("unexpected recipe input count");
     const ReflectedStage v{YAML::Load(std::string(vertex.reflection_json)), vertex.format};
     const ReflectedStage f{YAML::Load(std::string(fragment.reflection_json)), fragment.format};
@@ -230,6 +235,14 @@ ResolvedInputs resolve_inputs(
         ) {
           bit = 64;
           result.color = f.member(light, input.name);
+        } else if (lit && input.stage == ShaderStage::fragment && input.name == "planet_shine_direction_and_spread" &&
+                   input.auto_input == AutoInput::planet_shine_direction_and_spread) {
+          bit = 128;
+          result.shine_direction = f.member(light, input.name);
+        } else if (lit && input.stage == ShaderStage::fragment && input.name == "planet_shine_color" &&
+                   input.auto_input == AutoInput::planet_shine_color) {
+          bit = 256;
+          result.shine_color = f.member(light, input.name);
         }
       }
       if (!bit || (matched & bit))
@@ -238,12 +251,13 @@ ResolvedInputs resolve_inputs(
         );
       matched |= bit;
     }
-    if (matched != (lit ? 127u : 7u))
+    if (matched != (lit ? 511u : 7u))
       throw std::runtime_error("missing recipe input");
     if (result.geometry.uniform_size != 32 || result.geometry.origin_offset != 0 ||
         result.geometry.viewport_offset != 16)
       throw std::runtime_error("uniform layout does not match SpriteGeometry");
-    if (lit && (result.light_size != 32 || result.direction != 0 || result.color != 16))
+    if (lit && (result.light_size != 64 || result.direction != 0 || result.color != 16 ||
+                result.shine_direction != 32 || result.shine_color != 48))
       throw std::runtime_error("uniform layout does not match sprite lighting");
     return result;
   } catch (const std::exception &error) {
@@ -275,7 +289,9 @@ CraftLitSpriteBindings resolve_craft_lit_sprite_bindings(
       inputs.light_slot,
       inputs.light_size,
       inputs.direction,
-      inputs.color
+      inputs.color,
+      inputs.shine_direction,
+      inputs.shine_color
   };
 }
 } // namespace flop::render

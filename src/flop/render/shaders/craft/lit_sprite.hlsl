@@ -7,6 +7,8 @@ cbuffer SpriteGeometry : register(b0, space1) {
 cbuffer SpriteLighting : register(b0, space3) {
   float4 sun_direction;
   float4 sun_color;
+  float4 planet_shine_direction_and_spread;
+  float4 planet_shine_color;
 };
 
 [[vk::combinedImageSampler]] Texture2D albedo : register(t0, space2);
@@ -41,6 +43,9 @@ float4 fragment(VertexOutput input) : SV_Target0 {
   // unity brightens craft sunlight by two and adds an artistic outward component
   float3 light_direction = normalize(float3(sun_direction.xy, 0.3));
   float3 shaded = main.rgb * sun_color.rgb * 2.0 * saturate(dot(normal, light_direction));
+  float spread = planet_shine_direction_and_spread.w;
+  float shine = saturate(spread + (1.0 - spread) * dot(normal.xy, planet_shine_direction_and_spread.xy));
+  shaded += main.rgb * planet_shine_color.rgb * shine;
   float4 emission = emission_map.Sample(emission_map_sampler, input.uv);
   float alpha = emission.a + main.a * (1.0 - emission.a);
   if (alpha <= 0.0) return 0.0;

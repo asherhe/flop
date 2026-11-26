@@ -63,7 +63,9 @@ int main() {
              "  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}\n"
              "  y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}\n"
              "  sun_direction: {stage: fragment, type: float4, auto: sun.direction}\n"
-             "  sun_color: {stage: fragment, type: float4, auto: sun.color}\n"; }
+             "  sun_color: {stage: fragment, type: float4, auto: sun.color}\n"
+             "  planet_shine_direction_and_spread: {stage: fragment, type: float4, auto: planet_shine.direction_and_spread}\n"
+             "  planet_shine_color: {stage: fragment, type: float4, auto: planet_shine.color}\n"; }
     write_png(assets / "opaque.png", opaque);
     write_png(assets / "half.png", half);
     write_png(assets / "transparent.png", transparent);
@@ -119,6 +121,18 @@ int main() {
       frame.sprites[0].sun.direction = {-1, 0, 0, 0};
       pixel = renderer.readback_pixel(frame);
       if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2) throw std::runtime_error("opposed normal should be dark");
+      frame.sprites[0].sun.color = {0, 0, 0, 0};
+      frame.sprites[0].planet_shine.direction_and_spread = {1, 0, 0, 0};
+      frame.sprites[0].planet_shine.color = {.5f, .5f, .5f, 0};
+      pixel = renderer.readback_pixel(frame);
+      if (std::abs(int(pixel[0]) - lit_expected(200, .5)) > 3)
+        throw std::runtime_error("planet shine aligned pixel mismatch");
+      frame.sprites[0].planet_shine.direction_and_spread = {-1, 0, 0, 0};
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)
+        throw std::runtime_error("opposed planet shine should be dark");
+      frame.sprites[0].planet_shine = {};
+      frame.sprites[0].sun.color = {.5f, .5f, .5f, 0};
       // rotate the quad while supplying the corresponding local light direction
       frame.sprites[0].corners_pixels = {{{1, 1}, {1, 0}, {0, 0}, {0, 1}}};
       frame.sprites[0].sun.direction = {1, 0, 0, 0};

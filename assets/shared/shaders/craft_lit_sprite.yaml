@@ -7,3 +7,5 @@ properties:
   y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}
   sun_direction: {stage: fragment, type: float4, auto: sun.direction}
   sun_color: {stage: fragment, type: float4, auto: sun.color}
+  planet_shine_direction_and_spread: {stage: fragment, type: float4, auto: planet_shine.direction_and_spread}
+  planet_shine_color: {stage: fragment, type: float4, auto: planet_shine.color}

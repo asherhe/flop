@@ -299,8 +299,9 @@ void Renderer::present(const view::FrameDrawData &frame) {
           SDL_BindGPUFragmentSamplers(pass, lit_bindings_.normal_slot, &normal, 1);
           SDL_BindGPUFragmentSamplers(pass, lit_bindings_.emission_slot, &emission, 1);
           const auto &sun = frame.sprites[i].sun;
-          struct Lighting { std::array<float, 4> direction, color; };
-          const Lighting light{sun.direction, sun.color};
+          struct Lighting { std::array<float, 4> direction, color, shine_direction, shine_color; };
+          const auto &shine = frame.sprites[i].planet_shine;
+          const Lighting light{sun.direction, sun.color, shine.direction_and_spread, shine.color};
           SDL_PushGPUFragmentUniformData(commands, lit_bindings_.light_uniform_slot, &light, sizeof(light));
         }
         SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);

@@ -55,12 +55,14 @@ properties:
   y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}
   sun_direction: {stage: fragment, type: float4, auto: sun.direction}
   sun_color: {stage: fragment, type: float4, auto: sun.color}
+  planet_shine_direction_and_spread: {stage: fragment, type: float4, auto: planet_shine.direction_and_spread}
+  planet_shine_color: {stage: fragment, type: float4, auto: planet_shine.color}
 )");
   const auto recipe = decode_material_recipe(flop::config::ConfigView(yaml, "fixture.yaml"));
   shaders::Entry vertex{"craft/lit_sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1,
     R"({"stage":"vertex","uniform_buffers":[{"binding":0,"size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})"};
   shaders::Entry fragment{"craft/lit_sprite", "fragment", "spirv", "fragment", nullptr, 0, 3, 0, 0, 1,
-    R"({"stage":"fragment","textures":[{"name":"albedo","binding":0},{"name":"normal_map","binding":1},{"name":"emission_map","binding":2}],"uniform_buffers":[{"binding":0,"size":32,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16}]}]})"};
+    R"({"stage":"fragment","textures":[{"name":"albedo","binding":0},{"name":"normal_map","binding":1},{"name":"emission_map","binding":2}],"uniform_buffers":[{"binding":0,"size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})"};
   const auto bindings = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
   CHECK(bindings.normal_slot == 1);
   CHECK(bindings.emission_slot == 2);
@@ -68,7 +70,7 @@ properties:
   vertex.format = "dxil";
   vertex.reflection_json = R"({"stage":"vertex","resources":[{"name":"Geometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"Geometry","size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})";
   fragment.format = "dxil";
-  fragment.reflection_json = R"({"stage":"fragment","resources":[{"name":"albedo","type":"texture","binding":0},{"name":"normal_map","type":"texture","binding":1},{"name":"emission_map","type":"texture","binding":2},{"name":"Light","type":"uniform_buffer","binding":1}],"uniform_buffers":[{"name":"Light","size":32,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16}]}]})";
+  fragment.reflection_json = R"({"stage":"fragment","resources":[{"name":"albedo","type":"texture","binding":0},{"name":"normal_map","type":"texture","binding":1},{"name":"emission_map","type":"texture","binding":2},{"name":"Light","type":"uniform_buffer","binding":1}],"uniform_buffers":[{"name":"Light","size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})";
   const auto dxil = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
   CHECK(dxil.light_uniform_slot == 1);
   CHECK(dxil.normal_slot == 1);

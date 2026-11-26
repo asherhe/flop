@@ -26,6 +26,8 @@ enum class AutoInput : std::uint8_t {
   sprite_projected_y_axis_and_viewport,
   sun_direction,
   sun_color,
+  planet_shine_direction_and_spread,
+  planet_shine_color,
 };
 
 constexpr std::string_view auto_input_name(AutoInput input) {
@@ -35,6 +37,8 @@ constexpr std::string_view auto_input_name(AutoInput input) {
   case AutoInput::sprite_projected_y_axis_and_viewport: return "sprite.projected_y_axis_and_viewport";
   case AutoInput::sun_direction: return "sun.direction";
   case AutoInput::sun_color: return "sun.color";
+  case AutoInput::planet_shine_direction_and_spread: return "planet_shine.direction_and_spread";
+  case AutoInput::planet_shine_color: return "planet_shine.color";
   }
   return {};
 }
@@ -111,6 +115,7 @@ struct CraftLitSpriteBindings {
   CraftSpriteBindings geometry;
   unsigned normal_slot, emission_slot;
   unsigned light_uniform_slot, light_uniform_size, direction_offset, color_offset;
+  unsigned shine_direction_offset, shine_color_offset;
 };
 
 CraftLitSpriteBindings resolve_craft_lit_sprite_bindings(const MaterialRecipe &recipe,
