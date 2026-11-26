@@ -95,6 +95,26 @@ TEST_CASE("Visual plugin overrides update their own config types") {
   CHECK(std::get<flop::craft::plugin::SpriteConfig>(sprite.values).size_meters.y == 2.0);
 }
 
+TEST_CASE("Particle plugin decodes ranges and rejects invalid overrides at their source") {
+  auto particle = flop::config::decode_part_plugin(
+      "ParticlePlugin", ConfigView(YAML::Load(
+          "nozzle_pos: {x: 0, y: -1}\nnozzle_size: 1\nspread_angle: 30\n"
+          "lifetime: [0.2, 0.3]\nrate: [300, 500]\n"
+          "start: {size: [0.1, 0.4], speed: [20, 30]}\n"
+          "life: {color: {color_keys: {0: '#ffffff'}, alpha_keys: {0: 0, 1: 1}}, size: {0: 1}}\n"),
+          "part.yaml", "plugins.ParticlePlugin"));
+  const auto &config = std::get<flop::craft::plugin::ParticleConfig>(particle.values);
+  CHECK(config.rate_per_sec[0] == 300);
+  CHECK(config.start_speed_m_per_s[1] == 30);
+  CHECK(config.color_keys.at(0) == "#ffffff");
+  CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(particle,
+      ConfigView(YAML::Load("lifetime: [0, 1]"), "save.yaml", "plugins.ParticlePlugin")),
+      ContainsSubstring("[plugins.ParticlePlugin.lifetime]"));
+  CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(particle,
+      ConfigView(YAML::Load("spread_angle: -1"), "save.yaml", "plugins.ParticlePlugin")),
+      ContainsSubstring("[plugins.ParticlePlugin.spread_angle]"));
+}
+
 TEST_CASE("Sprite materials reject unsupported shaders and properties") {
   using flop::config::ConfigView;
   CHECK_THROWS(flop::config::detail::decode_material(

@@ -219,9 +219,15 @@ inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &rea
   reader.assign("nozzle_pos", particle.nozzle_position_meters, decode_vec, PluginRequired::on_create);
   reader.assign("nozzle_size", particle.nozzle_size_meters, &ConfigView::positive_double, PluginRequired::on_create);
   reader.assign("spread_angle", particle.spread_angle_rad, [](const ConfigView &field) {
-    return field.as<double>() * std::numbers::pi / 180.0;
+    const double angle = field.as<double>();
+    if (angle < 0 || angle > 180) field.fail(field.mark(), "Spread angle must be between 0 and 180 degrees");
+    return angle * std::numbers::pi / 180.0;
   }, PluginRequired::on_create);
-  reader.assign("lifetime", particle.lifetime_sec, decode_particle_range, PluginRequired::on_create);
+  reader.assign("lifetime", particle.lifetime_sec, [](const ConfigView &field) {
+    const auto value = decode_particle_range(field);
+    if (!(value[0] > 0)) field.fail(field.mark(), "Particle lifetime must be positive");
+    return value;
+  }, PluginRequired::on_create);
   reader.assign("rate", particle.rate_per_sec, decode_particle_range, PluginRequired::on_create);
   auto start = std::pair{particle.start_size_meters, particle.start_speed_m_per_s};
   reader.assign("start", start, [](const ConfigView &field) {

@@ -101,6 +101,13 @@ int main() {
           throw std::runtime_error(std::string(name) + " pixel mismatch at channel " + std::to_string(i) + ": " + std::to_string(pixel[i]) + " expected " + std::to_string(target[i]));
         std::cout << name << ": " << int(pixel[0]) << ", " << int(pixel[1]) << ", " << int(pixel[2]) << ", " << int(pixel[3]) << '\n';
       }
+      frame.particles.push_back({{0.5f, 0.5f}, 1.0f, {1, 0, 0, 1}});
+      frame.sprites[0].visual.sprite = "assets/opaque.png";
+      const auto ordered = renderer.readback_pixel(frame);
+      if (std::abs(int(ordered[0]) - 200) > 2 || std::abs(int(ordered[1]) - 100) > 2 ||
+          std::abs(int(ordered[2]) - 40) > 2)
+        throw std::runtime_error("craft sprite should draw over particles");
+      frame.particles.clear();
       frame.sprites[0].visual.material.shader = "craft/lit_sprite";
       frame.sprites[0].visual.sprite = "assets/opaque.png";
       frame.sprites[0].sun.direction = {1, 0, 0, 0};

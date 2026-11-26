@@ -1,12 +1,12 @@
-#include <memory>
 #include <filesystem>
+#include <memory>
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "flop/view/particles.hpp"
-#include "flop/view/particle_scene.hpp"
 #include "flop/app/game_scene.hpp"
+#include "flop/view/particle_scene.hpp"
+#include "flop/view/particles.hpp"
 #include "flop/world/control_manager.hpp"
 
 TEST_CASE("particles reuse capacity and compensate for focus motion") {
