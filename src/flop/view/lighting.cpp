@@ -41,6 +41,7 @@ float sun_visibility(Vec2d craft_to_sun, Vec2d body_to_craft, float sun_radius, 
   // at zero projected sun size use a hard horizon and define its boundary as half visible
   if (!(apparent_radius > 0)) return altitude > 0 ? 1.0f : (altitude < 0 ? 0.0f : 0.5f);
   const float h = std::clamp(altitude / apparent_radius, -1.0f, 1.0f);
+  // the area of visible sun disk (in apparent radii) is the integral of 2 sqrt(1 - x^2) from -1 to h
   return 0.5f + (h * std::sqrt(std::max(0.0f, 1.0f - h * h)) + std::asin(h)) /
                     std::numbers::pi_v<float>;
 }

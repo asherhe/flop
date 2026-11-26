@@ -40,13 +40,16 @@ float4 fragment(VertexOutput input) : SV_Target0 {
   if (input.position.x < 0.0) return 0.0;
   float4 main = albedo.Sample(albedo_sampler, input.uv);
   float3 normal = normalize(normal_map.Sample(normal_map_sampler, input.uv).xyz * 2.0 - 1.0);
-  // unity brightens craft sunlight by two and adds an artistic outward component
+  // set z to 0.3 so that parts are better illuminated
   float3 light_direction = normalize(float3(sun_direction.xy, 0.3));
+  // we scale by 2 because that makes the lighting look better
   float3 shaded = main.rgb * sun_color.rgb * 2.0 * saturate(dot(normal, light_direction));
+  // planet shine
   float spread = planet_shine_direction_and_spread.w;
   float shine = saturate(spread + (1.0 - spread) * dot(normal.xy, planet_shine_direction_and_spread.xy));
   shaded += main.rgb * planet_shine_color.rgb * shine;
   float4 emission = emission_map.Sample(emission_map_sampler, input.uv);
+  // overlay rgba of emission onto shaded
   float alpha = emission.a + main.a * (1.0 - emission.a);
   if (alpha <= 0.0) return 0.0;
   return float4((emission.rgb * emission.a + shaded * main.a * (1.0 - emission.a)) / alpha, alpha);

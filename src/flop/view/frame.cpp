@@ -66,6 +66,7 @@ FrameDrawData CameraState::build_frame(
     return body.name() == "Sun";
   });
   const FramePosition focus = focus_position(universe, camera.focus, result.ut_sec);
+  // get the current location of an orbit, relative to the location of the focused object.
   const auto relative = [&](orbit::FrameId frame, Vec2d position) {
     const Vec2d offset =
         universe.reference_frames().offset(frame, focus.frame, result.ut_sec).position;
@@ -90,6 +91,7 @@ FrameDrawData CameraState::build_frame(
     const auto &craft = universe.craft(id);
     const Vec2d craft_position = craft.state_at(result.ut_sec).position;
     const Vec2d center = relative(craft.frame_id(), craft_position);
+    // assume position within craft has negligible effect
     Vec2d to_sun{};
     if (sun != universe.bodies().end()) {
       // subtract positions in double before the lighting calculation narrows to float
