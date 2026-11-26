@@ -42,6 +42,8 @@ PlanetShine compute_planet_shine(
 );
 
 Sunlight compute_sunlight(Vec2d to_sun);
+// visibility of the sun from a craft relative to its parent body
+float sun_visibility(Vec2d craft_to_sun, Vec2d body_to_craft, float sun_radius, float body_radius);
 SpriteSunlight to_sprite_local(const Sunlight &sunlight, double sprite_angle);
 
 } // namespace flop::view

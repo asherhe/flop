@@ -4,6 +4,16 @@
 #include "flop/app/game_scene.hpp"
 #include "flop/view/frame.hpp"
 
+TEST_CASE("Parent body shadow yields sun disk visibility") {
+  using flop::view::sun_visibility;
+  CHECK(sun_visibility({1000, 0}, {10, 0}, 10, 2) == 1.0f);
+  CHECK(sun_visibility({1000, 0}, {-10, 0}, 10, 2) == 0.0f);
+  CHECK(sun_visibility({1000, 0}, {-10, 2}, 10, 2) == Catch::Approx(0.5));
+  CHECK(sun_visibility({1000, 0}, {-10, 2.05}, 10, 2) > 0.5f);
+  CHECK(sun_visibility({1000, 0}, {-10, 1.95}, 10, 2) < 0.5f);
+  CHECK(sun_visibility({}, {-10, 0}, 10, 2) == 1.0f);
+}
+
 TEST_CASE("World sunlight is shared across sprite rotations") {
   const auto sun = flop::view::compute_sunlight({9.2e10, 0});
   const auto local = flop::view::to_sprite_local(sun, 1.5707963267948966);

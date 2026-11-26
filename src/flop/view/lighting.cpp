@@ -5,15 +5,6 @@
 #include <numbers>
 
 namespace flop::view {
-namespace {
-
-// placeholder until body occlusion is implemented
-float sun_visibility() {
-  return 1.0f;
-}
-
-} // namespace
-
 Sunlight compute_sunlight(Vec2d to_sun) {
   Sunlight result;
 
@@ -28,11 +19,30 @@ Sunlight compute_sunlight(Vec2d to_sun) {
   // dividing before squaring avoids overflowing float at ordinary orbital distances
   constexpr float reference_distance = 9.219544e10f; // sqrt(8.5e21) metres
   const float ratio = reference_distance / distance;
-  const float intensity = ratio * ratio * sun_visibility();
+  const float intensity = ratio * ratio;
   if (!std::isfinite(intensity))
     return Sunlight{};
   result.color = {intensity, intensity, intensity, 0};
   return result;
+}
+
+float sun_visibility(Vec2d craft_to_sun, Vec2d body_to_craft, float sun_radius, float body_radius) {
+  const float sx = static_cast<float>(craft_to_sun.x), sy = static_cast<float>(craft_to_sun.y);
+  const float x = static_cast<float>(body_to_craft.x), y = static_cast<float>(body_to_craft.y);
+  const float distance = std::hypot(sx, sy);
+  if (!(distance > 0) || !std::isfinite(distance) || !std::isfinite(x) || !std::isfinite(y) ||
+      !(sun_radius > 0) || !(body_radius > 0) || !std::isfinite(sun_radius) || !std::isfinite(body_radius))
+    return 1.0f;
+  const float ux = sx / distance, uy = sy / distance;
+  // find the closest point on the ray from the craft toward the sun
+  const float t = std::max(-(ux * x + uy * y), 0.0f);
+  const float altitude = std::hypot(x + t * ux, y + t * uy) - body_radius;
+  const float apparent_radius = (sun_radius / distance) * t;
+  // at zero projected sun size use a hard horizon and define its boundary as half visible
+  if (!(apparent_radius > 0)) return altitude > 0 ? 1.0f : (altitude < 0 ? 0.0f : 0.5f);
+  const float h = std::clamp(altitude / apparent_radius, -1.0f, 1.0f);
+  return 0.5f + (h * std::sqrt(std::max(0.0f, 1.0f - h * h)) + std::asin(h)) /
+                    std::numbers::pi_v<float>;
 }
 
 SpriteSunlight to_sprite_local(const Sunlight &sunlight, double sprite_angle) {
