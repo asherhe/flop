@@ -134,6 +134,7 @@ int main() {
       local.inner_radius_pixels = 0.2f;
       local.outer_radius_pixels = 1.0f;
       local.falloff = 0.5f;
+      local.z_offset_pixels = 10000.0f;
       local.color = {0.25f, 0.25f, 0.25f};
       frame.lights.push_back(local);
       pixel = renderer.readback_pixel(frame);
@@ -141,6 +142,30 @@ int main() {
       for (int i = 0; i < 3; ++i)
         if (std::abs(int(pixel[i]) - lit_expected(albedo[i], .25)) > 3)
           throw std::runtime_error("local light center mismatch");
+      frame.sprites[0].visual.material.normal_map = "assets/normal_x.png";
+      frame.lights[0].center_pixels = {1.0f, 0.5f};
+      frame.lights[0].inner_radius_pixels = 1.0f;
+      frame.lights[0].outer_radius_pixels = 2.0f;
+      frame.lights[0].z_offset_pixels = 0.0f;
+      pixel = renderer.readback_pixel(frame);
+      if (std::abs(int(pixel[0]) - lit_expected(200, .25)) > 3)
+        throw std::runtime_error("aligned local normal mismatch");
+      frame.lights[0].z_offset_pixels = 1.0f;
+      pixel = renderer.readback_pixel(frame);
+      if (std::abs(int(pixel[0]) - lit_expected(200, .25 / std::sqrt(5.0))) > 3)
+        throw std::runtime_error("local light height response mismatch");
+      frame.lights[0].z_offset_pixels = 0.0f;
+      frame.sprites[0].angle_rad = 3.141592653589793;
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)
+        throw std::runtime_error("rotated local normal should be opposed");
+      frame.sprites[0].angle_rad = 0.0;
+      frame.lights[0].center_pixels = {0.0f, 0.5f};
+      pixel = renderer.readback_pixel(frame);
+      if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2)
+        throw std::runtime_error("opposed local normal should be dark");
+      frame.sprites[0].visual.material.normal_map.clear();
+      frame.lights[0] = local;
       frame.lights[0].center_pixels = {1.1f, 0.5f}; // t = 0.5, u = 0.625
       pixel = renderer.readback_pixel(frame);
       for (int i = 0; i < 3; ++i)

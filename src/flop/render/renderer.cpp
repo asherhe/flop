@@ -374,13 +374,15 @@ void Renderer::present(const view::FrameDrawData &frame) {
       throw error;
     }
     SDL_BindGPUGraphicsPipeline(light_pass, point_light_pipeline_);
+    SDL_GPUTextureSamplerBinding normal_binding{normal_texture_, sprite_sampler_};
+    SDL_BindGPUFragmentSamplers(light_pass, 0, &normal_binding, 1);
     if (frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
       for (const auto &light : frame.lights) {
         if (!(light.outer_radius_pixels > 0.0f)) continue;
         struct LightGeometry { std::array<float, 4> center_radii, viewport_falloff, color; };
         const LightGeometry geometry{
             {light.center_pixels.x, light.center_pixels.y, light.inner_radius_pixels, light.outer_radius_pixels},
-            {static_cast<float>(width), static_cast<float>(height), light.falloff, 0},
+            {static_cast<float>(width), static_cast<float>(height), light.falloff, light.z_offset_pixels},
             {light.color[0], light.color[1], light.color[2], 0}};
         SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
         SDL_DrawGPUPrimitives(light_pass, 6, 1, 0, 0);

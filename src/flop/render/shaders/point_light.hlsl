@@ -1,15 +1,19 @@
 // screen-space point light bounds and parameters, in drawable pixels
 cbuffer LightGeometry : register(b0, space1) {
   float4 center_radii; // center xy, inner radius, outer radius
-  float4 viewport_falloff; // viewport xy, falloff, reserved
+  float4 viewport_falloff; // viewport xy, falloff, z offset in pixels
   float4 light_color; // linear rgb, reserved
 };
+
+[[vk::combinedImageSampler]] Texture2D normal_texture : register(t0, space2);
+[[vk::combinedImageSampler]] SamplerState normal_sampler : register(s0, space2);
 
 struct VertexOutput {
   float4 position : SV_Position;
   nointerpolation float4 center_radii : TEXCOORD0;
   nointerpolation float falloff : TEXCOORD1;
   nointerpolation float3 color : TEXCOORD2;
+  nointerpolation float z_offset : TEXCOORD3;
 };
 
 VertexOutput vertex(uint id : SV_VertexID) {
@@ -23,6 +27,7 @@ VertexOutput vertex(uint id : SV_VertexID) {
   result.center_radii = center_radii;
   result.falloff = viewport_falloff.z;
   result.color = light_color.rgb;
+  result.z_offset = viewport_falloff.w;
   return result;
 }
 
@@ -39,5 +44,12 @@ float4 fragment(VertexOutput input) : SV_Target0 {
       strength = 1.0 - u * u * (3.0 - 2.0 * u);
     }
   }
-  return float4(input.color * strength, 0.0);
+  uint width, height;
+  normal_texture.GetDimensions(width, height);
+  float3 normal = normal_texture.Sample(normal_sampler, input.position.xy / float2(width, height)).xyz * 2.0 - 1.0;
+  normal = dot(normal, normal) > 1e-12 ? normalize(normal) : float3(0, 0, 1);
+  float2 delta = input.center_radii.xy - input.position.xy;
+  float3 direction = float3(delta.x, -delta.y, input.z_offset);
+  direction = dot(direction, direction) > 1e-12 ? normalize(direction) : float3(0, 0, 1);
+  return float4(input.color * strength * saturate(dot(normal, direction)), 0.0);
 }
