@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstring>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -295,7 +296,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (!capture_texture) { SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture texture"); }
     SDL_GPUTransferBufferCreateInfo transfer{};
     transfer.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
-    transfer.size = 4;
+    transfer.size = capture_normal_ ? 8 : 4;
     download = SDL_CreateGPUTransferBuffer(device_, &transfer);
     if (!download) { SDL_ReleaseGPUTexture(device_, capture_texture); SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture buffer"); }
     swapchain = capture_texture;
@@ -460,7 +461,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     auto *copy = SDL_BeginGPUCopyPass(commands);
     if (!copy) throw failure("begin capture copy");
     SDL_GPUTextureRegion region{};
-    region.texture = capture_texture;
+    region.texture = capture_normal_ ? normal_texture_ : capture_texture;
     region.w = region.h = region.d = 1;
     SDL_GPUTextureTransferInfo destination{};
     destination.transfer_buffer = download;
@@ -470,9 +471,13 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (!fence || !SDL_WaitForGPUFences(device_, true, &fence, 1)) throw failure("capture submission");
     const auto *pixels = static_cast<const std::uint8_t *>(SDL_MapGPUTransferBuffer(device_, download, false));
     if (!pixels) throw failure("map capture");
-    const auto format = SDL_GetGPUSwapchainTextureFormat(device_, window_);
-    const bool bgra = format == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB;
-    captured_ = {pixels[bgra ? 2 : 0], pixels[1], pixels[bgra ? 0 : 2], pixels[3]};
+    if (capture_normal_) {
+      std::memcpy(captured_normal_.data(), pixels, 8);
+    } else {
+      const auto format = SDL_GetGPUSwapchainTextureFormat(device_, window_);
+      const bool bgra = format == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB;
+      captured_ = {pixels[bgra ? 2 : 0], pixels[1], pixels[bgra ? 0 : 2], pixels[3]};
+    }
     SDL_UnmapGPUTransferBuffer(device_, download);
     SDL_ReleaseGPUFence(device_, fence);
     SDL_ReleaseGPUTransferBuffer(device_, download);
@@ -490,6 +495,14 @@ std::array<std::uint8_t, 4> Renderer::readback_pixel(const view::FrameDrawData &
   try { present(frame); } catch (...) { capture_ = false; throw; }
   capture_ = false;
   return captured_;
+}
+std::array<std::uint16_t, 4> Renderer::readback_normal(const view::FrameDrawData &frame) {
+  capture_ = true;
+  capture_normal_ = true;
+  try { present(frame); } catch (...) { capture_ = false; capture_normal_ = false; throw; }
+  capture_ = false;
+  capture_normal_ = false;
+  return captured_normal_;
 }
 #endif
 } // namespace flop::render

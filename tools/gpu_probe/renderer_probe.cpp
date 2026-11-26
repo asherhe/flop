@@ -126,6 +126,49 @@ int main() {
       frame.sprites[0].visual.sprite = "assets/opaque.png";
       frame.sprites[0].sun.direction = {1, 0, 0, 0};
       frame.sprites[0].sun.color = {0, 0, 0, 0};
+      auto normal_pixel = renderer.readback_normal(frame);
+      if (std::abs(int(normal_pixel[0]) - 0x3800) > 8 ||
+          std::abs(int(normal_pixel[1]) - 0x3800) > 8 || normal_pixel[2] < 0x3bf0)
+        throw std::runtime_error("default normal mismatch");
+      frame.sprites[0].visual.material.normal_map = "assets/normal_x.png";
+      normal_pixel = renderer.readback_normal(frame);
+      if (normal_pixel[0] < 0x3bf0) throw std::runtime_error("positive x normal mismatch");
+      frame.sprites[0].angle_rad = 3.141592653589793;
+      normal_pixel = renderer.readback_normal(frame);
+      if (normal_pixel[0] > 0x2000) throw std::runtime_error("rotated normal mismatch");
+      frame.sprites[0].angle_rad = 0.0;
+      frame.sprites[0].visual.sprite = "assets/half.png";
+      normal_pixel = renderer.readback_normal(frame);
+      if (std::abs(int(normal_pixel[0]) - 0x3a00) > 8)
+        throw std::runtime_error("transparent normal blend mismatch");
+      auto foreground = frame.sprites[0];
+      foreground.angle_rad = 3.141592653589793;
+      frame.sprites[0].visual.sprite = "assets/opaque.png";
+      frame.sprites.push_back(foreground);
+      normal_pixel = renderer.readback_normal(frame);
+      if (std::abs(int(normal_pixel[0]) - 0x3800) > 16)
+        throw std::runtime_error("overlapping normal blend mismatch");
+      std::swap(frame.sprites[0], frame.sprites[1]);
+      normal_pixel = renderer.readback_normal(frame);
+      if (normal_pixel[0] < 0x3bf0)
+        throw std::runtime_error("normal blend order mismatch");
+      frame.sprites.erase(frame.sprites.begin());
+      frame.sprites[0].angle_rad = 0.0;
+      frame.sprites[0].visual.sprite = "assets/transparent.png";
+      normal_pixel = renderer.readback_normal(frame);
+      if (normal_pixel[0] != 0x3800 || normal_pixel[2] != 0x3c00)
+        throw std::runtime_error("transparent normal clear mismatch");
+      frame.camera.viewport_width = frame.camera.viewport_height = 2;
+      frame.sprites.clear();
+      normal_pixel = renderer.readback_normal(frame);
+      if (normal_pixel[0] != 0x3800 || normal_pixel[2] != 0x3c00)
+        throw std::runtime_error("resized normal clear mismatch");
+      frame.camera.viewport_width = frame.camera.viewport_height = 1;
+      frame.sprites.push_back(sprite);
+      frame.sprites[0].visual.material.shader = "craft/lit_sprite";
+      frame.sprites[0].visual.sprite = "assets/opaque.png";
+      frame.sprites[0].sun.direction = {1, 0, 0, 0};
+      frame.sprites[0].sun.color = {0, 0, 0, 0};
       auto pixel = renderer.readback_pixel(frame);
       for (int i = 0; i < 3; ++i)
         if (pixel[i] > 2) throw std::runtime_error("unlit default maps should produce black");

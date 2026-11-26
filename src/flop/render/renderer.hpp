@@ -32,6 +32,7 @@ public:
   void present(const view::FrameDrawData &frame);
 #ifdef FLOP_RENDER_TESTING
   std::array<std::uint8_t, 4> readback_pixel(const view::FrameDrawData &frame);
+  std::array<std::uint16_t, 4> readback_normal(const view::FrameDrawData &frame);
 #endif
 
 private:
@@ -53,7 +54,9 @@ private:
   std::unique_ptr<TextureCache> textures_;
 #ifdef FLOP_RENDER_TESTING
   bool capture_{};
+  bool capture_normal_{};
   std::array<std::uint8_t, 4> captured_{};
+  std::array<std::uint16_t, 4> captured_normal_{};
 #endif
 };
 

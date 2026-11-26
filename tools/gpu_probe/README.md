@@ -51,6 +51,10 @@ The renderer probe passed on Windows 10.0.26300 with an NVIDIA GeForce RTX 4050
 Laptop GPU, using Direct3D 12 (driver 32.0.15.7703) and Vulkan (SDL-reported
 driver 577.3.0.0). The readback checks allow up to three byte values of error.
 Linux and live-scene appearance have not been verified by this probe.
+The normal-aware extension also reads back the floating-point normal texture,
+checking flat and rotated normals, alpha blending, both orders of overlapping
+sprites, clearing and resize. Its lighting checks include aligned and opposed
+normals and different light heights. Both Windows backends above passed.
 
 # Shipped scene lighting probe
 
@@ -64,7 +68,7 @@ comparison. Use `SDL_GPU_DRIVER` as described above to select the backend.
 
 On Windows 10.0.26300, both Direct3D 12 and Vulkan passed on an NVIDIA GeForce
 RTX 4050 Laptop GPU (drivers 32.0.15.7703 and 577.3.0.0 respectively). Both
-returned RGB `(0, 0, 0)` idle, `(187, 129, 47)` under thrust and `(0, 0, 0)`
+returned RGB `(0, 0, 0)` idle, `(128, 87, 29)` under thrust and `(0, 0, 0)`
 after throttle closed. The comparison allows three byte values of tolerance.
 The Windows game executable also remained running for four seconds in a hidden
 startup smoke test on Direct3D 12; this did not inspect the displayed scene.
