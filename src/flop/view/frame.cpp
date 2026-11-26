@@ -36,6 +36,7 @@ PointF project(Vec2d relative, const CameraState &camera) {
   };
 }
 
+
 } // namespace
 
 void CameraState::update(
@@ -98,6 +99,22 @@ FrameDrawData CameraState::build_frame(
                craft_position;
     }
     const auto sunlight = compute_sunlight(to_sun);
+    PlanetShine shine;
+    std::array<float, 3> shine_rgb{};
+    const auto &parent = universe.reference_frames().frame(craft.frame_id());
+    if (sun != universe.bodies().end() && parent.parent) {
+      const auto visual = std::ranges::find_if(visuals, [&](const auto &v) { return v.name == parent.name; });
+      if (visual != visuals.end() && visual->planet_shine) {
+        const auto &body = universe.body(parent.name);
+        const auto body_to_sun = universe.reference_frames().offset(
+            universe.frame_id("Sun"), craft.frame_id(), result.ut_sec).position;
+        shine = compute_planet_shine({static_cast<float>(body_to_sun.x), static_cast<float>(body_to_sun.y)},
+            {static_cast<float>(craft_position.x), static_cast<float>(craft_position.y)},
+            static_cast<float>(body.config().radius_meters), static_cast<float>(visual->planet_shine->intensity));
+        const auto color = visual->planet_shine->color;
+        shine_rgb = {color.r, color.g, color.b};
+      }
+    }
     const Vec2d com = craft.mass_properties().center_of_mass_meters;
     const double angle = craft.newtonian().angle_rad();
     for (const auto &part : craft.parts()) {
@@ -120,6 +137,13 @@ FrameDrawData CameraState::build_frame(
           const auto pivot = visual.pivot;
           const double sprite_angle = angle + part.angle_rad;
           result.sprites.back().sun = to_sprite_local(sunlight, sprite_angle);
+          const float a = static_cast<float>(sprite_angle);
+          const float c = std::cos(a), s = std::sin(a);
+          auto &sprite_shine = result.sprites.back().planet_shine;
+          sprite_shine.direction_and_spread = {c * shine.direction[0] + s * shine.direction[1],
+              -s * shine.direction[0] + c * shine.direction[1], 0, shine.spread};
+          sprite_shine.color = {shine_rgb[0] * shine.intensity, shine_rgb[1] * shine.intensity,
+              shine_rgb[2] * shine.intensity, 0};
           const std::array<Vec2d, 4> corners{{
               {-pivot.x * size.x, -pivot.y * size.y},
               {(1.0 - pivot.x) * size.x, -pivot.y * size.y},

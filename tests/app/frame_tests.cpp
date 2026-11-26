@@ -40,6 +40,11 @@ TEST_CASE("Frame extraction tracks camera and enabled visual plugins without adv
   camera.focus = scene.craft.front();
   const auto first = camera.build_frame(world, scene.body_visuals);
   REQUIRE(first.sprites.size() == 3);
+  for (const auto &sprite : first.sprites) {
+    CHECK(std::isfinite(sprite.planet_shine.color[0]));
+    CHECK(sprite.planet_shine.color[0] >= 0);
+    CHECK(sprite.planet_shine.direction_and_spread[3] >= 0);
+  }
   CHECK(first.sprites[0].visual.size_meters.y == 2.0);
   CHECK(first.sprites[1].visual.size_meters.y == 2.0);
   CHECK(first.sprites[2].visual.size_meters.y == 1.5);
@@ -77,6 +82,7 @@ TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   REQUIRE(frame.lights.size() == 1);
   CHECK(frame.sprites[0].sun.color[0] == 0.0f); // no body named Sun
   CHECK(frame.sprites[0].sun.direction[2] == 1.0f);
+  CHECK(frame.sprites[0].planet_shine.color[0] == 0.0f);
   CHECK(frame.sprites[1].center_pixels.x - frame.sprites[0].center_pixels.x == Catch::Approx(100));
   const auto &corners = frame.sprites[0].corners_pixels;
   CHECK(corners[0].x == Catch::Approx(frame.sprites[0].center_pixels.x));
@@ -119,4 +125,5 @@ TEST_CASE("Sprite sunlight is local to each part and independent of the camera")
   const auto moved = camera.build_frame(world, {{"Sun", "white", {}, {}, {}}});
   CHECK(moved.sprites[0].sun.direction == a.direction);
   CHECK(moved.sprites[0].sun.color == a.color);
+  CHECK(moved.sprites[0].planet_shine.color == frame.sprites[0].planet_shine.color);
 }

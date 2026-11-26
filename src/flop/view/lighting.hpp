@@ -26,6 +26,12 @@ struct PlanetShine {
   float spread{};
 };
 
+// local direction and spread are packed separately from linear rgb intensity
+struct SpritePlanetShine {
+  std::array<float, 4> direction_and_spread{};
+  std::array<float, 4> color{};
+};
+
 // positions are relative vectors in metres and lighting calculations use floats
 // returns no shine when inputs cannot describe an illuminated body
 PlanetShine compute_planet_shine(

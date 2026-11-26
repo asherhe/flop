@@ -62,6 +62,7 @@ struct SpriteDraw {
   // lower-left, lower-right, upper-right, upper-left in sprite-local coordinates
   std::array<PointF, 4> corners_pixels{};
   SpriteSunlight sun;
+  SpritePlanetShine planet_shine;
 };
 struct LightDraw {
   world::CraftId craft;
