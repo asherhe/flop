@@ -64,12 +64,16 @@ TEST_CASE("Hamswell decodes its surface textures, atmosphere, and planet shine")
   CHECK(visual.planet_shine->intensity == Approx(1.0));
 }
 
-TEST_CASE("Hex colors decode to linear components and reject invalid values") {
-  const auto color = flop::config::decode_color(ConfigView(YAML::Load("'#808000'"), "fixture.yaml"));
-  CHECK(color.r == Approx(0.21586).margin(0.0001));
+TEST_CASE("Hex colors decode to srgb and convert to linear explicitly") {
+  const auto color = ConfigDecoder<flop::Color>::decode(ConfigView(YAML::Load("'#808000'"), "fixture.yaml"));
+  CHECK(color.r == Approx(128.0 / 255.0));
   CHECK(color.g == Approx(color.r));
   CHECK(color.b == 0);
-  CHECK_THROWS_AS(flop::config::decode_color(ConfigView(YAML::Load("'#zz0011'"), "fixture.yaml")), flop::config::ConfigError);
+  const auto linear = flop::srgb_to_linear(color);
+  CHECK(linear.r == Approx(0.21586).margin(0.0001));
+  CHECK(linear.g == Approx(linear.r));
+  CHECK(linear.b == 0);
+  CHECK_THROWS_AS(ConfigDecoder<flop::Color>::decode(ConfigView(YAML::Load("'#zz0011'"), "fixture.yaml")), flop::config::ConfigError);
 }
 
 TEST_CASE("The Sun decodes a surface material but no atmosphere") {

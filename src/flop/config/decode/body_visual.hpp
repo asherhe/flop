@@ -61,7 +61,7 @@ inline AtmosphereVisualConfig decode_atmosphere_visual(const ConfigView &atmosph
 
 inline PlanetShineConfig decode_planet_shine(const ConfigView &shine) {
   return {
-      decode_color(shine.required("color")),
+      srgb_to_linear(ConfigDecoder<Color>::decode(shine.required("color"))),
       shine.required("intensity").as<double>(),
   };
 }

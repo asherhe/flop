@@ -226,7 +226,7 @@ inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &rea
     const auto normalized = [](double key, const ConfigView &source) {
       if (key < 0.0 || key > 1.0) source.fail(source.mark(), "Curve key must be between 0 and 1");
     };
-    result.color = decode_key_curve<Color>(color.required("color_keys"), decode_srgb_color, normalized);
+    result.color = decode_key_curve<Color>(color.required("color_keys"), &ConfigDecoder<Color>::decode, normalized);
     result.alpha = decode_key_curve<double>(color.required("alpha_keys"), &ConfigView::as<double>, normalized);
     result.size = decode_key_curve<double, SmoothInterpolation>(field.required("size"), &ConfigView::as<double>, normalized);
     return result;
