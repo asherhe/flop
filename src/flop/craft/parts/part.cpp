@@ -10,8 +10,23 @@
 namespace flop::craft {
 
 Part::Part() = default;
-Part::Part(Part &&) noexcept = default;
-Part &Part::operator=(Part &&) noexcept = default;
+Part::Part(Part &&other) noexcept : Part() { *this = std::move(other); }
+Part &Part::operator=(Part &&other) noexcept {
+  if (this == &other) return *this;
+  type_id = std::move(other.type_id);
+  id = std::move(other.id);
+  name = std::move(other.name);
+  position_meters = other.position_meters;
+  angle_rad = other.angle_rad;
+  dry_mass_kg = other.dry_mass_kg;
+  crossfeed = other.crossfeed;
+  attachment_nodes = std::move(other.attachment_nodes);
+  attachments = std::move(other.attachments);
+  plugins = std::move(other.plugins);
+  installed_plugins_ = std::move(other.installed_plugins_);
+  for (const auto &plugin : installed_plugins_) plugin->bind_part(*this);
+  return *this;
+}
 Part::~Part() = default;
 
 void Part::install_plugins(const ResourceRegistry &registry, std::size_t part_index) {
@@ -32,6 +47,7 @@ void Part::install_plugins(const ResourceRegistry &registry, std::size_t part_in
       );
     }
     auto plugin = plugin::make_plugin(plugin_config, registry);
+    plugin->bind_part(*this);
     plugin->set_part_index(part_index);
     plugin->set_id(std::move(plugin_id));
     installed_plugins_.push_back(std::move(plugin));

@@ -14,6 +14,7 @@
 
 namespace flop::craft {
 class CraftContext;
+class Part;
 } // namespace flop::craft
 
 namespace flop::craft::plugin {
@@ -56,13 +57,27 @@ public:
   void set_id(PluginId id) noexcept { id_ = std::move(id); }
 
   [[nodiscard]] bool enabled() const noexcept { return enabled_; }
-  void set_enabled(bool enabled) noexcept { enabled_ = enabled; }
+  void set_enabled(bool enabled) noexcept {
+    if (enabled_ == enabled) return;
+    enabled_ = enabled;
+    if (enabled_) on_enabled();
+    else on_disabled();
+  }
+
+  // assigned by the owning part on installation and after a part move.
+  [[nodiscard]] Part &part() const noexcept { return *part_; }
 
 protected:
   explicit PartPlugin(bool enabled) noexcept : enabled_(enabled) {}
+  [[nodiscard]] bool has_part() const noexcept { return part_ != nullptr; }
+  virtual void on_enabled() noexcept {}
+  virtual void on_disabled() noexcept {}
 
 private:
+  friend class ::flop::craft::Part;
+  void bind_part(Part &part) noexcept { part_ = &part; }
   bool enabled_;
+  Part *part_{};
   std::size_t part_index_{};
   PluginId id_;
 };

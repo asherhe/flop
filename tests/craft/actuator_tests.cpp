@@ -102,6 +102,55 @@ TEST_CASE("engine publishes actual propellant-limited emission") {
   CHECK_FALSE(engine_of(parts).enabled());
 }
 
+TEST_CASE("engine transitions clear controlled outputs without a simulation step") {
+  const auto universe = context();
+  auto parts = engine_part(universe, EngineConfig{}, ResourceConfig{}, true);
+  flop::craft::plugin::LightConfig light_config;
+  light_config.strength = 0.0;
+  parts[0].plugins.push_back({"LightPlugin", true, light_config});
+  parts[0].install_plugins(universe.resources(), 0);
+  auto &engine = engine_of(parts);
+  auto *emitter = parts[0].get_plugin<flop::craft::plugin::ParticlePlugin>();
+  auto *light = parts[0].get_plugin<flop::craft::plugin::LightPlugin>();
+  REQUIRE(emitter);
+  REQUIRE(light);
+  CHECK(light->strength() == 0.0);
+  emitter->set_emission_strength(0.8);
+  light->set_strength(0.8);
+  engine.set_enabled(false);
+  CHECK(emitter->emission_strength() == 0.0);
+  CHECK(light->strength() == 0.0);
+  emitter->set_emission_strength(0.6);
+  light->set_strength(0.6);
+  engine.set_enabled(false);
+  CHECK(light->strength() == 0.6);
+  engine.set_enabled(true);
+  CHECK(emitter->emission_strength() == 0.0);
+  CHECK(light->strength() == 0.0);
+  light->set_strength(0.7);
+  light->set_enabled(false);
+  CHECK(light->strength() == 0.0);
+  light->set_enabled(true);
+  CHECK(light->strength() == 0.0);
+}
+
+TEST_CASE("part moves rebind installed plugins to their owner") {
+  const auto universe = context();
+  auto parts = engine_part(universe, EngineConfig{}, ResourceConfig{}, true);
+  Part moved(std::move(parts[0]));
+  auto *engine = moved.get_plugin<EnginePlugin>();
+  auto *emitter = moved.get_plugin<flop::craft::plugin::ParticlePlugin>();
+  REQUIRE(engine);
+  REQUIRE(emitter);
+  CHECK(&engine->part() == &moved);
+  Part assigned;
+  assigned = std::move(moved);
+  CHECK(&engine->part() == &assigned);
+  emitter->set_emission_strength(1.0);
+  engine->set_enabled(false);
+  CHECK(emitter->emission_strength() == 0.0);
+}
+
 EnginePlugin &engine_of(std::vector<Part> &parts) {
   if (auto *engine = parts[0].get_plugin<EnginePlugin>()) return *engine;
   FAIL("part has no engine plugin");

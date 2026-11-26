@@ -187,6 +187,11 @@ inline void apply_fields(craft::plugin::LightConfig &light, MapReader &reader) {
       "outer_radius", light.outer_radius_meters, &ConfigView::as<double>, PluginRequired::on_create
   );
   reader.assign("falloff", light.falloff, &ConfigView::as<double>, PluginRequired::on_create);
+  reader.assign("strength", light.strength, [](const ConfigView &field) {
+    const auto value = field.checked_finite(field.as<double>());
+    if (value < 0.0) field.fail(field.mark(), "Expected a nonnegative strength");
+    return value;
+  });
 }
 
 inline std::array<double, 2> decode_particle_range(const ConfigView &field) {

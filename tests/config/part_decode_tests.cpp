@@ -65,6 +65,19 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   CHECK(light_config.inner_radius_meters == 0.25);
   CHECK(light_config.outer_radius_meters == 1.68);
   CHECK(light_config.falloff == 0.89);
+  CHECK(light_config.strength == 1.0);
+}
+
+TEST_CASE("light initial strength is configurable and rejects invalid overrides") {
+  auto light = flop::config::decode_part_plugin(
+      "LightPlugin", ConfigView(YAML::Load(
+          "light_position: {x: 0, y: 0}\ncolor: '#ffffff'\nintensity: 1\n"
+          "inner_radius: 0\nouter_radius: 1\nfalloff: 0.5\nstrength: 0\n"),
+          "part.yaml", "plugins.LightPlugin"));
+  CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).strength == 0.0);
+  CHECK_THROWS_WITH(flop::config::apply_part_plugin_fields(light,
+      ConfigView(YAML::Load("strength: -1"), "save.yaml", "plugins.LightPlugin")),
+      ContainsSubstring("[plugins.LightPlugin.strength]"));
 }
 
 TEST_CASE("Visual plugin overrides update their own config types") {

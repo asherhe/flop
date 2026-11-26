@@ -75,6 +75,7 @@ struct LightConfig {
   double inner_radius_meters{};
   double outer_radius_meters{};
   double falloff{};
+  double strength{1.0};
 };
 
 struct ParticleConfig {

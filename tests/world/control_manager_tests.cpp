@@ -189,6 +189,34 @@ TEST_CASE("SetPluginEnabled toggles exactly the targeted instance") {
   CHECK(universe.craft(first).part("pod").find_plugin(PluginId("CommandPlugin"))->enabled());
 }
 
+TEST_CASE("engine enable commands clear effects without a world tick") {
+  Universe universe({root_body()}, resource_types());
+  auto config = pod_craft("Engine test");
+  config.parts[0].plugins.push_back({"EnginePlugin", true, flop::craft::plugin::EngineConfig{}});
+  config.parts[0].plugins.push_back({"ParticlePlugin", true, flop::craft::plugin::ParticleConfig{}});
+  flop::craft::plugin::LightConfig light_config;
+  light_config.strength = 0.0;
+  config.parts[0].plugins.push_back({"LightPlugin", true, light_config});
+  const auto id = universe.add_craft(config, pod_types());
+  auto &part = static_cast<flop::world::CraftAccess &>(universe).mutable_craft(id)->part("pod");
+  auto *emitter = part.get_plugin<flop::craft::plugin::ParticlePlugin>();
+  auto *light = part.get_plugin<flop::craft::plugin::LightPlugin>();
+  REQUIRE(emitter);
+  REQUIRE(light);
+  emitter->set_emission_strength(0.8);
+  light->set_strength(0.8);
+  const PluginTarget target{id, PartId("pod"), PluginId("EnginePlugin")};
+  auto &controls = universe.controls();
+  controls.submit(ControlManager::SetPluginEnabled{target, false});
+  controls.submit(ControlManager::SetPluginEnabled{target, true});
+  const auto results = controls.apply_commands();
+  REQUIRE(results.size() == 2);
+  CHECK(results[0].status == Status::applied);
+  CHECK(results[1].status == Status::applied);
+  CHECK(emitter->emission_strength() == 0.0);
+  CHECK(light->strength() == 0.0);
+}
+
 TEST_CASE("Stale targets fail cleanly without mutating other craft") {
   Universe universe({root_body()}, resource_types());
   ControlManager &controls = universe.controls();

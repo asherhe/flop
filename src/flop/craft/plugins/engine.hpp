@@ -30,6 +30,9 @@ public:
   [[nodiscard]] const EngineConfig &config() const noexcept { return config_; }
 
 private:
+  void on_enabled() noexcept override;
+  void on_disabled() noexcept override;
+  void clear_effect_strengths() noexcept;
   // one propellant in the mixture: its resource id, its relative ratio, and its
   // mass per unit, kept so the per-step draw and the limiting-propellant scaling
   // avoid repeated registry lookups.

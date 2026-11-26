@@ -30,6 +30,15 @@ EnginePlugin::EnginePlugin(EngineConfig config, const ResourceRegistry &registry
   }
 }
 
+void EnginePlugin::clear_effect_strengths() noexcept {
+  if (!has_part()) return;
+  if (auto *light = part().get_plugin<LightPlugin>()) light->set_strength(0.0);
+  if (auto *emitter = part().get_plugin<ParticlePlugin>()) emitter->set_emission_strength(0.0);
+}
+
+void EnginePlugin::on_enabled() noexcept { clear_effect_strengths(); }
+void EnginePlugin::on_disabled() noexcept { clear_effect_strengths(); }
+
 void EnginePlugin::tick(CraftContext &ctx, double dt_sec) {
   const double throttle = ctx.control().throttle();
   if (!(throttle > 0.0)) {

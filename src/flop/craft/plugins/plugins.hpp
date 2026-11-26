@@ -68,14 +68,21 @@ private:
 // render-only in the full game; a no-op in the headless simulation.
 class LightPlugin : public PartPlugin {
 public:
-  LightPlugin(LightConfig config, bool enabled) : PartPlugin(enabled), config_(std::move(config)) {}
+  LightPlugin(LightConfig config, bool enabled) :
+      PartPlugin(enabled), config_(std::move(config)),
+      strength_(enabled ? config_.strength : 0.0) {}
 
   void tick(CraftContext & /*ctx*/, double /*dt_sec*/) override {}
 
   [[nodiscard]] const LightConfig &config() const noexcept { return config_; }
+  void set_strength(double value) noexcept { strength_ = value; }
+  [[nodiscard]] double strength() const noexcept { return strength_; }
 
 private:
+  void on_enabled() noexcept override { strength_ = config_.strength; }
+  void on_disabled() noexcept override { strength_ = 0.0; }
   LightConfig config_;
+  double strength_;
 };
 
 // emitter configuration and the command produced during the current step.
@@ -91,6 +98,7 @@ public:
   [[nodiscard]] const ParticleConfig &config() const noexcept { return config_; }
 
 private:
+  void on_disabled() noexcept override { emission_strength_ = 0.0; }
   ParticleConfig config_;
   double emission_strength_{};
 };
