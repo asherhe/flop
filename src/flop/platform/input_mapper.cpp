@@ -37,8 +37,8 @@ void InputMapper::handle_event(const SDL_Event &event) {
       break; // edges fire once; held keys are tracked by their down/up pair.
     }
     switch (event.key.key) {
-    case SDLK_LCTRL: key_throttle_up_ = true; break;
-    case SDLK_LSHIFT: key_throttle_down_ = true; break;
+    case SDLK_LSHIFT: key_throttle_up_ = true; break;
+    case SDLK_LCTRL: key_throttle_down_ = true; break;
     case SDLK_A: key_steer_ccw_ = true; break;
     case SDLK_D: key_steer_cw_ = true; break;
     case SDLK_X: frame_.commands.emplace_back(world::ControlManager::SetThrottle{0.0}); break;
@@ -53,8 +53,8 @@ void InputMapper::handle_event(const SDL_Event &event) {
     break;
   case SDL_EVENT_KEY_UP:
     switch (event.key.key) {
-    case SDLK_LCTRL: key_throttle_up_ = false; break;
-    case SDLK_LSHIFT: key_throttle_down_ = false; break;
+    case SDLK_LSHIFT: key_throttle_up_ = false; break;
+    case SDLK_LCTRL: key_throttle_down_ = false; break;
     case SDLK_A: key_steer_ccw_ = false; break;
     case SDLK_D: key_steer_cw_ = false; break;
     default: break;
