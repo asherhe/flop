@@ -163,6 +163,8 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     particle_pipeline_ = create_pipeline(device_, window_, "particle", true);
     point_light_pipeline_ = create_pipeline(device_, window_, "point_light", false,
         nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, true);
+    normal_pipeline_ = create_pipeline(device_, window_, "craft/normal", true,
+        nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     {
       const auto loaded_recipe = load_craft_sprite_recipe(resolver);
       if (loaded_recipe.shader != craft_sprite_recipe.shader)
@@ -186,6 +188,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     }
     textures_ = std::make_unique<TextureCache>(device_, resolver);
   } catch (...) {
+    if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
     if (sprite_sampler_)
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_)
@@ -211,6 +214,8 @@ Renderer::~Renderer() {
     textures_.reset();
     if (light_texture_)
       SDL_ReleaseGPUTexture(device_, light_texture_);
+    if (normal_texture_) SDL_ReleaseGPUTexture(device_, normal_texture_);
+    if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
     if (sprite_sampler_)
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
     if (craft_pipeline_)
@@ -312,11 +317,51 @@ void Renderer::present(const view::FrameDrawData &frame) {
         SDL_SubmitGPUCommandBuffer(commands);
         throw error;
       }
+      auto *normal_replacement = SDL_CreateGPUTexture(device_, &info);
+      if (!normal_replacement) {
+        const auto error = failure("create normal texture");
+        SDL_ReleaseGPUTexture(device_, replacement);
+        SDL_SubmitGPUCommandBuffer(commands);
+        throw error;
+      }
       if (light_texture_) SDL_ReleaseGPUTexture(device_, light_texture_);
+      if (normal_texture_) SDL_ReleaseGPUTexture(device_, normal_texture_);
       light_texture_ = replacement;
+      normal_texture_ = normal_replacement;
       light_width_ = width;
       light_height_ = height;
     }
+    SDL_GPUColorTargetInfo normal_target{};
+    normal_target.texture = normal_texture_;
+    normal_target.clear_color = SDL_FColor{0.5f, 0.5f, 1.0f, 1.0f};
+    normal_target.load_op = SDL_GPU_LOADOP_CLEAR;
+    normal_target.store_op = SDL_GPU_STOREOP_STORE;
+    auto *normal_pass = SDL_BeginGPURenderPass(commands, &normal_target, 1, nullptr);
+    if (!normal_pass) {
+      const auto error = failure("begin normal render pass");
+      SDL_SubmitGPUCommandBuffer(commands);
+      throw error;
+    }
+    SDL_BindGPUGraphicsPipeline(normal_pass, normal_pipeline_);
+    if (frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
+      for (std::size_t i = 0; i < frame.sprites.size(); ++i) {
+        const auto &maps = sprite_textures[i];
+        if (!maps.lit) continue;
+        const auto &sprite = frame.sprites[i];
+        const auto &corners = sprite.corners_pixels;
+        struct NormalGeometry { std::array<float, 4> origin, viewport, rotation; };
+        const NormalGeometry geometry{
+            {corners[0].x, corners[0].y, corners[1].x - corners[0].x, corners[1].y - corners[0].y},
+            {corners[3].x - corners[0].x, corners[3].y - corners[0].y,
+             static_cast<float>(frame.camera.viewport_width), static_cast<float>(frame.camera.viewport_height)},
+            {static_cast<float>(std::cos(sprite.angle_rad)), static_cast<float>(std::sin(sprite.angle_rad)), 0, 0}};
+        SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
+        SDL_GPUTextureSamplerBinding bindings[]{{maps.albedo, sprite_sampler_}, {maps.normal, sprite_sampler_}};
+        SDL_BindGPUFragmentSamplers(normal_pass, 0, bindings, 2);
+        SDL_DrawGPUPrimitives(normal_pass, 6, 1, 0, 0);
+      }
+    }
+    SDL_EndGPURenderPass(normal_pass);
     SDL_GPUColorTargetInfo light_target{};
     light_target.texture = light_texture_;
     light_target.clear_color = SDL_FColor{0, 0, 0, 0};

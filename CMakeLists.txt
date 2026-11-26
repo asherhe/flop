@@ -137,6 +137,7 @@ if(FLOP_BUILD_GAME)
     flop_add_shader(ID craft/lit_sprite SOURCE craft/lit_sprite.hlsl)
     flop_add_shader(ID particle SOURCE particle.hlsl)
     flop_add_shader(ID point_light SOURCE point_light.hlsl)
+    flop_add_shader(ID craft/normal SOURCE craft/normal.hlsl)
     flop_embed_shaders(flop)
     add_subdirectory(tools/gpu_probe EXCLUDE_FROM_ALL)
 

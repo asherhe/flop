@@ -1,3 +1,4 @@
+#include "sprite_geometry.hlsli"
 // geometry and uv conventions match the unlit sprite shader
 cbuffer SpriteGeometry : register(b0, space1) {
   float4 origin_and_x_axis;
@@ -26,15 +27,8 @@ struct VertexOutput {
 };
 
 VertexOutput vertex(uint id : SV_VertexID) {
-  const float2 corners[6] = {
-      float2(0, 0), float2(1, 0), float2(1, 1),
-      float2(0, 0), float2(1, 1), float2(0, 1)};
-  float2 corner = corners[id];
-  float2 pixel = origin_and_x_axis.xy + corner.x * origin_and_x_axis.zw + corner.y * y_axis_and_viewport.xy;
   VertexOutput result;
-  result.position = float4(pixel.x / y_axis_and_viewport.z * 2.0 - 1.0,
-                           1.0 - pixel.y / y_axis_and_viewport.w * 2.0, 0.0, 1.0);
-  result.uv = float2(corner.x, 1.0 - corner.y);
+  project_sprite_vertex(id, origin_and_x_axis, y_axis_and_viewport, result.position, result.uv);
   return result;
 }
 

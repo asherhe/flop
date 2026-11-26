@@ -42,7 +42,9 @@ private:
   SDL_GPUGraphicsPipeline *lit_pipeline_{};
   SDL_GPUGraphicsPipeline *particle_pipeline_{};
   SDL_GPUGraphicsPipeline *point_light_pipeline_{};
+  SDL_GPUGraphicsPipeline *normal_pipeline_{};
   SDL_GPUTexture *light_texture_{};
+  SDL_GPUTexture *normal_texture_{};
   unsigned light_width_{}, light_height_{};
   SDL_GPUSampler *sprite_sampler_{};
   CraftSpriteBindings craft_bindings_{};
