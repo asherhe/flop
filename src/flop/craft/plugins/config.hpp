@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <variant>
+#include <array>
 
 #include "flop/math/vec2.hpp"
 
@@ -74,13 +75,27 @@ struct LightConfig {
   double falloff{};
 };
 
+struct ParticleConfig {
+  Vec2d nozzle_position_meters{};
+  double nozzle_size_meters{};
+  double spread_angle_rad{};
+  std::array<double, 2> lifetime_sec{};
+  std::array<double, 2> rate_per_sec{};
+  std::array<double, 2> start_size_meters{};
+  std::array<double, 2> start_speed_m_per_s{};
+  std::map<double, std::string> color_keys;
+  std::map<double, double> alpha_keys;
+  std::map<double, double> size_keys;
+};
+
 using PluginValues = std::variant<
     CommandConfig,
     ReactionWheelConfig,
     EngineConfig,
     ResourceConfig,
     SpriteConfig,
-    LightConfig>;
+    LightConfig,
+    ParticleConfig>;
 
 struct PartPluginConfig {
   std::string name;

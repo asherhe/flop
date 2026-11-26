@@ -6,6 +6,7 @@
 #include "flop/craft/craft_context.hpp"
 #include "flop/craft/newtonian.hpp"
 #include "flop/craft/parts/part.hpp"
+#include "flop/craft/plugins/plugins.hpp"
 #include "flop/craft/resource_registry.hpp"
 #include "flop/craft/resources.hpp"
 
@@ -67,6 +68,15 @@ void EnginePlugin::tick(CraftContext &ctx, double dt_sec) {
   prop_factor = std::max(prop_factor, 0.0);
   thrust *= prop_factor;
   prop_coeff *= prop_factor;
+
+  // unity's getplugin returns the first matching plugin on the owning part.
+  for (const auto &plugin : part.installed_plugins()) {
+    if (auto *emitter = dynamic_cast<ParticlePlugin *>(plugin.get())) {
+      if (emitter->enabled())
+        emitter->set_emission_strength(throttle * prop_factor);
+      break;
+    }
+  }
 
   if (!(prop_factor > 0.0)) {
     // no propellant left to draw: shut the engine down.

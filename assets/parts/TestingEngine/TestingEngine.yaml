@@ -29,45 +29,6 @@ plugins:
       NTO: 1.5
       Hydrazine: 1.0
 
-    plume:
-      nozzle_pos: { x: 0.0, y: -0.75 }
-      nozzle_size: 1.0
-      spread_angle: 0.0
-
-      # below are particle settings
-
-      # how long each particle lasts for, in seconds
-      lifetime: [0.2, 0.3]
-      # emission rate of plume particles, in particles/s
-      rate: [300, 500]
-      # particle properties on start
-      start:
-        # particle size, m
-        size: [0.1, 0.4]
-        # particle speed, m/s
-        speed: [20.0, 30.0]
-      # properties over time
-      life:
-        # gradient for particle color over its lifetime
-        color:
-          color_keys:
-            0.00: "#FFFBBC"
-            0.37: "#FFBE5F"
-            0.66: "#A64D46"
-            0.87: "#677A8F"
-          alpha_keys:
-            0.00: 0.00
-            0.10: 1.00
-            0.81: 1.00
-            1.00: 0.00
-
-        size:
-          0.00: 0.00
-          0.02: 0.35
-          0.33: 0.96
-          0.76: 0.66
-          1.00: 0.00
-
     light:
       color: "#FFA43B"
       intensity: 3.83
@@ -77,3 +38,43 @@ plugins:
       flicker_frequency: 12.8
       flicker_min: 0.7
       flicker_max: 1.9
+
+  ParticlePlugin:
+    nozzle_pos: { x: 0.0, y: -0.75 }
+    nozzle_size: 1.0
+    spread_angle: 0.0
+
+    # below are particle settings
+
+    # how long each particle lasts for, in seconds
+    lifetime: [0.2, 0.3]
+    # emission rate of plume particles, in particles/s
+    rate: [300, 500]
+    # particle properties on start
+    start:
+      # particle size, m
+      size: [0.1, 0.4]
+      # particle speed, m/s
+      speed: [20.0, 30.0]
+    # properties over time
+    life:
+      # gradient for particle color over its lifetime
+      color:
+        color_keys:
+          0.00: "#FFFBBC"
+          0.37: "#FFBE5F"
+          0.66: "#A64D46"
+          0.87: "#677A8F"
+        alpha_keys:
+          0.00: 0.00
+          0.10: 1.00
+          0.81: 1.00
+          1.00: 0.00
+
+      size:
+        0.00: 0.00
+        0.02: 0.35
+        0.33: 0.96
+        0.76: 0.66
+        1.00: 0.00
+

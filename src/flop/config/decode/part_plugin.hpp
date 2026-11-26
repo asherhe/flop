@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <numbers>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -185,6 +186,64 @@ inline void apply_fields(craft::plugin::LightConfig &light, MapReader &reader) {
   reader.assign("falloff", light.falloff, &ConfigView::as<double>, PluginRequired::on_create);
 }
 
+inline std::array<double, 2> decode_particle_range(const ConfigView &field) {
+  std::vector<double> values;
+  for (const auto &value : field.sequence()) values.push_back(value.as<double>());
+  if (values.size() != 2 || values[0] < 0.0 || values[1] < values[0])
+    field.fail(field.mark(), "Expected an ordered nonnegative range");
+  return {values[0], values[1]};
+}
+
+template <typename T> std::map<double, T> decode_particle_keys(const ConfigView &field) {
+  std::map<double, T> result;
+  for (const auto &entry : field.entries()) {
+    double key{};
+    try {
+      std::size_t consumed{};
+      key = std::stod(entry.key, &consumed);
+      if (consumed != entry.key.size() || !std::isfinite(key) || key < 0 || key > 1)
+        entry.value.fail(entry.value.mark(), "Curve key must be between 0 and 1");
+    } catch (const std::invalid_argument &) {
+      entry.value.fail(entry.value.mark(), "Invalid curve key");
+    } catch (const std::out_of_range &) {
+      entry.value.fail(entry.value.mark(), "Invalid curve key");
+    }
+    if (!result.emplace(key, entry.value.as<T>()).second)
+      entry.value.fail(entry.value.mark(), "Duplicate curve key");
+  }
+  if (result.empty()) field.fail(field.mark(), "Curve must have at least one key");
+  return result;
+}
+
+inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &reader) {
+  reader.assign("nozzle_pos", particle.nozzle_position_meters, decode_vec, PluginRequired::on_create);
+  reader.assign("nozzle_size", particle.nozzle_size_meters, &ConfigView::positive_double, PluginRequired::on_create);
+  reader.assign("spread_angle", particle.spread_angle_rad, [](const ConfigView &field) {
+    return field.as<double>() * std::numbers::pi / 180.0;
+  }, PluginRequired::on_create);
+  reader.assign("lifetime", particle.lifetime_sec, decode_particle_range, PluginRequired::on_create);
+  reader.assign("rate", particle.rate_per_sec, decode_particle_range, PluginRequired::on_create);
+  auto start = std::pair{particle.start_size_meters, particle.start_speed_m_per_s};
+  reader.assign("start", start, [](const ConfigView &field) {
+    return std::pair{decode_particle_range(field.required("size")),
+                     decode_particle_range(field.required("speed"))};
+  }, PluginRequired::on_create);
+  particle.start_size_meters = start.first;
+  particle.start_speed_m_per_s = start.second;
+  auto life = particle;
+  reader.assign("life", life, [](const ConfigView &field) {
+    craft::plugin::ParticleConfig result;
+    const auto color = field.required("color");
+    result.color_keys = decode_particle_keys<std::string>(color.required("color_keys"));
+    result.alpha_keys = decode_particle_keys<double>(color.required("alpha_keys"));
+    result.size_keys = decode_particle_keys<double>(field.required("size"));
+    return result;
+  }, PluginRequired::on_create);
+  particle.color_keys = std::move(life.color_keys);
+  particle.alpha_keys = std::move(life.alpha_keys);
+  particle.size_keys = std::move(life.size_keys);
+}
+
 inline void apply_fields(
     craft::plugin::PartPluginConfig &config, const ConfigView &value, PluginReadMode mode
 ) {
@@ -210,6 +269,8 @@ inline craft::plugin::PartPluginConfig decode_part_plugin(std::string name, cons
     result.values = craft::plugin::SpriteConfig{};
   } else if (result.name == "LightPlugin") {
     result.values = craft::plugin::LightConfig{};
+  } else if (result.name == "ParticlePlugin") {
+    result.values = craft::plugin::ParticleConfig{};
   } else {
     value.fail(value.mark(), "Unknown part plugin");
   }

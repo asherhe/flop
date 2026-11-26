@@ -28,6 +28,8 @@ std::unique_ptr<PartPlugin> make_plugin(
           return std::make_unique<SpritePlugin>(values, enabled);
         } else if constexpr (std::is_same_v<Config, LightConfig>) {
           return std::make_unique<LightPlugin>(values, enabled);
+        } else if constexpr (std::is_same_v<Config, ParticleConfig>) {
+          return std::make_unique<ParticlePlugin>(values, enabled);
         }
       },
       config.values

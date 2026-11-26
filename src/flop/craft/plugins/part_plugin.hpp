@@ -36,6 +36,9 @@ public:
   // plugins. the plugin reads and mutates craft state through the context.
   virtual void tick(CraftContext &ctx, double dt_sec) = 0;
 
+  // clear per-step outputs even when this plugin is disabled.
+  virtual void reset_step() {}
+
   // the phase in which this plugin ticks. actuation by default; a plugin that
   // writes control state overrides this to run in the control phase.
   [[nodiscard]] virtual TickPhase tick_phase() const noexcept { return TickPhase::actuation; }

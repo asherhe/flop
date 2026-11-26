@@ -58,7 +58,8 @@ StubUniverseContext context() {
 // one part carrying an engine and a propellant tank, with the plugins installed
 // and bound to part index zero.
 std::vector<Part> engine_part(
-    const StubUniverseContext &universe, EngineConfig engine, ResourceConfig tank
+    const StubUniverseContext &universe, EngineConfig engine, ResourceConfig tank,
+    bool emitter = false
 ) {
   std::vector<Part> parts;
   Part part;
@@ -67,9 +68,38 @@ std::vector<Part> engine_part(
   part.position_meters = {0, 0};
   part.plugins.push_back({"EnginePlugin", true, std::move(engine)});
   part.plugins.push_back({"ResourceContainerPlugin", true, std::move(tank)});
+  if (emitter)
+    part.plugins.push_back({"ParticlePlugin", true, flop::craft::plugin::ParticleConfig{}});
   parts.push_back(std::move(part));
   parts[0].install_plugins(universe.resources(), 0);
   return parts;
+}
+
+EnginePlugin &engine_of(const std::vector<Part> &parts);
+
+TEST_CASE("engine publishes actual propellant-limited emission") {
+  const auto universe = context();
+  const double prop_flow = 1000.0 / (200.0 * standard_gravity);
+  auto parts = engine_part(
+      universe, EngineConfig{200.0, 1000.0, {0, 1}, {{"NTO", 1.0}}},
+      ResourceConfig{{{"NTO", 1000}}, {{"NTO", 0.25 * prop_flow}}, {}}, true
+  );
+  auto *emitter = dynamic_cast<flop::craft::plugin::ParticlePlugin *>(
+      parts[0].find_plugin(flop::craft::PluginId("ParticlePlugin"))
+  );
+  REQUIRE(emitter);
+  flop::craft::CraftControl control;
+  control.set_throttle(1.0);
+  CraftNewtonian newtonian;
+  CraftResources resources(parts, universe);
+  StubCraftContext ctx;
+  ctx.with_parts(parts).with_control(control).with_resources(resources).with_newtonian(newtonian);
+  engine_of(parts).tick(ctx, 1.0);
+  CHECK(emitter->emission_strength() == Approx(0.25));
+  emitter->reset_step();
+  engine_of(parts).tick(ctx, 1.0);
+  CHECK(emitter->emission_strength() == 0.0);
+  CHECK_FALSE(engine_of(parts).enabled());
 }
 
 EnginePlugin &engine_of(const std::vector<Part> &parts) {

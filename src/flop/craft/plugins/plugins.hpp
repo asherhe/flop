@@ -78,4 +78,21 @@ private:
   LightConfig config_;
 };
 
+// emitter configuration and the command produced during the current step.
+class ParticlePlugin : public PartPlugin {
+public:
+  ParticlePlugin(ParticleConfig config, bool enabled) :
+      PartPlugin(enabled), config_(std::move(config)) {}
+
+  void tick(CraftContext &, double) override {}
+  void reset_step() override { emission_strength_ = 0.0; }
+  void set_emission_strength(double value) noexcept { emission_strength_ = value; }
+  [[nodiscard]] double emission_strength() const noexcept { return emission_strength_; }
+  [[nodiscard]] const ParticleConfig &config() const noexcept { return config_; }
+
+private:
+  ParticleConfig config_;
+  double emission_strength_{};
+};
+
 } // namespace flop::craft::plugin

@@ -170,6 +170,11 @@ void Craft::reseed_orbit(double now_ut, const orbit::StateVectors &state) {
 void Craft::step(double now_ut, double dt_sec) {
   orbit::StateVectors state = propagator().state_at(now_ut);
 
+  for (auto &part : parts_) {
+    for (const auto &plugin : part.installed_plugins())
+      plugin->reset_step();
+  }
+
   // control-phase plugins (the command pod) write steering before actuation-phase
   // plugins read it, regardless of the order parts were installed in.
   for (auto &part : parts_) {
