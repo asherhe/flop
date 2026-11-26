@@ -98,10 +98,16 @@ FrameDrawData CameraState::build_frame(
                    .position -
                craft_position;
     }
-    const auto sunlight = compute_sunlight(to_sun);
+    auto sunlight = compute_sunlight(to_sun);
     PlanetShine shine;
     std::array<float, 3> shine_rgb{};
     const auto &parent = universe.reference_frames().frame(craft.frame_id());
+    if (sun != universe.bodies().end() && parent.parent) {
+      const float visibility = sun_visibility(to_sun, craft_position,
+          static_cast<float>(sun->config().radius_meters),
+          static_cast<float>(universe.body(parent.name).config().radius_meters));
+      for (std::size_t i = 0; i < 3; ++i) sunlight.color[i] *= visibility;
+    }
     if (sun != universe.bodies().end() && parent.parent) {
       const auto visual = std::ranges::find_if(visuals, [&](const auto &v) { return v.name == parent.name; });
       if (visual != visuals.end() && visual->planet_shine) {
