@@ -56,6 +56,7 @@ if(BUILD_TESTING)
         tests/craft/ids_tests.cpp
         tests/craft/newtonian_tests.cpp
         tests/craft/part_plugin_tests.cpp
+        tests/craft/particle_rgb_tests.cpp
         tests/craft/resources_tests.cpp
         tests/craft/resource_registry_tests.cpp
         tests/math/vec2_tests.cpp
