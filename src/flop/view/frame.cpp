@@ -36,42 +36,6 @@ PointF project(Vec2d relative, const CameraState &camera) {
   };
 }
 
-// placeholder until body occlusion is implemented
-float sun_visibility() {
-  return 1.0f;
-}
-
-SpriteSunlight sprite_sunlight(Vec2d to_sun, double sprite_angle) {
-  SpriteSunlight result;
-
-  const auto x = static_cast<float>(to_sun.x);
-  const auto y = static_cast<float>(to_sun.y);
-  const float distance = std::hypot(x, y);
-  if (!(distance > 0.0f) || !std::isfinite(distance))
-    return result;
-
-  const auto angle = static_cast<float>(sprite_angle);
-  if (!std::isfinite(angle))
-    return result;
-  const float c = std::cos(angle), s = std::sin(angle);
-  const float world_x = x / distance, world_y = y / distance;
-
-  result.direction = {
-      c * world_x + s * world_y,
-      -s * world_x + c * world_y,
-      0,
-      0
-  };
-
-  // dividing before squaring avoids overflowing float at ordinary orbital distances
-  constexpr float reference_distance = 9.219544e10f; // sqrt(8.5e21) metres
-  const float ratio = reference_distance / distance;
-  const float intensity = ratio * ratio * sun_visibility();
-  if (!std::isfinite(intensity))
-    return SpriteSunlight{};
-  result.color = {intensity, intensity, intensity, 0};
-  return result;
-}
 } // namespace
 
 void CameraState::update(
@@ -133,6 +97,7 @@ FrameDrawData CameraState::build_frame(
                    .position -
                craft_position;
     }
+    const auto sunlight = compute_sunlight(to_sun);
     const Vec2d com = craft.mass_properties().center_of_mass_meters;
     const double angle = craft.newtonian().angle_rad();
     for (const auto &part : craft.parts()) {
@@ -154,7 +119,7 @@ FrameDrawData CameraState::build_frame(
           const auto size = visual.size_meters;
           const auto pivot = visual.pivot;
           const double sprite_angle = angle + part.angle_rad;
-          result.sprites.back().sun = sprite_sunlight(to_sun, sprite_angle);
+          result.sprites.back().sun = to_sprite_local(sunlight, sprite_angle);
           const std::array<Vec2d, 4> corners{{
               {-pivot.x * size.x, -pivot.y * size.y},
               {(1.0 - pivot.x) * size.x, -pivot.y * size.y},

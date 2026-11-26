@@ -10,6 +10,7 @@
 #include "flop/config/body_visual_config.hpp"
 #include "flop/math/vec2.hpp"
 #include "flop/platform/frame_input.hpp"
+#include "flop/view/lighting.hpp"
 #include "flop/world/universe.hpp"
 
 namespace flop::view {
@@ -25,12 +26,18 @@ struct CameraState {
   int viewport_height{720};
 
   // Pan input uses logical pixels; the viewport uses drawable pixels.
-  void update(const platform::CameraInput &input, int logical_width, int logical_height,
-              int pixel_width, int pixel_height);
+  void update(
+      const platform::CameraInput &input,
+      int logical_width,
+      int logical_height,
+      int pixel_width,
+      int pixel_height
+  );
 
   // Body visuals are stored separately from the simulation in GameScene.
-  [[nodiscard]] FrameDrawData build_frame(const world::Universe &universe,
-      const std::vector<config::BodyVisualConfig> &visuals) const;
+  [[nodiscard]] FrameDrawData build_frame(
+      const world::Universe &universe, const std::vector<config::BodyVisualConfig> &visuals
+  ) const;
 };
 enum class ViewMode : std::uint8_t { flight, map, minimap };
 struct ViewState {
@@ -43,13 +50,6 @@ struct ViewState {
 
 struct PointF {
   float x{}, y{};
-};
-// direction points toward the sun in sprite-local xy with zero z
-// color is linear rgb with intensity included and the fourth component reserved as zero
-// zero color means unavailable sunlight and direction defaults to +z
-struct SpriteSunlight {
-  std::array<float, 4> direction{0, 0, 1, 0};
-  std::array<float, 4> color{};
 };
 struct SpriteDraw {
   world::CraftId craft;

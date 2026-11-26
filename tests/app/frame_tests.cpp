@@ -4,6 +4,35 @@
 #include "flop/app/game_scene.hpp"
 #include "flop/view/frame.hpp"
 
+TEST_CASE("World sunlight is shared across sprite rotations") {
+  const auto sun = flop::view::compute_sunlight({9.2e10, 0});
+  const auto local = flop::view::to_sprite_local(sun, 1.5707963267948966);
+  CHECK(sun.direction[0] == Catch::Approx(1));
+  CHECK(sun.color[0] == Catch::Approx(8.5e21 / (9.2e10 * 9.2e10)).epsilon(1e-5));
+  CHECK(local.direction[0] == Catch::Approx(0).margin(1e-6));
+  CHECK(local.direction[1] == Catch::Approx(-1));
+  CHECK(local.color == sun.color);
+  const auto absent = flop::view::compute_sunlight({});
+  CHECK(absent.color[0] == 0);
+  CHECK(flop::view::to_sprite_local(absent, 1).direction[2] == 1);
+}
+
+TEST_CASE("Planet shine follows illuminated body geometry") {
+  using flop::view::compute_planet_shine;
+  const auto day = compute_planet_shine({9.2e10f, 0}, {4e6f, 0}, 3e6f, 1.0f);
+  const auto night = compute_planet_shine({9.2e10f, 0}, {-4e6f, 0}, 3e6f, 1.0f);
+  const auto far = compute_planet_shine({9.2e10f, 0}, {12e6f, 0}, 3e6f, 1.0f);
+  CHECK(day.intensity > 0);
+  CHECK(day.direction[0] == Catch::Approx(-1));
+  CHECK(day.direction[1] == Catch::Approx(0).margin(1e-6));
+  CHECK(day.spread > 0);
+  CHECK(night.intensity == 0);
+  CHECK(far.intensity < day.intensity);
+  CHECK(compute_planet_shine({0, 0}, {4e6f, 0}, 3e6f, 1).intensity == 0);
+  CHECK(compute_planet_shine({9.2e10f, 0}, {0, 0}, 3e6f, 1).intensity == 0);
+  CHECK(compute_planet_shine({9.2e10f, 0}, {4e6f, 0}, 3e6f, 0).intensity == 0);
+}
+
 TEST_CASE("Frame extraction tracks camera and enabled visual plugins without advancing the world") {
   auto scene = flop::app::load_game_scene(flop::config::AssetResolver(std::filesystem::path(FLOP_TEST_ASSET_ROOT)));
   auto &world = *scene.universe;

@@ -28,6 +28,7 @@ add_library(flop_core STATIC
     src/flop/orbit/prediction/soi_intercept.cpp
     src/flop/orbit/propagators/universal.cpp
     src/flop/view/frame.cpp
+    src/flop/view/lighting.cpp
     src/flop/world/control_manager.cpp
     src/flop/world/celestial_body.cpp
     src/flop/world/universe.cpp
