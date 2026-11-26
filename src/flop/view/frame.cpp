@@ -6,6 +6,7 @@
 #include <type_traits>
 
 #include "flop/craft/plugins/plugins.hpp"
+#include "flop/view/particle_scene.hpp"
 
 namespace flop::view {
 namespace {
@@ -55,9 +56,9 @@ void CameraState::update(
   pixels_per_meter = std::clamp(pixels_per_meter * std::exp(input.zoom * 0.15), 1e-12, 1e12);
 }
 
-FrameDrawData CameraState::build_frame(
-    const world::Universe &universe, const std::vector<config::BodyVisualConfig> &visuals
-) const {
+FrameDrawData CameraState::build_frame(const FrameBuildContext &context) const {
+  const auto &universe = context.universe;
+  const auto &visuals = context.body_visuals;
   const CameraState &camera = *this;
   FrameDrawData result;
   result.ut_sec = universe.ut_sec();
@@ -174,6 +175,7 @@ FrameDrawData CameraState::build_frame(
       }
     }
   }
+  if (context.particles) context.particles->append_draw_data(result);
   result.text.push_back({"UT: " + std::to_string(result.ut_sec), {10.0f, 10.0f}});
   return result;
 }

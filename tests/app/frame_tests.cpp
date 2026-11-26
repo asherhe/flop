@@ -48,7 +48,7 @@ TEST_CASE("Frame extraction tracks camera and enabled visual plugins without adv
   auto &world = *scene.universe;
   flop::view::CameraState camera;
   camera.focus = scene.craft.front();
-  const auto first = camera.build_frame(world, scene.body_visuals);
+  const auto first = camera.build_frame({world, scene.body_visuals});
   REQUIRE(first.sprites.size() == 3);
   for (const auto &sprite : first.sprites) {
     CHECK(std::isfinite(sprite.planet_shine.color[0]));
@@ -65,13 +65,13 @@ TEST_CASE("Frame extraction tracks camera and enabled visual plugins without adv
                             .rotate(craft.newtonian().angle_rad());
   CHECK(first.sprites.front().camera_relative_meters.approx(expected));
   camera.update({10, 0, 0}, 1280, 720, 2560, 1440);
-  const auto panned = camera.build_frame(world, scene.body_visuals);
+  const auto panned = camera.build_frame({world, scene.body_visuals});
   CHECK(panned.sprites.front().center_pixels.x == Catch::Approx(first.sprites.front().center_pixels.x + 640 + 20));
   CHECK(world.ut_sec() == first.ut_sec);
   const auto &sprite = first.sprites.front();
   world.controls().submit(flop::world::ControlManager::SetPluginEnabled{{sprite.craft, sprite.part, sprite.plugin}, false});
   (void)world.controls().apply_commands();
-  CHECK(camera.build_frame(world, scene.body_visuals).sprites.size() == 2);
+  CHECK(camera.build_frame({world, scene.body_visuals}).sprites.size() == 2);
 }
 
 TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
@@ -87,7 +87,7 @@ TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   const auto id = world.add_craft(config, {{"Pod", "Pod", 1, true, {}}});
   view::CameraState camera;
   camera.focus = id;
-  const auto frame = camera.build_frame(world, {{"Root", "white", {}, {}, {}}});
+  const auto frame = camera.build_frame({world, {{"Root", "white", {}, {}, {}}}});
   REQUIRE(frame.sprites.size() == 2);
   REQUIRE(frame.lights.size() == 1);
   CHECK(frame.sprites[0].sun.color[0] == 0.0f); // no body named Sun
@@ -117,7 +117,7 @@ TEST_CASE("Sprite sunlight is local to each part and independent of the camera")
   const auto id = world.add_craft(config, {{"Pod", "Pod", 1, true, {}}});
   view::CameraState camera;
   camera.focus = id;
-  const auto frame = camera.build_frame(world, {{"Sun", "white", {}, {}, {}}});
+  const auto frame = camera.build_frame({world, {{"Sun", "white", {}, {}, {}}}});
   REQUIRE(frame.sprites.size() == 2);
   const auto &a = frame.sprites[0].sun;
   const auto &b = frame.sprites[1].sun;
@@ -132,7 +132,7 @@ TEST_CASE("Sprite sunlight is local to each part and independent of the camera")
   CHECK(b.direction[2] == Catch::Approx(a.direction[2]));
   camera.pan_meters = {12345, -6789};
   camera.pixels_per_meter = 2;
-  const auto moved = camera.build_frame(world, {{"Sun", "white", {}, {}, {}}});
+  const auto moved = camera.build_frame({world, {{"Sun", "white", {}, {}, {}}}});
   CHECK(moved.sprites[0].sun.direction == a.direction);
   CHECK(moved.sprites[0].sun.color == a.color);
   CHECK(moved.sprites[0].planet_shine.color == frame.sprites[0].planet_shine.color);

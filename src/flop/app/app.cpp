@@ -139,6 +139,7 @@ int App::run(int argc, char **argv) {
     // advance simulation; each step covers its simulation time at the current warp.
     const double real_dt = TickScheduler::REAL_TIME_STEP_SEC;
     const double sim_dt = TickScheduler::REAL_TIME_STEP_SEC * schedule.warp;
+    // focus changes also clear particles on paused and other no-tick frames.
     particles.set_focus(views.flight.focus);
     for (int step = 0; step < schedule.fixed_step_count; ++step) {
       const double current_throttle = active != nullptr ? active->control().throttle() : 0.0;
@@ -157,8 +158,7 @@ int App::run(int argc, char **argv) {
     views.flight.update(
         frame.camera, logical_width, logical_height, pixel_width, pixel_height
     );
-    auto draw_data = views.flight.build_frame(universe, scene.body_visuals);
-    particles.append_draw_data(draw_data);
+    const auto draw_data = views.flight.build_frame({universe, scene.body_visuals, &particles});
     try {
       renderer->present(draw_data);
     } catch (const std::exception &error) {

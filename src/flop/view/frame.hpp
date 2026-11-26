@@ -17,6 +17,12 @@ namespace flop::view {
 
 // coordinates are metres relative to the focus; zoom is drawable pixels per metre.
 using Focus = std::variant<std::string, world::CraftId>;
+class ParticleScene;
+struct FrameBuildContext {
+  const world::Universe &universe;
+  const std::vector<config::BodyVisualConfig> &body_visuals;
+  const ParticleScene *particles{};
+};
 struct FrameDrawData;
 struct CameraState {
   Focus focus{std::string{}};
@@ -34,10 +40,8 @@ struct CameraState {
       int pixel_height
   );
 
-  // Body visuals are stored separately from the simulation in GameScene.
-  [[nodiscard]] FrameDrawData build_frame(
-      const world::Universe &universe, const std::vector<config::BodyVisualConfig> &visuals
-  ) const;
+  // collect all presentation data from the world and optional particle scene.
+  [[nodiscard]] FrameDrawData build_frame(const FrameBuildContext &context) const;
 };
 enum class ViewMode : std::uint8_t { flight, map, minimap };
 struct ViewState {

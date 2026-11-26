@@ -69,8 +69,9 @@ TEST_CASE("shipped engine emits particles on world steps and focus changes clear
   particles.end_step(world, focus, 0.02);
   REQUIRE_FALSE(particles.system().particles().empty());
   const auto count = particles.system().particles().size();
-  flop::view::FrameDrawData frame;
-  particles.append_draw_data(frame);
+  flop::view::CameraState camera;
+  camera.focus = focus;
+  const auto frame = camera.build_frame({world, scene.body_visuals, &particles});
   CHECK(frame.particles.size() == count);
   CHECK(frame.particles[0].angle_rad == Catch::Approx(particles.system().particles()[0].angle_rad));
   particles.set_focus(std::string("Sun"));
