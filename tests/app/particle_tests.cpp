@@ -55,24 +55,44 @@ TEST_CASE("line emitter emits along its rotated local positive y axis") {
   CHECK(particles.particles()[0].velocity_m_per_s.y == Catch::Approx(0).margin(1e-12));
 }
 
-TEST_CASE("new particles currently start together at the end of a tick") {
+TEST_CASE("particles born within a tick are aged and distributed along the plume") {
   auto config = std::make_shared<flop::craft::plugin::ParticleConfig>();
   config->lifetime_sec = {1, 1};
-  config->rate_per_sec = {100, 100};
+  config->rate_per_sec = {1000, 1000};
   config->start_speed_m_per_s = {10, 10};
   flop::view::ParticleSystem particles(7);
-  flop::view::ParticleEmitter emitter{{0, 0}, {}, 0, 1, config};
+  flop::view::ParticleEmitter emitter{{0, 0}, {25, 0}, 0, 1, config};
   particles.emit(emitter, 0.02);
-  REQUIRE(particles.particles().size() == 2);
+  REQUIRE(particles.particles().size() == 20);
+  double first_age = particles.particles().front().age_sec;
+  bool varied = false;
   for (const auto &particle : particles.particles()) {
-    CHECK(particle.age_sec == 0);
-    CHECK(particle.position_meters.y == 0);
+    CHECK(particle.age_sec >= 0);
+    CHECK(particle.age_sec < 0.02);
+    CHECK(particle.position_meters.x == 0);
+    CHECK(particle.position_meters.y == Catch::Approx(10 * particle.age_sec));
+    CHECK(particle.velocity_m_per_s.x == 25);
+    varied = varied || particle.age_sec != first_age;
   }
+  CHECK(varied);
   particles.advance(0.02, {});
   for (const auto &particle : particles.particles()) {
-    CHECK(particle.age_sec == Catch::Approx(0.02));
-    CHECK(particle.position_meters.y == Catch::Approx(0.2));
+    CHECK(particle.age_sec >= 0.02);
+    CHECK(particle.position_meters.y == Catch::Approx(10 * particle.age_sec));
   }
+}
+
+TEST_CASE("particle births that expire during a large tick are discarded") {
+  auto config = std::make_shared<flop::craft::plugin::ParticleConfig>();
+  config->lifetime_sec = {0.1, 0.1};
+  config->rate_per_sec = {100, 100};
+  flop::view::ParticleSystem particles(5);
+  flop::view::ParticleEmitter emitter{{}, {}, 0, 1, config};
+  particles.emit(emitter, 1);
+  REQUIRE_FALSE(particles.particles().empty());
+  CHECK(particles.particles().size() < 100);
+  for (const auto &particle : particles.particles())
+    CHECK(particle.age_sec < particle.lifetime_sec);
 }
 
 TEST_CASE("shipped engine emits particles on world steps and focus changes clear them") {
@@ -93,6 +113,8 @@ TEST_CASE("shipped engine emits particles on world steps and focus changes clear
   camera.focus = focus;
   const auto frame = camera.build_frame({world, scene.body_visuals, &particles});
   CHECK(frame.particles.size() == count);
+  CHECK(frame.particles[0].size_pixels > 0);
+  CHECK(frame.particles[0].color[3] > 0);
   CHECK(frame.particles[0].angle_rad == Catch::Approx(particles.system().particles()[0].angle_rad));
   particles.set_focus(std::string("Sun"));
   CHECK(particles.system().particles().empty());

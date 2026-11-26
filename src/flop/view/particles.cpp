@@ -49,15 +49,24 @@ void ParticleSystem::emit(ParticleEmitter &emitter, double dt_sec) {
     const double life = sample_random(config.lifetime_sec);
     if (!(life > 0.0))
       continue;
+    // sample a birth time within this step; particles already expired are not kept.
+    const double age = sample_random({0.0, dt_sec});
+    if (age >= life)
+      continue;
     const double offset =
         sample_random({-0.5 * config.line_width_meters, 0.5 * config.line_width_meters});
     const double angle =
         emitter.angle_rad + sample_random({-config.spread_angle_rad, config.spread_angle_rad});
+    const Vec2d exhaust_velocity =
+        Vec2d{0, sample_random(config.start_speed_m_per_s)}.rotate(angle);
+    // approximate the emitter's velocity and orientation as constant across the step.
+    // its inherited motion cancels against its displacement when expressing the
+    // particle position relative to the emitter's end-of-step position.
     particles_.push_back(
-        {emitter.position_meters + Vec2d{offset, 0}.rotate(emitter.angle_rad),
-         emitter.velocity_m_per_s +
-             Vec2d{0, sample_random(config.start_speed_m_per_s)}.rotate(angle),
-         0.0,
+        {emitter.position_meters + Vec2d{offset, 0}.rotate(emitter.angle_rad) +
+             exhaust_velocity * age,
+         emitter.velocity_m_per_s + exhaust_velocity,
+         age,
          life,
          sample_random(config.start_size_meters),
          sample_random({0.0, 2.0 * std::numbers::pi}),
