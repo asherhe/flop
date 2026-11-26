@@ -1,4 +1,13 @@
 set(gpu_test_shaders)
+add_executable(flop_input_probe input_probe.cpp
+    ${CMAKE_SOURCE_DIR}/src/flop/platform/input_mapper.cpp
+    ${CMAKE_SOURCE_DIR}/src/flop/platform/sdl_platform.cpp)
+target_link_libraries(flop_input_probe PRIVATE flop_core SDL3::SDL3)
+if(WIN32)
+    add_custom_command(TARGET flop_input_probe POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_input_probe>" VERBATIM)
+endif()
+
 foreach(stage IN ITEMS vertex fragment)
     if(stage STREQUAL vertex)
         set(source "${CMAKE_CURRENT_SOURCE_DIR}/vertex.hlsl")
