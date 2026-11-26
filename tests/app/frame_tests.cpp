@@ -110,7 +110,7 @@ TEST_CASE("Point lights use part and craft transforms and resolve linear color")
   using namespace flop;
   world::Universe world({{"Root", 3e6, 9.8, 86400, {}}});
   craft::plugin::LightConfig light{{2, 0}, {0.5f, 1.0f, 0.0f}, 2, 0.5, 2, 0.75, 0.5};
-  light.normal_distance_meters = 1.5;
+  light.z_offset_meters = 1.5;
   craft::CraftConfig config{"Test", craft::CraftOrbitState{"Root", {{1e11, 0}, {0, 1}}, 0},
       {std::numbers::pi / 2, 0},
       {{"Pod", "a", "A", {0, 0}, std::numbers::pi / 2, {}, {{"Light", true, light}}}}, true};
@@ -134,7 +134,7 @@ TEST_CASE("Point lights use part and craft transforms and resolve linear color")
   CHECK(draw.center_pixels.y == Catch::Approx(40));
   CHECK(draw.inner_radius_pixels == Catch::Approx(5));
   CHECK(draw.outer_radius_pixels == Catch::Approx(20));
-  CHECK(draw.normal_distance_pixels == Catch::Approx(15));
+  CHECK(draw.z_offset_pixels == Catch::Approx(15));
   CHECK(draw.falloff == Catch::Approx(0.75));
   CHECK(draw.color[0] == Catch::Approx(0.214041).margin(1e-5));
   CHECK(draw.color[1] == Catch::Approx(1));
@@ -144,7 +144,7 @@ TEST_CASE("Point lights use part and craft transforms and resolve linear color")
   const auto zoomed = camera.build_frame({world, visuals});
   REQUIRE(zoomed.lights.size() == 1);
   CHECK(zoomed.lights[0].outer_radius_pixels == Catch::Approx(40));
-  CHECK(zoomed.lights[0].normal_distance_pixels == Catch::Approx(30));
+  CHECK(zoomed.lights[0].z_offset_pixels == Catch::Approx(30));
   CHECK(zoomed.lights[0].color == draw.color);
   camera.pixels_per_meter = 10;
 

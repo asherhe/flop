@@ -192,7 +192,7 @@ inline void apply_fields(craft::plugin::LightConfig &light, MapReader &reader) {
   );
   reader.assign("color", light.color, &ConfigDecoder<Color>::decode, PluginRequired::on_create);
   reader.assign("intensity", light.intensity, nonnegative, PluginRequired::on_create);
-  reader.assign("normal_distance", light.normal_distance_meters, nonnegative, PluginRequired::on_create);
+  reader.assign("z_offset", light.z_offset_meters, nonnegative, PluginRequired::on_create);
   reader.assign(
       "inner_radius", light.inner_radius_meters, nonnegative, PluginRequired::on_create
   );

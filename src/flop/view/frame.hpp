@@ -80,7 +80,7 @@ struct LightDraw {
   // linear rgb includes authored intensity and the runtime strength
   std::array<float, 3> color{};
   // distance above the sprite plane in drawable pixels
-  float normal_distance_pixels{};
+  float z_offset_pixels{};
 };
 struct PlanetDraw {
   std::string name;
