@@ -5,6 +5,14 @@
 #include <numbers>
 
 namespace flop::view {
+
+double point_light_falloff(double distance, double inner_radius, double outer_radius, double falloff) {
+  if (!(outer_radius > 0.0) || distance >= outer_radius) return 0.0;
+  if (distance <= inner_radius) return 1.0;
+  const double t = (distance - inner_radius) / (outer_radius - inner_radius);
+  const double u = t + falloff * t * (1.0 - t);
+  return 1.0 - u * u * (3.0 - 2.0 * u);
+}
 Sunlight compute_sunlight(Vec2d to_sun) {
   Sunlight result;
 

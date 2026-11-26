@@ -74,7 +74,11 @@ struct LightDraw {
   craft::PluginId plugin;
   Vec2d camera_relative_meters;
   PointF center_pixels;
-  craft::plugin::LightConfig visual;
+  float inner_radius_pixels{};
+  float outer_radius_pixels{};
+  float falloff{};
+  // linear rgb includes authored intensity and the runtime strength
+  std::array<float, 3> color{};
 };
 struct PlanetDraw {
   std::string name;

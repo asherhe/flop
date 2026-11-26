@@ -190,10 +190,7 @@ inline void apply_fields(craft::plugin::LightConfig &light, MapReader &reader) {
   reader.assign(
       "light_position", light.light_position_meters, decode_vec, PluginRequired::on_create
   );
-  reader.assign("color", light.color, [](const ConfigView &field) {
-    (void)ConfigDecoder<Color>::decode(field);
-    return field.nonempty_string();
-  }, PluginRequired::on_create);
+  reader.assign("color", light.color, &ConfigDecoder<Color>::decode, PluginRequired::on_create);
   reader.assign("intensity", light.intensity, nonnegative, PluginRequired::on_create);
   reader.assign(
       "inner_radius", light.inner_radius_meters, nonnegative, PluginRequired::on_create

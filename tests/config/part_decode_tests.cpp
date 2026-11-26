@@ -67,7 +67,8 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   REQUIRE(light != pod.plugins.end());
   const auto &light_config = std::get<flop::craft::plugin::LightConfig>(light->values);
   CHECK(light_config.light_position_meters.y == -0.125);
-  CHECK(light_config.color == "#FFECB1");
+  CHECK(light_config.color.r == 1.0f);
+  CHECK(light_config.color.g == Catch::Approx(236.0 / 255.0));
   CHECK(light_config.intensity == 0.13);
   CHECK(light_config.inner_radius_meters == 0.25);
   CHECK(light_config.outer_radius_meters == 1.68);
@@ -132,7 +133,7 @@ TEST_CASE("Visual plugin overrides update their own config types") {
       "craft/lit_sprite"
   );
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).intensity == 2);
-  CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).color == "#FFECB1");
+  CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).color.g == Catch::Approx(236.0 / 255.0));
   CHECK(std::get<flop::craft::plugin::SpriteConfig>(sprite.values).size_meters.y == 2.0);
 }
 

@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <numbers>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include "flop/app/game_scene.hpp"
@@ -80,7 +81,7 @@ TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   craft::plugin::SpriteConfig sprite{"sprite.png", {}};
   sprite.size_meters = {2, 4};
   sprite.pivot = {0, 0};
-  craft::plugin::LightConfig light{{1, 0}, "white", 1, 1, 2, 1};
+  craft::plugin::LightConfig light{{1, 0}, {1, 1, 1}, 1, 1, 2, 1};
   craft::CraftConfig config{"Test", craft::CraftOrbitState{"Root", {{1e11, 0}, {0, 1}}, 0},
       {0, 0}, {{"Pod", "a", "A", {0, 0}, 0, {}, {{"Sprite", true, sprite}, {"Light", true, light}}},
                {"Pod", "b", "B", {2, 0}, 1.5707963267948966, {}, {{"Sprite", true, sprite}}}}, true};
@@ -103,6 +104,81 @@ TEST_CASE("Focus relative projection preserves metre offsets at 1e11 metres") {
   CHECK(rotated[1].x - rotated[0].x == Catch::Approx(0).margin(0.001));
   CHECK(rotated[1].y - rotated[0].y == Catch::Approx(-100));
   CHECK(frame.lights[0].camera_relative_meters.x == Catch::Approx(0));
+}
+
+TEST_CASE("Point lights use part and craft transforms and resolve linear color") {
+  using namespace flop;
+  world::Universe world({{"Root", 3e6, 9.8, 86400, {}}});
+  craft::plugin::LightConfig light{{2, 0}, {0.5f, 1.0f, 0.0f}, 2, 0.5, 2, 0.75, 0.5};
+  craft::CraftConfig config{"Test", craft::CraftOrbitState{"Root", {{1e11, 0}, {0, 1}}, 0},
+      {std::numbers::pi / 2, 0},
+      {{"Pod", "a", "A", {0, 0}, std::numbers::pi / 2, {}, {{"Light", true, light}}}}, true};
+  auto zero = light;
+  zero.inner_radius_meters = 0;
+  zero.outer_radius_meters = 0;
+  config.parts[0].plugins.push_back({"ZeroLight", true, zero});
+  const auto id = world.add_craft(config, {{"Pod", "Pod", 1, true, {}}});
+  view::CameraState camera;
+  camera.focus = id;
+  camera.viewport_width = 100;
+  camera.viewport_height = 80;
+  camera.pixels_per_meter = 10;
+  const std::vector<config::BodyVisualConfig> visuals{{"Root", "white", {}, {}, {}}};
+  const auto frame = camera.build_frame({world, visuals});
+  REQUIRE(frame.lights.size() == 1);
+  const auto &draw = frame.lights[0];
+  CHECK(draw.camera_relative_meters.x == Catch::Approx(-2));
+  CHECK(draw.camera_relative_meters.y == Catch::Approx(0).margin(1e-9));
+  CHECK(draw.center_pixels.x == Catch::Approx(30));
+  CHECK(draw.center_pixels.y == Catch::Approx(40));
+  CHECK(draw.inner_radius_pixels == Catch::Approx(5));
+  CHECK(draw.outer_radius_pixels == Catch::Approx(20));
+  CHECK(draw.falloff == Catch::Approx(0.75));
+  CHECK(draw.color[0] == Catch::Approx(0.214041).margin(1e-5));
+  CHECK(draw.color[1] == Catch::Approx(1));
+  CHECK(draw.color[2] == 0);
+
+  camera.pixels_per_meter = 20;
+  const auto zoomed = camera.build_frame({world, visuals});
+  REQUIRE(zoomed.lights.size() == 1);
+  CHECK(zoomed.lights[0].outer_radius_pixels == Catch::Approx(40));
+  CHECK(zoomed.lights[0].color == draw.color);
+  camera.pixels_per_meter = 10;
+
+  camera.pan_meters.x = -9;
+  CHECK(camera.build_frame({world, visuals}).lights.size() == 1); // tangent to right edge
+  camera.pan_meters.x = -9.01;
+  CHECK(camera.build_frame({world, visuals}).lights.empty());
+  camera.pan_meters = {5.01, 0};
+  CHECK(camera.build_frame({world, visuals}).lights.empty()); // left
+  camera.pan_meters = {0, 6.01};
+  CHECK(camera.build_frame({world, visuals}).lights.empty()); // bottom
+  camera.pan_meters = {0, -6.01};
+  CHECK(camera.build_frame({world, visuals}).lights.empty()); // top
+  camera.pan_meters = {-8.5, 5.5}; // center is 15 pixels beyond each edge
+  CHECK(camera.build_frame({world, visuals}).lights.empty());
+  camera.pan_meters = {};
+  camera.viewport_width = 0;
+  CHECK(camera.build_frame({world, visuals}).lights.empty());
+  camera.viewport_width = 100;
+  world.controls().submit(world::ControlManager::SetPluginEnabled{{id, draw.part, draw.plugin}, false});
+  (void)world.controls().apply_commands();
+  CHECK(camera.build_frame({world, visuals}).lights.empty());
+}
+
+TEST_CASE("Point light falloff respects its authored boundaries") {
+  using flop::view::point_light_falloff;
+  CHECK(point_light_falloff(0, 1, 3, 0.5) == 1);
+  CHECK(point_light_falloff(1, 1, 3, 0.5) == 1);
+  CHECK(point_light_falloff(2, 1, 3, 0.5) == Catch::Approx(0.31640625));
+  CHECK(point_light_falloff(3, 1, 3, 0.5) == 0);
+  CHECK(point_light_falloff(4, 1, 3, 0.5) == 0);
+  CHECK(point_light_falloff(0, 0, 0, 0.5) == 0);
+  CHECK(point_light_falloff(0.99, 1, 1, 0.5) == 1);
+  CHECK(point_light_falloff(1, 1, 1, 0.5) == 0);
+  const double epsilon = 1e-5;
+  CHECK((1 - point_light_falloff(1 + epsilon, 1, 3, 0.5)) / epsilon < 1e-4);
+  CHECK(point_light_falloff(3 - epsilon, 1, 3, 0.5) / epsilon < 1e-4);
 }
 
 TEST_CASE("Sprite sunlight is local to each part and independent of the camera") {

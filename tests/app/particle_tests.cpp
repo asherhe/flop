@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <filesystem>
 #include <memory>
 #include <numbers>
@@ -131,12 +132,26 @@ TEST_CASE("shipped engine light uses world time and remains stable between ticks
       .get_plugin<flop::craft::plugin::LightPlugin>();
   REQUIRE(light);
   CHECK(light->strength() == 0.0);
+  flop::view::CameraState camera;
+  camera.focus = id;
+  const auto before = camera.build_frame({world, scene.body_visuals});
+  const auto dormant = std::ranges::find_if(before.lights, [](const auto &item) {
+    return item.part.value() == "TestingEngine_3";
+  });
+  REQUIRE(dormant != before.lights.end());
+  CHECK(dormant->color[0] == 0.0f);
   world.controls().submit(flop::world::ControlManager::SelectCraft{id});
   world.controls().submit(flop::world::ControlManager::SetThrottle{1.0});
   (void)world.controls().apply_commands();
   world.tick(0.02);
   const auto first = light->strength();
   CHECK(first > 0.0);
+  const auto frame = camera.build_frame({world, scene.body_visuals});
+  const auto drawn = std::ranges::find_if(frame.lights, [](const auto &item) {
+    return item.part.value() == "TestingEngine_3";
+  });
+  REQUIRE(drawn != frame.lights.end());
+  CHECK(drawn->color[0] == Catch::Approx(3.83 * first).epsilon(1e-5));
   CHECK(light->strength() == first);
   world.tick(0.2);
   const auto second = light->strength();

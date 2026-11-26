@@ -46,4 +46,7 @@ Sunlight compute_sunlight(Vec2d to_sun);
 float sun_visibility(Vec2d craft_to_sun, Vec2d body_to_craft, float sun_radius, float body_radius);
 SpriteSunlight to_sprite_local(const Sunlight &sunlight, double sprite_angle);
 
+// normal-less point light response; radii and distance share the same units.
+double point_light_falloff(double distance, double inner_radius, double outer_radius, double falloff);
+
 } // namespace flop::view

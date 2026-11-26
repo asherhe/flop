@@ -165,12 +165,25 @@ FrameDrawData CameraState::build_frame(const FrameBuildContext &context) const {
         } else if (
             const auto *light = dynamic_cast<const craft::plugin::LightPlugin *>(plugin.get())
         ) {
+          const auto &visual = light->config();
+          if (!(visual.outer_radius_meters > 0.0) || camera.viewport_width <= 0 ||
+              camera.viewport_height <= 0 || !(camera.pixels_per_meter > 0.0) ||
+              !std::isfinite(camera.pixels_per_meter))
+            continue;
           const Vec2d local =
-              part.position_meters + light->config().light_position_meters.rotate(part.angle_rad);
+              part.position_meters + visual.light_position_meters.rotate(part.angle_rad);
           const Vec2d pos = center + (local - com).rotate(angle);
-          result.lights.push_back(
-              {id, part.part_id(), plugin->id(), pos, project(pos, camera), light->config()}
-          );
+          const double x = camera.viewport_width * 0.5 + pos.x * camera.pixels_per_meter;
+          const double y = camera.viewport_height * 0.5 - pos.y * camera.pixels_per_meter;
+          const double radius = visual.outer_radius_meters * camera.pixels_per_meter;
+          const double closest_x = std::clamp(x, 0.0, static_cast<double>(camera.viewport_width));
+          const double closest_y = std::clamp(y, 0.0, static_cast<double>(camera.viewport_height));
+          if (std::hypot(x - closest_x, y - closest_y) > radius) continue;
+          const auto rgb = srgb_to_linear(visual.color) * (visual.intensity * light->strength());
+          result.lights.push_back({id, part.part_id(), plugin->id(), pos,
+              {static_cast<float>(x), static_cast<float>(y)},
+              static_cast<float>(visual.inner_radius_meters * camera.pixels_per_meter),
+              static_cast<float>(radius), static_cast<float>(visual.falloff), {rgb.r, rgb.g, rgb.b}});
         }
       }
     }

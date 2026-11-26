@@ -73,7 +73,8 @@ struct SpriteConfig {
 
 struct LightConfig {
   Vec2d light_position_meters{};
-  std::string color;
+  // authored normalized srgb components
+  Color color;
   double intensity{};
   double inner_radius_meters{};
   double outer_radius_meters{};
