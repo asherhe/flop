@@ -228,7 +228,7 @@ inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &rea
     };
     result.color = decode_key_curve<Color>(color.required("color_keys"), decode_srgb_color, normalized);
     result.alpha = decode_key_curve<double>(color.required("alpha_keys"), &ConfigView::as<double>, normalized);
-    result.size = decode_key_curve<double>(field.required("size"), &ConfigView::as<double>, normalized);
+    result.size = decode_key_curve<double, SmoothInterpolation>(field.required("size"), &ConfigView::as<double>, normalized);
     return result;
   }, PluginRequired::on_create);
   particle.color = std::move(life.color);

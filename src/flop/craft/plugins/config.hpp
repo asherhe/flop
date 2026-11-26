@@ -6,7 +6,7 @@
 #include <array>
 
 #include "flop/math/vec2.hpp"
-#include "flop/math/key_curve.hpp"
+#include "flop/utils/key_curve.hpp"
 #include "flop/utils/color.hpp"
 
 namespace flop::craft::plugin {
@@ -90,7 +90,7 @@ struct ParticleConfig {
   // interpolated as authored srgb components; no conversion is applied yet.
   KeyCurve<Color> color;
   KeyCurve<double> alpha;
-  KeyCurve<double> size;
+  KeyCurve<double, SmoothInterpolation> size;
 };
 
 using PluginValues = std::variant<

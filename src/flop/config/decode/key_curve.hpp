@@ -8,12 +8,18 @@
 #include <vector>
 
 #include "flop/config/load.hpp"
-#include "flop/math/key_curve.hpp"
+#include "flop/utils/key_curve.hpp"
 
 namespace flop::config {
 
-template <typename T, typename Decode, typename Validate>
-KeyCurve<T> decode_key_curve(const ConfigView &field, Decode decode, Validate validate) {
+template <
+    typename T,
+    typename Interpolation = LinearInterpolation<T>,
+    typename Decode,
+    typename Validate>
+KeyCurve<T, Interpolation> decode_key_curve(
+    const ConfigView &field, Decode decode, Validate validate
+) {
   std::map<double, T> result;
   for (const auto &entry : field.entries()) {
     double key{};
@@ -31,11 +37,13 @@ KeyCurve<T> decode_key_curve(const ConfigView &field, Decode decode, Validate va
     if (!result.emplace(key, std::invoke(decode, entry.value)).second)
       entry.value.fail(entry.value.mark(), "Duplicate curve key");
   }
-  if (result.empty()) field.fail(field.mark(), "Curve must have at least one key");
+  if (result.empty())
+    field.fail(field.mark(), "Curve must have at least one key");
   std::vector<CurveKey<T>> keys;
   keys.reserve(result.size());
-  for (auto &[time, value] : result) keys.push_back({time, std::move(value)});
-  return KeyCurve<T>(std::move(keys));
+  for (auto &[time, value] : result)
+    keys.push_back({time, std::move(value)});
+  return KeyCurve<T, Interpolation>(std::move(keys));
 }
 
 } // namespace flop::config
