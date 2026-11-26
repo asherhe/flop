@@ -197,7 +197,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (sprite.visual.material.shader != craft_sprite_recipe.shader)
       throw std::runtime_error("unsupported sprite shader '" + sprite.visual.material.shader + "'");
     try {
-      sprite_textures.push_back(textures_->get_srgb(sprite.visual.sprite));
+      sprite_textures.push_back(textures_->get(sprite.visual.sprite, TextureColorSpace::srgb));
     } catch (const std::exception &error) {
       const auto &source = sprite.visual.sprite_source;
       throw std::runtime_error(source.address + ": " + source.key + ": " + error.what());

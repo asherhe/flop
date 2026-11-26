@@ -21,7 +21,7 @@ int main() {
   { std::ofstream file(temp.path / "assets" / "invalid.png", std::ios::binary); file << "not a png"; }
   try {
     flop::render::TextureCache cache(nullptr, flop::config::AssetResolver(temp.path / "assets"));
-    static_cast<void>(cache.get_srgb("assets/invalid.png"));
+    static_cast<void>(cache.get("assets/invalid.png", flop::render::TextureColorSpace::srgb));
   } catch (const std::exception &error) {
     const std::string message = error.what();
     if (message.find("assets/invalid.png") == std::string::npos) return 1;

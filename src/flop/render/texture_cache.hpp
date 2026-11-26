@@ -10,6 +10,8 @@ struct SDL_GPUTexture;
 
 namespace flop::render {
 
+enum class TextureColorSpace { linear, srgb };
+
 // owns uploaded GPU textures
 class TextureCache {
 public:
@@ -18,7 +20,7 @@ public:
   TextureCache &operator=(const TextureCache &) = delete;
   ~TextureCache();
 
-  SDL_GPUTexture *get_srgb(const std::string &address);
+  SDL_GPUTexture *get(const std::string &address, TextureColorSpace color_space);
 
 private:
   SDL_GPUDevice *device_;

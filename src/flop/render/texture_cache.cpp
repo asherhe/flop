@@ -31,8 +31,10 @@ TextureCache::~TextureCache() {
   }
 }
 
-SDL_GPUTexture *TextureCache::get_srgb(const std::string &address) {
-  if (const auto found = textures_.find(address); found != textures_.end())
+SDL_GPUTexture *TextureCache::get(const std::string &address, TextureColorSpace color_space) {
+  const bool srgb = color_space == TextureColorSpace::srgb;
+  const std::string key = (srgb ? "srgb:" : "linear:") + address;
+  if (const auto found = textures_.find(key); found != textures_.end())
     return found->second;
   try {
     const auto path = resolver_.resolve(config::AssetPath(address));
@@ -64,7 +66,8 @@ SDL_GPUTexture *TextureCache::get_srgb(const std::string &address) {
       throw failure(address, stbi_failure_reason() ? stbi_failure_reason() : "invalid PNG");
     SDL_GPUTextureCreateInfo info{};
     info.type = SDL_GPU_TEXTURETYPE_2D;
-    info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB;
+    info.format = srgb ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB
+                       : SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
     info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
     info.width = static_cast<Uint32>(width);
     info.height = static_cast<Uint32>(height);
@@ -123,7 +126,7 @@ SDL_GPUTexture *TextureCache::get_srgb(const std::string &address) {
       throw failure(address, error);
     }
     try {
-      textures_.emplace(address, texture);
+      textures_.emplace(key, texture);
     } catch (...) {
       SDL_ReleaseGPUTexture(device_, texture);
       throw;
