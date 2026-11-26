@@ -29,6 +29,7 @@ add_library(flop_core STATIC
     src/flop/orbit/propagators/universal.cpp
     src/flop/view/frame.cpp
     src/flop/view/lighting.cpp
+    src/flop/view/particles.cpp
     src/flop/world/control_manager.cpp
     src/flop/world/celestial_body.cpp
     src/flop/world/universe.cpp
@@ -76,6 +77,7 @@ if(BUILD_TESTING)
         src/flop/render/material_recipe.cpp
         tests/app/game_scene_tests.cpp
         tests/app/frame_tests.cpp
+        tests/app/particle_tests.cpp
         tests/app/tick_scheduler_tests.cpp
         tests/config/body_decode_tests.cpp
         tests/config/body_orbit_decode_tests.cpp
