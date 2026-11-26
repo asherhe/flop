@@ -89,6 +89,7 @@ if(BUILD_TESTING)
         tests/config/part_decode_tests.cpp
         tests/config/resources_decode_tests.cpp
         tests/config/save_decode_tests.cpp
+        tests/config/shared_decode_tests.cpp
         tests/config/config_tests.cpp
         tests/render/shader_library_tests.cpp
         tests/render/material_recipe_tests.cpp

@@ -14,6 +14,8 @@
 
 #include "flop/config/load.hpp"
 #include "flop/config/decode/color.hpp"
+#include "flop/config/decode/key_curve.hpp"
+#include "flop/config/decode/range.hpp"
 #include "flop/craft/plugins/config.hpp"
 
 namespace flop::config {
@@ -188,36 +190,9 @@ inline void apply_fields(craft::plugin::LightConfig &light, MapReader &reader) {
 }
 
 inline std::array<double, 2> decode_particle_range(const ConfigView &field) {
-  std::vector<double> values;
-  for (const auto &value : field.sequence()) values.push_back(value.as<double>());
-  if (values.size() != 2 || values[0] < 0.0 || values[1] < values[0])
-    field.fail(field.mark(), "Expected an ordered nonnegative range");
-  return {values[0], values[1]};
-}
-
-template <typename T, typename Decode>
-KeyCurve<T> decode_particle_keys(const ConfigView &field, Decode decode) {
-  std::map<double, T> result;
-  for (const auto &entry : field.entries()) {
-    double key{};
-    try {
-      std::size_t consumed{};
-      key = std::stod(entry.key, &consumed);
-      if (consumed != entry.key.size() || !std::isfinite(key) || key < 0 || key > 1)
-        entry.value.fail(entry.value.mark(), "Curve key must be between 0 and 1");
-    } catch (const std::invalid_argument &) {
-      entry.value.fail(entry.value.mark(), "Invalid curve key");
-    } catch (const std::out_of_range &) {
-      entry.value.fail(entry.value.mark(), "Invalid curve key");
-    }
-    if (!result.emplace(key, std::invoke(decode, entry.value)).second)
-      entry.value.fail(entry.value.mark(), "Duplicate curve key");
-  }
-  if (result.empty()) field.fail(field.mark(), "Curve must have at least one key");
-  std::vector<CurveKey<T>> keys;
-  keys.reserve(result.size());
-  for (auto &[time, value] : result) keys.push_back({time, std::move(value)});
-  return KeyCurve<T>(std::move(keys));
+  const auto range = decode_ordered_range(field);
+  if (range[0] < 0.0) field.fail(field.mark(), "Expected a nonnegative range");
+  return range;
 }
 
 inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &reader) {
@@ -248,9 +223,12 @@ inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &rea
   reader.assign("life", life, [](const ConfigView &field) {
     craft::plugin::ParticleConfig result;
     const auto color = field.required("color");
-    result.color = decode_particle_keys<Color>(color.required("color_keys"), decode_srgb_color);
-    result.alpha = decode_particle_keys<double>(color.required("alpha_keys"), &ConfigView::as<double>);
-    result.size = decode_particle_keys<double>(field.required("size"), &ConfigView::as<double>);
+    const auto normalized = [](double key, const ConfigView &source) {
+      if (key < 0.0 || key > 1.0) source.fail(source.mark(), "Curve key must be between 0 and 1");
+    };
+    result.color = decode_key_curve<Color>(color.required("color_keys"), decode_srgb_color, normalized);
+    result.alpha = decode_key_curve<double>(color.required("alpha_keys"), &ConfigView::as<double>, normalized);
+    result.size = decode_key_curve<double>(field.required("size"), &ConfigView::as<double>, normalized);
     return result;
   }, PluginRequired::on_create);
   particle.color = std::move(life.color);
