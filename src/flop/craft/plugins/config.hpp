@@ -7,7 +7,7 @@
 
 #include "flop/math/vec2.hpp"
 #include "flop/math/key_curve.hpp"
-#include "flop/craft/plugins/particle_rgb.hpp"
+#include "flop/utils/color.hpp"
 
 namespace flop::craft::plugin {
 
@@ -87,7 +87,8 @@ struct ParticleConfig {
   std::array<double, 2> rate_per_sec{};
   std::array<double, 2> start_size_meters{};
   std::array<double, 2> start_speed_m_per_s{};
-  KeyCurve<ParticleRgb> color;
+  // interpolated as authored srgb components; no conversion is applied yet.
+  KeyCurve<Color> color;
   KeyCurve<double> alpha;
   KeyCurve<double> size;
 };

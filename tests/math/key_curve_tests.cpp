@@ -3,7 +3,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "flop/craft/plugins/particle_rgb.hpp"
+#include "flop/utils/color.hpp"
 #include "flop/math/key_curve.hpp"
 
 TEST_CASE("key curves sort keys and interpolate with clamped endpoints") {
@@ -20,8 +20,7 @@ TEST_CASE("key curves sort keys and interpolate with clamped endpoints") {
 }
 
 TEST_CASE("key curves interpolate particle color components") {
-  using flop::craft::plugin::ParticleRgb;
-  const flop::KeyCurve<ParticleRgb> curve({{0, {1, 0, 0}}, {1, {0, 0, 1}}});
+  const flop::KeyCurve<flop::Color> curve({{0, {1, 0, 0}}, {1, {0, 0, 1}}});
   const auto color = curve.evaluate(0.25);
   CHECK(color.r == Catch::Approx(0.75));
   CHECK(color.g == 0);

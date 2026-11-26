@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "flop/config/load.hpp"
+#include "flop/config/decode/color.hpp"
 #include "flop/craft/plugins/config.hpp"
 
 namespace flop::config {
@@ -194,22 +195,6 @@ inline std::array<double, 2> decode_particle_range(const ConfigView &field) {
   return {values[0], values[1]};
 }
 
-inline craft::plugin::ParticleRgb decode_particle_rgb(const ConfigView &field) {
-  const auto value = field.as<std::string>();
-  if (value.size() != 7 || value[0] != '#')
-    field.fail(field.mark(), "Expected a #RRGGBB color");
-  const auto digit = [&](char c) -> unsigned {
-    if (c >= '0' && c <= '9') return static_cast<unsigned>(c - '0');
-    if (c >= 'a' && c <= 'f') return static_cast<unsigned>(c - 'a' + 10);
-    if (c >= 'A' && c <= 'F') return static_cast<unsigned>(c - 'A' + 10);
-    field.fail(field.mark(), "Expected a #RRGGBB color");
-  };
-  const auto channel = [&](std::size_t index) {
-    return static_cast<float>(digit(value[index]) * 16 + digit(value[index + 1])) / 255.0f;
-  };
-  return {channel(1), channel(3), channel(5)};
-}
-
 template <typename T, typename Decode>
 KeyCurve<T> decode_particle_keys(const ConfigView &field, Decode decode) {
   std::map<double, T> result;
@@ -263,7 +248,7 @@ inline void apply_fields(craft::plugin::ParticleConfig &particle, MapReader &rea
   reader.assign("life", life, [](const ConfigView &field) {
     craft::plugin::ParticleConfig result;
     const auto color = field.required("color");
-    result.color = decode_particle_keys<craft::plugin::ParticleRgb>(color.required("color_keys"), decode_particle_rgb);
+    result.color = decode_particle_keys<Color>(color.required("color_keys"), decode_srgb_color);
     result.alpha = decode_particle_keys<double>(color.required("alpha_keys"), &ConfigView::as<double>);
     result.size = decode_particle_keys<double>(field.required("size"), &ConfigView::as<double>);
     return result;

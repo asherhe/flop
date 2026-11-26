@@ -4,7 +4,7 @@
 #include <string>
 
 #include "flop/craft/plugins/config.hpp"
-#include "flop/config/color.hpp"
+#include "flop/utils/color.hpp"
 
 namespace flop::config {
 
