@@ -1,13 +1,13 @@
 #pragma once
 
+#include <array>
 #include <map>
 #include <string>
 #include <variant>
-#include <array>
 
 #include "flop/math/vec2.hpp"
-#include "flop/utils/key_curve.hpp"
 #include "flop/utils/color.hpp"
+#include "flop/utils/key_curve.hpp"
 
 namespace flop::craft::plugin {
 
@@ -94,7 +94,7 @@ struct ParticleConfig {
   std::array<double, 2> rate_per_sec{};
   std::array<double, 2> start_size_meters{};
   std::array<double, 2> start_speed_m_per_s{};
-  // interpolated as authored srgb components; no conversion is applied yet.
+  // as srgb
   KeyCurve<Color> color;
   KeyCurve<double> alpha;
   KeyCurve<double, SmoothInterpolation> size;

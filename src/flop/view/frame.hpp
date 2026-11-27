@@ -97,14 +97,14 @@ struct TextDraw {
 struct ParticleDraw {
   PointF center_pixels;
   float size_pixels{};
-  std::array<float, 4> color{};
+  std::array<float, 4> color{}; // in linear rgb
   float angle_rad{};
 };
 struct PostProcessSettings {
   bool antialiasing{true};
   bool tonemapping{true};
   float exposure_stops{0.0f}; // exposure adjustment in stops
-  float white_point{11.2f}; // linear scene value mapped to display white
+  float white_point{11.2f};   // linear scene value mapped to display white
   float vignette_intensity{0.308f};
   float vignette_smoothness{0.454f};
 };

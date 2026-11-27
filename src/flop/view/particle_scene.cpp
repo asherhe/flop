@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "flop/craft/plugins/plugins.hpp"
+#include "flop/utils/color.hpp"
 
 namespace flop::view {
 namespace {
@@ -99,7 +100,7 @@ void ParticleScene::append_draw_data(FrameDrawData &frame) const {
     const double t = std::clamp(particle.age_sec / particle.lifetime_sec, 0.0, 1.0);
     const double size = particle.start_size_meters * config.size.evaluate(t);
     const double alpha = config.alpha.evaluate(t);
-    const auto color = config.color.evaluate(t);
+    const auto color = srgb_to_linear(config.color.evaluate(t));
     const auto relative = particle.position_meters - frame.camera.pan_meters;
     frame.particles.push_back(
         {{static_cast<float>(
