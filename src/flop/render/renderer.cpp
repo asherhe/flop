@@ -163,6 +163,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     pipeline_ = create_pipeline(device_, window_, "test_tri", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     particle_pipeline_ = create_pipeline(device_, window_, "particle", true, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     post_copy_pipeline_ = create_pipeline(device_, window_, "post_copy", false);
+    sanitize_pipeline_ = create_pipeline(device_, window_, "post_sanitize", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     point_light_pipeline_ = create_pipeline(device_, window_, "point_light", false,
         nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, true);
     normal_pipeline_ = create_pipeline(device_, window_, "craft/normal", true,
@@ -190,6 +191,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     }
     textures_ = std::make_unique<TextureCache>(device_, resolver);
   } catch (...) {
+    if (sanitize_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, sanitize_pipeline_);
     if (post_copy_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_copy_pipeline_);
     if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
     if (sprite_sampler_)
@@ -219,6 +221,8 @@ Renderer::~Renderer() {
       SDL_ReleaseGPUTexture(device_, light_texture_);
     if (normal_texture_) SDL_ReleaseGPUTexture(device_, normal_texture_);
     if (scene_texture_) SDL_ReleaseGPUTexture(device_, scene_texture_);
+    if (sanitized_texture_) SDL_ReleaseGPUTexture(device_, sanitized_texture_);
+    if (sanitize_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, sanitize_pipeline_);
     if (post_copy_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_copy_pipeline_);
     if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
     if (sprite_sampler_)
@@ -300,7 +304,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (!capture_texture) { SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture texture"); }
     SDL_GPUTransferBufferCreateInfo transfer{};
     transfer.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
-    transfer.size = (capture_normal_ || capture_scene_) ? 8 : 4;
+    transfer.size = (capture_normal_ || capture_scene_ || capture_sanitized_) ? 8 : 4;
     download = SDL_CreateGPUTransferBuffer(device_, &transfer);
     if (!download) { SDL_ReleaseGPUTexture(device_, capture_texture); SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture buffer"); }
     swapchain = capture_texture;
@@ -337,12 +341,23 @@ void Renderer::present(const view::FrameDrawData &frame) {
         SDL_SubmitGPUCommandBuffer(commands);
         throw error;
       }
+      auto *sanitized_replacement = SDL_CreateGPUTexture(device_, &info);
+      if (!sanitized_replacement) {
+        const auto error = failure("create sanitized texture");
+        SDL_ReleaseGPUTexture(device_, scene_replacement);
+        SDL_ReleaseGPUTexture(device_, normal_replacement);
+        SDL_ReleaseGPUTexture(device_, replacement);
+        SDL_SubmitGPUCommandBuffer(commands);
+        throw error;
+      }
       if (light_texture_) SDL_ReleaseGPUTexture(device_, light_texture_);
       if (normal_texture_) SDL_ReleaseGPUTexture(device_, normal_texture_);
       if (scene_texture_) SDL_ReleaseGPUTexture(device_, scene_texture_);
+      if (sanitized_texture_) SDL_ReleaseGPUTexture(device_, sanitized_texture_);
       light_texture_ = replacement;
       normal_texture_ = normal_replacement;
       scene_texture_ = scene_replacement;
+      sanitized_texture_ = sanitized_replacement;
       light_width_ = width;
       light_height_ = height;
     }
@@ -469,6 +484,19 @@ void Renderer::present(const view::FrameDrawData &frame) {
       SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
     }
     SDL_EndGPURenderPass(pass);
+    target.texture = sanitized_texture_;
+    target.load_op = SDL_GPU_LOADOP_DONT_CARE;
+    auto *sanitize_pass = SDL_BeginGPURenderPass(commands, &target, 1, nullptr);
+    if (!sanitize_pass) {
+      const auto error = failure("begin sanitize render pass");
+      SDL_SubmitGPUCommandBuffer(commands);
+      throw error;
+    }
+    SDL_BindGPUGraphicsPipeline(sanitize_pass, sanitize_pipeline_);
+    SDL_GPUTextureSamplerBinding scene_binding{scene_texture_, sprite_sampler_};
+    SDL_BindGPUFragmentSamplers(sanitize_pass, 0, &scene_binding, 1);
+    SDL_DrawGPUPrimitives(sanitize_pass, 3, 1, 0, 0);
+    SDL_EndGPURenderPass(sanitize_pass);
     target.texture = swapchain;
     target.load_op = SDL_GPU_LOADOP_DONT_CARE;
     auto *post_pass = SDL_BeginGPURenderPass(commands, &target, 1, nullptr);
@@ -478,8 +506,8 @@ void Renderer::present(const view::FrameDrawData &frame) {
       throw error;
     }
     SDL_BindGPUGraphicsPipeline(post_pass, post_copy_pipeline_);
-    SDL_GPUTextureSamplerBinding scene_binding{scene_texture_, sprite_sampler_};
-    SDL_BindGPUFragmentSamplers(post_pass, 0, &scene_binding, 1);
+    SDL_GPUTextureSamplerBinding sanitized_binding{sanitized_texture_, sprite_sampler_};
+    SDL_BindGPUFragmentSamplers(post_pass, 0, &sanitized_binding, 1);
     SDL_DrawGPUPrimitives(post_pass, 3, 1, 0, 0);
     SDL_EndGPURenderPass(post_pass);
   }
@@ -488,7 +516,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     auto *copy = SDL_BeginGPUCopyPass(commands);
     if (!copy) throw failure("begin capture copy");
     SDL_GPUTextureRegion region{};
-    region.texture = capture_normal_ ? normal_texture_ : (capture_scene_ ? scene_texture_ : capture_texture);
+    region.texture = capture_normal_ ? normal_texture_ : (capture_scene_ ? scene_texture_ : (capture_sanitized_ ? sanitized_texture_ : capture_texture));
     region.w = region.h = region.d = 1;
     SDL_GPUTextureTransferInfo destination{};
     destination.transfer_buffer = download;
@@ -498,7 +526,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (!fence || !SDL_WaitForGPUFences(device_, true, &fence, 1)) throw failure("capture submission");
     const auto *pixels = static_cast<const std::uint8_t *>(SDL_MapGPUTransferBuffer(device_, download, false));
     if (!pixels) throw failure("map capture");
-    if (capture_normal_ || capture_scene_) {
+    if (capture_normal_ || capture_scene_ || capture_sanitized_) {
       std::memcpy(captured_normal_.data(), pixels, 8);
     } else {
       const auto format = SDL_GetGPUSwapchainTextureFormat(device_, window_);
@@ -537,6 +565,14 @@ std::array<std::uint16_t, 4> Renderer::readback_scene(const view::FrameDrawData 
   try { present(frame); } catch (...) { capture_ = false; capture_scene_ = false; throw; }
   capture_ = false;
   capture_scene_ = false;
+  return captured_normal_;
+}
+std::array<std::uint16_t, 4> Renderer::readback_sanitized(const view::FrameDrawData &frame) {
+  capture_ = true;
+  capture_sanitized_ = true;
+  try { present(frame); } catch (...) { capture_ = false; capture_sanitized_ = false; throw; }
+  capture_ = false;
+  capture_sanitized_ = false;
   return captured_normal_;
 }
 #endif

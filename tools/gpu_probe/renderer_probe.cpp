@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -90,6 +91,16 @@ int main() {
       const auto hdr = renderer.readback_scene(frame);
       if (hdr != hdr_red_half)
         throw std::runtime_error("scene target did not retain HDR particle color");
+      if (renderer.readback_sanitized(frame) != hdr_red_half)
+        throw std::runtime_error("sanitization changed finite HDR color");
+      frame.particles[0].color = {std::numeric_limits<float>::infinity(), 0.25f,
+                                  std::numeric_limits<float>::quiet_NaN(), 1.0f};
+      const auto nonfinite = renderer.readback_scene(frame);
+      if ((nonfinite[0] & 0x7c00) != 0x7c00 || (nonfinite[2] & 0x7fff) <= 0x7c00)
+        throw std::runtime_error("non-finite fixture did not reach scene target");
+      const auto sanitized = renderer.readback_sanitized(frame);
+      if (sanitized != std::array<std::uint16_t, 4>{0, 0x3400, 0, 0x3c00})
+        throw std::runtime_error("sanitization did not isolate non-finite channels");
       frame.particles.clear();
       frame.particles.push_back({{0.5f, 0.5f}, 1.0f, {1, 0, 0, 0.5f}});
       const auto particle_pixel = renderer.readback_pixel(frame);
