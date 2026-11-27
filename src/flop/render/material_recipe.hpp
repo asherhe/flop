@@ -18,12 +18,12 @@ namespace flop::render {
 enum class MaterialInputSource : std::uint8_t { authored, renderer };
 enum class MaterialInputType : std::uint8_t { texture_2d, float4 };
 enum class ShaderStage : std::uint8_t { vertex, fragment };
-// per-draw float4 values in drawable pixels: origin and x axis, then y axis
-// and viewport size. sprite corners are relative to the upper-left of the viewport.
+// per-draw float4 values: origin and drawable viewport size in pixels, then x and y axes in pixels.
+// sprite corners are relative to the upper-left of the viewport.
 enum class AutoInput : std::uint8_t {
   none,
-  sprite_projected_origin_and_x_axis,
-  sprite_projected_y_axis_and_viewport,
+  sprite_projected_origin_viewport,
+  sprite_projected_xy_axis,
   sun_direction,
   sun_color,
   planet_shine_direction_and_spread,
@@ -34,8 +34,8 @@ enum class AutoInput : std::uint8_t {
 constexpr std::string_view auto_input_name(AutoInput input) {
   switch (input) {
   case AutoInput::none: return {};
-  case AutoInput::sprite_projected_origin_and_x_axis: return "sprite.projected_origin_and_x_axis";
-  case AutoInput::sprite_projected_y_axis_and_viewport: return "sprite.projected_y_axis_and_viewport";
+  case AutoInput::sprite_projected_origin_viewport: return "sprite.projected_origin_viewport";
+  case AutoInput::sprite_projected_xy_axis: return "sprite.projected_xy_axis";
   case AutoInput::sun_direction: return "sun.direction";
   case AutoInput::sun_color: return "sun.color";
   case AutoInput::planet_shine_direction_and_spread: return "planet_shine.direction_and_spread";
@@ -85,18 +85,18 @@ inline constexpr std::array craft_sprite_inputs{
         MaterialInputSource::authored
     },
     MaterialInput{
-        "origin_and_x_axis",
+        "origin_viewport",
         ShaderStage::vertex,
         MaterialInputType::float4,
         MaterialInputSource::renderer,
-        AutoInput::sprite_projected_origin_and_x_axis
+        AutoInput::sprite_projected_origin_viewport
     },
     MaterialInput{
-        "y_axis_and_viewport",
+        "xy_axis",
         ShaderStage::vertex,
         MaterialInputType::float4,
         MaterialInputSource::renderer,
-        AutoInput::sprite_projected_y_axis_and_viewport
+        AutoInput::sprite_projected_xy_axis
     },
 };
 inline constexpr MaterialRecipe craft_sprite_recipe{"craft/sprite", craft_sprite_inputs};
@@ -104,8 +104,8 @@ inline constexpr MaterialRecipe craft_sprite_recipe{"craft/sprite", craft_sprite
 struct CraftSpriteBindings {
   unsigned texture_slot;
   unsigned uniform_slot;
-  unsigned origin_offset;
-  unsigned viewport_offset;
+  unsigned origin_viewport_offset;
+  unsigned xy_axis_offset;
   unsigned uniform_size;
 };
 

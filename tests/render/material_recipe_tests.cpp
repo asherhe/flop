@@ -6,10 +6,10 @@
 #include "flop/config/load.hpp"
 
 TEST_CASE("Material recipes decode automatic semantics and reject unknown fields") {
-  const auto node = YAML::Load("shader: craft/sprite\nproperties:\n  albedo: {stage: fragment, type: texture_2d}\n  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}\n");
+  const auto node = YAML::Load("shader: craft/sprite\nproperties:\n  albedo: {stage: fragment, type: texture_2d}\n  origin_viewport: {stage: vertex, type: float4, auto: sprite.projected_origin_viewport}\n");
   auto recipe = flop::render::decode_material_recipe(flop::config::ConfigView(node, "fixture.yaml"));
   REQUIRE(recipe.view().inputs.size() == 2);
-  CHECK(recipe.view().inputs[1].auto_input == flop::render::AutoInput::sprite_projected_origin_and_x_axis);
+  CHECK(recipe.view().inputs[1].auto_input == flop::render::AutoInput::sprite_projected_origin_viewport);
   const auto invalid = YAML::Load("shader: craft/sprite\nproperties:\n  x: {stage: vertex, type: float4, auto: unknown.value}\n");
   CHECK_THROWS_AS(flop::render::decode_material_recipe(flop::config::ConfigView(invalid, "fixture.yaml")), flop::config::ConfigError);
   for (const auto *yaml : {
@@ -66,8 +66,8 @@ properties:
   normal_map: {stage: fragment, type: texture_2d}
   emission_map: {stage: fragment, type: texture_2d}
   local_light: {stage: fragment, type: texture_2d, auto: local_light.texture}
-  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}
-  y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}
+  origin_viewport: {stage: vertex, type: float4, auto: sprite.projected_origin_viewport}
+  xy_axis: {stage: vertex, type: float4, auto: sprite.projected_xy_axis}
   sun_direction: {stage: fragment, type: float4, auto: sun.direction}
   sun_color: {stage: fragment, type: float4, auto: sun.color}
   planet_shine_direction_and_spread: {stage: fragment, type: float4, auto: planet_shine.direction_and_spread}
@@ -75,7 +75,7 @@ properties:
 )");
   const auto recipe = decode_material_recipe(flop::config::ConfigView(yaml, "fixture.yaml"));
   shaders::Entry vertex{"craft/lit_sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1,
-    R"({"stage":"vertex","uniform_buffers":[{"binding":0,"size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})"};
+    R"({"stage":"vertex","uniform_buffers":[{"binding":0,"size":32,"members":[{"name":"origin_viewport","type":"float","components":4,"offset":0,"size":16},{"name":"xy_axis","type":"float","components":4,"offset":16,"size":16}]}]})"};
   shaders::Entry fragment{"craft/lit_sprite", "fragment", "spirv", "fragment", nullptr, 0, 4, 0, 0, 1,
     R"({"stage":"fragment","textures":[{"name":"albedo","binding":0},{"name":"normal_map","binding":1},{"name":"emission_map","binding":2},{"name":"local_light","binding":3}],"uniform_buffers":[{"binding":0,"size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})"};
   const auto bindings = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
@@ -84,7 +84,7 @@ properties:
   CHECK(bindings.local_light_slot == 3);
   CHECK(bindings.color_offset == 16);
   vertex.format = "dxil";
-  vertex.reflection_json = R"({"stage":"vertex","resources":[{"name":"Geometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"Geometry","size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})";
+  vertex.reflection_json = R"({"stage":"vertex","resources":[{"name":"Geometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"Geometry","size":32,"members":[{"name":"origin_viewport","type":"float","components":4,"offset":0,"size":16},{"name":"xy_axis","type":"float","components":4,"offset":16,"size":16}]}]})";
   fragment.format = "dxil";
   fragment.reflection_json = R"({"stage":"fragment","resources":[{"name":"albedo","type":"texture","binding":0},{"name":"normal_map","type":"texture","binding":1},{"name":"emission_map","type":"texture","binding":2},{"name":"local_light","type":"texture","binding":3},{"name":"Light","type":"uniform_buffer","binding":1}],"uniform_buffers":[{"name":"Light","size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})";
   const auto dxil = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
@@ -121,7 +121,7 @@ TEST_CASE("A missing material recipe reports its asset path") {
 }
 
 TEST_CASE("Craft recipe resolves reflected bindings and rejects incompatible inputs") {
-  const char *vertex_json = R"({"stage":"vertex","uniform_buffers":[{"binding":2,"size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})";
+  const char *vertex_json = R"({"stage":"vertex","uniform_buffers":[{"binding":2,"size":32,"members":[{"name":"origin_viewport","type":"float","components":4,"offset":0,"size":16},{"name":"xy_axis","type":"float","components":4,"offset":16,"size":16}]}]})";
   const char *fragment_json = R"({"stage":"fragment","textures":[{"name":"albedo","binding":3}]})";
   shaders::Entry vertex{"craft/sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1, vertex_json};
   shaders::Entry fragment{"craft/sprite", "fragment", "spirv", "fragment", nullptr, 0, 1, 0, 0, 0, fragment_json};
@@ -135,7 +135,7 @@ TEST_CASE("Craft recipe resolves reflected bindings and rejects incompatible inp
   wrong_format.format = "dxil";
   CHECK_THROWS_AS(resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, wrong_format), std::runtime_error);
   auto bad_inputs = craft_sprite_inputs;
-  bad_inputs[1].auto_input = AutoInput::sprite_projected_y_axis_and_viewport;
+  bad_inputs[1].auto_input = AutoInput::sprite_projected_xy_axis;
   const MaterialRecipe bad_recipe{"craft/sprite", bad_inputs};
   CHECK_THROWS_AS(resolve_craft_sprite_bindings(bad_recipe, vertex, fragment), std::runtime_error);
   fragment.reflection_json = R"({"stage":"fragment","textures":[]})";
@@ -147,7 +147,7 @@ TEST_CASE("Craft recipe resolves reflected bindings and rejects incompatible inp
 
 TEST_CASE("Craft recipe resolves DXIL resource bindings") {
   shaders::Entry vertex{"craft/sprite", "vertex", "dxil", "vertex", nullptr, 0, 0, 0, 0, 1,
-    R"({"stage":"vertex","resources":[{"name":"SpriteGeometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"SpriteGeometry","size":32,"members":[{"name":"origin_and_x_axis","type":"float","components":4,"offset":0,"size":16},{"name":"y_axis_and_viewport","type":"float","components":4,"offset":16,"size":16}]}]})"};
+    R"({"stage":"vertex","resources":[{"name":"SpriteGeometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"SpriteGeometry","size":32,"members":[{"name":"origin_viewport","type":"float","components":4,"offset":0,"size":16},{"name":"xy_axis","type":"float","components":4,"offset":16,"size":16}]}]})"};
   shaders::Entry fragment{"craft/sprite", "fragment", "dxil", "fragment", nullptr, 0, 1, 0, 0, 0,
     R"({"stage":"fragment","resources":[{"name":"albedo_sampler","type":"sampler","binding":0},{"name":"albedo","type":"texture","binding":0}]})"};
   const auto bindings = resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment);

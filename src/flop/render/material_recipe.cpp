@@ -47,10 +47,10 @@ LoadedMaterialRecipe decode_material_recipe(const config::ConfigView &document) 
     AutoInput semantic = AutoInput::none;
     if (const auto field = entry.value.optional("auto")) {
       const auto name = field->nonempty_string();
-      if (name == auto_input_name(AutoInput::sprite_projected_origin_and_x_axis))
-        semantic = AutoInput::sprite_projected_origin_and_x_axis;
-      else if (name == auto_input_name(AutoInput::sprite_projected_y_axis_and_viewport))
-        semantic = AutoInput::sprite_projected_y_axis_and_viewport;
+      if (name == auto_input_name(AutoInput::sprite_projected_origin_viewport))
+        semantic = AutoInput::sprite_projected_origin_viewport;
+      else if (name == auto_input_name(AutoInput::sprite_projected_xy_axis))
+        semantic = AutoInput::sprite_projected_xy_axis;
       else if (name == auto_input_name(AutoInput::sun_direction))
         semantic = AutoInput::sun_direction;
       else if (name == auto_input_name(AutoInput::sun_color))
@@ -222,16 +222,16 @@ ResolvedInputs resolve_inputs(
       } else if (
           input.source == MaterialInputSource::renderer && input.type == MaterialInputType::float4
       ) {
-        if (input.stage == ShaderStage::vertex && input.name == "origin_and_x_axis" &&
-            input.auto_input == AutoInput::sprite_projected_origin_and_x_axis) {
+        if (input.stage == ShaderStage::vertex && input.name == "origin_viewport" &&
+            input.auto_input == AutoInput::sprite_projected_origin_viewport) {
           bit = 2;
-          result.geometry.origin_offset = v.member(geometry, input.name);
+          result.geometry.origin_viewport_offset = v.member(geometry, input.name);
         } else if (
-            input.stage == ShaderStage::vertex && input.name == "y_axis_and_viewport" &&
-            input.auto_input == AutoInput::sprite_projected_y_axis_and_viewport
+            input.stage == ShaderStage::vertex && input.name == "xy_axis" &&
+            input.auto_input == AutoInput::sprite_projected_xy_axis
         ) {
           bit = 4;
-          result.geometry.viewport_offset = v.member(geometry, input.name);
+          result.geometry.xy_axis_offset = v.member(geometry, input.name);
         } else if (
             lit && input.stage == ShaderStage::fragment && input.name == "sun_direction" &&
             input.auto_input == AutoInput::sun_direction
@@ -262,8 +262,8 @@ ResolvedInputs resolve_inputs(
     }
     if (matched != (lit ? 1023u : 7u))
       throw std::runtime_error("missing recipe input");
-    if (result.geometry.uniform_size != 32 || result.geometry.origin_offset != 0 ||
-        result.geometry.viewport_offset != 16)
+    if (result.geometry.uniform_size != 32 || result.geometry.origin_viewport_offset != 0 ||
+        result.geometry.xy_axis_offset != 16)
       throw std::runtime_error("uniform layout does not match SpriteGeometry");
     if (lit && (result.light_size != 64 || result.direction != 0 || result.color != 16 ||
                 result.shine_direction != 32 || result.shine_color != 48))

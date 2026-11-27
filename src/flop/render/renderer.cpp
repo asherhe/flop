@@ -21,11 +21,11 @@
 namespace flop::render {
 namespace {
 struct alignas(16) SpriteGeometry {
-  float origin_x, origin_y, x_axis_x, x_axis_y;
-  float y_axis_x, y_axis_y, viewport_width, viewport_height;
+  float origin_x, origin_y, viewport_width, viewport_height;
+  float x_axis_x, x_axis_y, y_axis_x, y_axis_y;
 };
 static_assert(sizeof(SpriteGeometry) == 8 * sizeof(float));
-static_assert(offsetof(SpriteGeometry, y_axis_x) == 4 * sizeof(float));
+static_assert(offsetof(SpriteGeometry, x_axis_x) == 4 * sizeof(float));
 
 std::runtime_error failure(const char *operation) {
   return std::runtime_error(std::string(operation) + ": " + SDL_GetError());
@@ -487,13 +487,14 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (craft_pipeline_ && frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
       SDL_BindGPUGraphicsPipeline(pass, particle_pipeline_);
       for (const auto &particle : frame.particles) {
-        struct ParticleGeometry { std::array<float, 4> origin_and_x_axis, y_axis_and_viewport, color; };
+        struct ParticleGeometry { std::array<float, 4> origin_viewport, xy_axis, color; };
         const float size = particle.size_pixels;
         const float c = std::cos(particle.angle_rad) * size;
         const float s = std::sin(particle.angle_rad) * size;
         const ParticleGeometry geometry{
-            {particle.center_pixels.x - 0.5f * (c + s), particle.center_pixels.y - 0.5f * (c - s), c, -s},
-            {s, c, static_cast<float>(frame.camera.viewport_width), static_cast<float>(frame.camera.viewport_height)},
+            {particle.center_pixels.x - 0.5f * (c + s), particle.center_pixels.y - 0.5f * (c - s),
+             static_cast<float>(frame.camera.viewport_width), static_cast<float>(frame.camera.viewport_height)},
+            {c, -s, s, c},
             particle.color
         };
         SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
@@ -506,12 +507,12 @@ void Renderer::present(const view::FrameDrawData &frame) {
         const SpriteGeometry geometry{
             corners[0].x,
             corners[0].y,
+            static_cast<float>(frame.camera.viewport_width),
+            static_cast<float>(frame.camera.viewport_height),
             corners[1].x - corners[0].x,
             corners[1].y - corners[0].y,
             corners[3].x - corners[0].x,
-            corners[3].y - corners[0].y,
-            static_cast<float>(frame.camera.viewport_width),
-            static_cast<float>(frame.camera.viewport_height)
+            corners[3].y - corners[0].y
         };
         const auto &bindings = maps.lit ? lit_bindings_.geometry : craft_bindings_;
         SDL_PushGPUVertexUniformData(commands, bindings.uniform_slot, &geometry, sizeof(geometry));

@@ -1,7 +1,7 @@
 // draw a unit quad through a camera-relative transform in drawable pixels
 cbuffer SpriteGeometry : register(b0, space1) {
-  float4 origin_and_x_axis; // origin x/y, x-axis x/y
-  float4 y_axis_and_viewport; // y-axis x/y, viewport width/height
+  float4 origin_viewport; // origin x/y, viewport width/height
+  float4 xy_axis; // x-axis x/y, y-axis x/y
 };
 
 [[vk::combinedImageSampler]] Texture2D albedo : register(t0, space2);
@@ -17,10 +17,10 @@ VertexOutput vertex(uint id : SV_VertexID) {
       float2(0, 0), float2(1, 0), float2(1, 1),
       float2(0, 0), float2(1, 1), float2(0, 1)};
   float2 corner = corners[id];
-  float2 pixel = origin_and_x_axis.xy + corner.x * origin_and_x_axis.zw + corner.y * y_axis_and_viewport.xy;
+  float2 pixel = origin_viewport.xy + corner.x * xy_axis.xy + corner.y * xy_axis.zw;
   VertexOutput result;
-  result.position = float4(pixel.x / y_axis_and_viewport.z * 2.0 - 1.0,
-                           1.0 - pixel.y / y_axis_and_viewport.w * 2.0, 0.0, 1.0);
+  result.position = float4(pixel.x / origin_viewport.z * 2.0 - 1.0,
+                           1.0 - pixel.y / origin_viewport.w * 2.0, 0.0, 1.0);
   result.uv = float2(corner.x, 1.0 - corner.y);
   return result;
 }

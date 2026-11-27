@@ -1,8 +1,8 @@
 #include "sprite_geometry.hlsli"
 // geometry and uv conventions match the unlit sprite shader
 cbuffer SpriteGeometry : register(b0, space1) {
-  float4 origin_and_x_axis;
-  float4 y_axis_and_viewport;
+  float4 origin_viewport;
+  float4 xy_axis;
 };
 
 cbuffer SpriteLighting : register(b0, space3) {
@@ -28,7 +28,7 @@ struct VertexOutput {
 
 VertexOutput vertex(uint id : SV_VertexID) {
   VertexOutput result;
-  project_sprite_vertex(id, origin_and_x_axis, y_axis_and_viewport, result.position, result.uv);
+  project_sprite_vertex(id, origin_viewport, xy_axis, result.position, result.uv);
   return result;
 }
 

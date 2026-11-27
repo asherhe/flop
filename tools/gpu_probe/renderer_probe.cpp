@@ -69,16 +69,16 @@ int main() {
     { std::ofstream out(assets / "shared" / "shaders" / "craft_sprite.yaml");
       out << "shader: craft/sprite\nproperties:\n"
              "  albedo: {stage: fragment, type: texture_2d}\n"
-             "  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}\n"
-             "  y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}\n"; }
+             "  origin_viewport: {stage: vertex, type: float4, auto: sprite.projected_origin_viewport}\n"
+             "  xy_axis: {stage: vertex, type: float4, auto: sprite.projected_xy_axis}\n"; }
     { std::ofstream out(assets / "shared" / "shaders" / "craft_lit_sprite.yaml");
       out << "shader: craft/lit_sprite\nproperties:\n"
              "  albedo: {stage: fragment, type: texture_2d}\n"
              "  normal_map: {stage: fragment, type: texture_2d}\n"
              "  emission_map: {stage: fragment, type: texture_2d}\n"
              "  local_light: {stage: fragment, type: texture_2d, auto: local_light.texture}\n"
-             "  origin_and_x_axis: {stage: vertex, type: float4, auto: sprite.projected_origin_and_x_axis}\n"
-             "  y_axis_and_viewport: {stage: vertex, type: float4, auto: sprite.projected_y_axis_and_viewport}\n"
+             "  origin_viewport: {stage: vertex, type: float4, auto: sprite.projected_origin_viewport}\n"
+             "  xy_axis: {stage: vertex, type: float4, auto: sprite.projected_xy_axis}\n"
              "  sun_direction: {stage: fragment, type: float4, auto: sun.direction}\n"
              "  sun_color: {stage: fragment, type: float4, auto: sun.color}\n"
              "  planet_shine_direction_and_spread: {stage: fragment, type: float4, auto: planet_shine.direction_and_spread}\n"
