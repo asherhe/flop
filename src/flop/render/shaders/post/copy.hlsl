@@ -1,5 +1,7 @@
 [[vk::combinedImageSampler]] Texture2D scene : register(t0, space2);
 [[vk::combinedImageSampler]] SamplerState scene_sampler : register(s0, space2);
+[[vk::combinedImageSampler]] Texture2D bloom : register(t1, space2);
+[[vk::combinedImageSampler]] SamplerState bloom_sampler : register(s1, space2);
 
 struct VertexOutput {
   float4 position : SV_Position;
@@ -15,5 +17,5 @@ VertexOutput vertex(uint id : SV_VertexID) {
 }
 
 float4 fragment(VertexOutput input) : SV_Target0 {
-  return float4(scene.Sample(scene_sampler, input.uv).rgb, 1);
+  return float4(scene.Sample(scene_sampler, input.uv).rgb + bloom.Sample(bloom_sampler, input.uv).rgb * 1.04, 1);
 }

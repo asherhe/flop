@@ -162,8 +162,9 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     }
     pipeline_ = create_pipeline(device_, window_, "test_tri", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     particle_pipeline_ = create_pipeline(device_, window_, "particle", true, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
-    post_copy_pipeline_ = create_pipeline(device_, window_, "post_copy", false);
-    sanitize_pipeline_ = create_pipeline(device_, window_, "post_sanitize", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    post_copy_pipeline_ = create_pipeline(device_, window_, "post/copy", false);
+    sanitize_pipeline_ = create_pipeline(device_, window_, "post/sanitize", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    bloom_pipeline_ = create_pipeline(device_, window_, "post/bloom", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     point_light_pipeline_ = create_pipeline(device_, window_, "point_light", false,
         nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, true);
     normal_pipeline_ = create_pipeline(device_, window_, "craft/normal", true,
@@ -188,9 +189,15 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       sprite_sampler_ = SDL_CreateGPUSampler(device_, &sampler);
       if (!sprite_sampler_)
         throw failure("SDL_CreateGPUSampler");
+      sampler.min_filter = SDL_GPU_FILTER_LINEAR;
+      sampler.mag_filter = SDL_GPU_FILTER_LINEAR;
+      post_sampler_ = SDL_CreateGPUSampler(device_, &sampler);
+      if (!post_sampler_) throw failure("SDL_CreateGPUSampler (post)");
     }
     textures_ = std::make_unique<TextureCache>(device_, resolver);
   } catch (...) {
+    if (post_sampler_) SDL_ReleaseGPUSampler(device_, post_sampler_);
+    if (bloom_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, bloom_pipeline_);
     if (sanitize_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, sanitize_pipeline_);
     if (post_copy_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_copy_pipeline_);
     if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
@@ -222,6 +229,10 @@ Renderer::~Renderer() {
     if (normal_texture_) SDL_ReleaseGPUTexture(device_, normal_texture_);
     if (scene_texture_) SDL_ReleaseGPUTexture(device_, scene_texture_);
     if (sanitized_texture_) SDL_ReleaseGPUTexture(device_, sanitized_texture_);
+    for (auto *texture : bloom_down_) if (texture) SDL_ReleaseGPUTexture(device_, texture);
+    for (auto *texture : bloom_up_) if (texture) SDL_ReleaseGPUTexture(device_, texture);
+    if (post_sampler_) SDL_ReleaseGPUSampler(device_, post_sampler_);
+    if (bloom_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, bloom_pipeline_);
     if (sanitize_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, sanitize_pipeline_);
     if (post_copy_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_copy_pipeline_);
     if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
@@ -358,6 +369,24 @@ void Renderer::present(const view::FrameDrawData &frame) {
       normal_texture_ = normal_replacement;
       scene_texture_ = scene_replacement;
       sanitized_texture_ = sanitized_replacement;
+      for (auto *&texture : bloom_down_) { if (texture) SDL_ReleaseGPUTexture(device_, texture); texture = nullptr; }
+      for (auto *&texture : bloom_up_) { if (texture) SDL_ReleaseGPUTexture(device_, texture); texture = nullptr; }
+      unsigned max_dimension = std::max(width >> 1, height >> 1);
+      bloom_count_ = 1;
+      while (max_dimension > 4 && bloom_count_ < bloom_down_.size()) { max_dimension >>= 1; ++bloom_count_; }
+      info.width = std::max(1u, width >> 1);
+      info.height = std::max(1u, height >> 1);
+      for (unsigned i = 0; i < bloom_count_; ++i) {
+        bloom_down_[i] = SDL_CreateGPUTexture(device_, &info);
+        bloom_up_[i] = SDL_CreateGPUTexture(device_, &info);
+        if (!bloom_down_[i] || !bloom_up_[i]) {
+          const auto error = failure("create bloom texture");
+          SDL_SubmitGPUCommandBuffer(commands);
+          throw error;
+        }
+        info.width = std::max(1u, info.width >> 1);
+        info.height = std::max(1u, info.height >> 1);
+      }
       light_width_ = width;
       light_height_ = height;
     }
@@ -497,6 +526,36 @@ void Renderer::present(const view::FrameDrawData &frame) {
     SDL_BindGPUFragmentSamplers(sanitize_pass, 0, &scene_binding, 1);
     SDL_DrawGPUPrimitives(sanitize_pass, 3, 1, 0, 0);
     SDL_EndGPURenderPass(sanitize_pass);
+    const float threshold = 0.87f; // linear scene brightness
+    const auto bloom_pass = [&](SDL_GPUTexture *output, SDL_GPUTexture *source, SDL_GPUTexture *low, float mode) {
+      SDL_GPUColorTargetInfo bloom_target{};
+      bloom_target.texture = output;
+      bloom_target.load_op = SDL_GPU_LOADOP_DONT_CARE;
+      bloom_target.store_op = SDL_GPU_STOREOP_STORE;
+      auto *bloom = SDL_BeginGPURenderPass(commands, &bloom_target, 1, nullptr);
+      if (!bloom) return false;
+      SDL_BindGPUGraphicsPipeline(bloom, bloom_pipeline_);
+      SDL_GPUTextureSamplerBinding inputs[]{{source, post_sampler_}, {low, post_sampler_}};
+      SDL_BindGPUFragmentSamplers(bloom, 0, inputs, 2);
+      const std::array<float, 4> params{mode, threshold, threshold * 0.5f, 0.05f + 0.9f * 0.41f};
+      SDL_PushGPUFragmentUniformData(commands, 0, params.data(), sizeof(params));
+      SDL_DrawGPUPrimitives(bloom, 3, 1, 0, 0);
+      SDL_EndGPURenderPass(bloom);
+      return true;
+    };
+    bool bloom_ok = bloom_pass(bloom_down_[0], sanitized_texture_, sanitized_texture_, 0);
+    for (unsigned i = 1; bloom_ok && i < bloom_count_; ++i)
+      bloom_ok = bloom_pass(bloom_down_[i], bloom_down_[i - 1], bloom_down_[i - 1], 1);
+    SDL_GPUTexture *bloom_result = bloom_down_[bloom_count_ - 1];
+    for (unsigned i = bloom_count_ - 1; bloom_ok && i > 0; --i) {
+      bloom_ok = bloom_pass(bloom_up_[i - 1], bloom_down_[i - 1], bloom_result, 2);
+      bloom_result = bloom_up_[i - 1];
+    }
+    if (!bloom_ok) {
+      const auto error = failure("begin bloom render pass");
+      SDL_SubmitGPUCommandBuffer(commands);
+      throw error;
+    }
     target.texture = swapchain;
     target.load_op = SDL_GPU_LOADOP_DONT_CARE;
     auto *post_pass = SDL_BeginGPURenderPass(commands, &target, 1, nullptr);
@@ -506,8 +565,8 @@ void Renderer::present(const view::FrameDrawData &frame) {
       throw error;
     }
     SDL_BindGPUGraphicsPipeline(post_pass, post_copy_pipeline_);
-    SDL_GPUTextureSamplerBinding sanitized_binding{sanitized_texture_, sprite_sampler_};
-    SDL_BindGPUFragmentSamplers(post_pass, 0, &sanitized_binding, 1);
+    SDL_GPUTextureSamplerBinding post_inputs[]{{sanitized_texture_, sprite_sampler_}, {bloom_result, post_sampler_}};
+    SDL_BindGPUFragmentSamplers(post_pass, 0, post_inputs, 2);
     SDL_DrawGPUPrimitives(post_pass, 3, 1, 0, 0);
     SDL_EndGPURenderPass(post_pass);
   }

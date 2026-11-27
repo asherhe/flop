@@ -45,6 +45,10 @@ NaN and positive infinity with zero. It does not test presentation or
 multi-pixel UV orientation. The shaders must be packaged for the selected
 backend.
 
+The probe checks that a dim patch produces no visible halo at a nearby control
+pixel and that an HDR patch does. It uses an odd-sized target and also exercises
+resize through the existing renderer checks; it does not establish Unity parity.
+
 On Windows, set `$env:SDL_GPU_DRIVER = 'direct3d12'` or `'vulkan'` before
 running the executable. On Linux, build with
 `cmake --build --preset linux-debug --target flop_renderer_probe` and run

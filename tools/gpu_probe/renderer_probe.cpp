@@ -86,6 +86,16 @@ int main() {
     {
       flop::render::Renderer renderer(window, flop::config::AssetResolver(assets));
       flop::view::FrameDrawData frame;
+      frame.camera.viewport_width = frame.camera.viewport_height = 9;
+      frame.particles.push_back({{2.5f, 2.5f}, 3.0f, {0.2f, 0.2f, 0.2f, 1}});
+      const auto dim_halo = renderer.readback_pixel(frame);
+      if (dim_halo[0] != 0 || dim_halo[1] != 0 || dim_halo[2] != 0)
+        throw std::runtime_error("dim particle unexpectedly produced bloom");
+      frame.particles[0].color = {16, 16, 16, 1};
+      const auto bright_halo = renderer.readback_pixel(frame);
+      if (bright_halo[0] <= dim_halo[0] || bright_halo[1] <= dim_halo[1] || bright_halo[2] <= dim_halo[2])
+        throw std::runtime_error("HDR particle did not produce bloom outside its bounds");
+      frame.particles.clear();
       frame.camera.viewport_width = frame.camera.viewport_height = 1;
       frame.particles.push_back({{0.5f, 0.5f}, 1.0f, hdr_red});
       const auto hdr = renderer.readback_scene(frame);

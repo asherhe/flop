@@ -1,8 +1,8 @@
 #pragma once
 
 #include <memory>
-#ifdef FLOP_RENDER_TESTING
 #include <array>
+#ifdef FLOP_RENDER_TESTING
 #include <cstdint>
 #endif
 #include "flop/render/material_recipe.hpp"
@@ -48,12 +48,17 @@ private:
   SDL_GPUGraphicsPipeline *normal_pipeline_{};
   SDL_GPUGraphicsPipeline *post_copy_pipeline_{};
   SDL_GPUGraphicsPipeline *sanitize_pipeline_{};
+  SDL_GPUGraphicsPipeline *bloom_pipeline_{};
   SDL_GPUTexture *light_texture_{};
   SDL_GPUTexture *normal_texture_{};
   SDL_GPUTexture *scene_texture_{};
   SDL_GPUTexture *sanitized_texture_{};
+  std::array<SDL_GPUTexture *, 6> bloom_down_{};
+  std::array<SDL_GPUTexture *, 6> bloom_up_{};
+  unsigned bloom_count_{};
   unsigned light_width_{}, light_height_{};
   SDL_GPUSampler *sprite_sampler_{};
+  SDL_GPUSampler *post_sampler_{};
   CraftSpriteBindings craft_bindings_{};
   CraftLitSpriteBindings lit_bindings_{};
   config::AssetResolver resolver_;
