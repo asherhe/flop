@@ -46,7 +46,7 @@ private:
   SDL_GPUGraphicsPipeline *particle_pipeline_{};
   SDL_GPUGraphicsPipeline *point_light_pipeline_{};
   SDL_GPUGraphicsPipeline *normal_pipeline_{};
-  SDL_GPUGraphicsPipeline *post_copy_pipeline_{};
+  SDL_GPUGraphicsPipeline *post_composite_pipeline_{};
   SDL_GPUGraphicsPipeline *sanitize_pipeline_{};
   SDL_GPUGraphicsPipeline *bloom_pipeline_{};
   SDL_GPUTexture *light_texture_{};

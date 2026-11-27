@@ -51,6 +51,14 @@ int lit_blended_expected(int srgb, double multiplier, int alpha) {
   const double v = std::clamp(linear * multiplier * alpha / 255.0, 0.0, 1.0);
   return static_cast<int>(std::lround(255 * (v <= .0031308 ? 12.92 * v : 1.055 * std::pow(v, 1.0 / 2.4) - .055)));
 }
+int filmic_expected(double value, double exposure) {
+  const auto curve = [](double x) {
+    return ((x * (0.15 * x + 0.10 * 0.50) + 0.20 * 0.02) /
+            (x * (0.15 * x + 0.50) + 0.20 * 0.30)) - 0.02 / 0.30;
+  };
+  const double linear = std::clamp(curve(value * std::exp2(exposure)) / curve(11.2), 0.0, 1.0);
+  return static_cast<int>(std::lround(255 * (linear <= .0031308 ? 12.92 * linear : 1.055 * std::pow(linear, 1.0 / 2.4) - .055)));
+}
 }
 
 int main() {
@@ -86,6 +94,29 @@ int main() {
     {
       flop::render::Renderer renderer(window, flop::config::AssetResolver(assets));
       flop::view::FrameDrawData frame;
+      frame.post_process.tonemapping = false;
+      frame.post_process.vignette_intensity = 0;
+      frame.camera.viewport_width = frame.camera.viewport_height = 1;
+      frame.particles.push_back({{0.5f, 0.5f}, 1.0f, {0.1f, 0.2f, 0.3f, 1}});
+      frame.post_process.tonemapping = true;
+      for (const float exposure : {0.0f, 1.0f}) {
+        frame.post_process.exposure_stops = exposure;
+        const auto mapped = renderer.readback_pixel(frame);
+        for (unsigned i = 0; i < 3; ++i)
+          if (std::abs(int(mapped[i]) - filmic_expected(frame.particles[0].color[i], exposure)) > 2)
+            throw std::runtime_error("filmic mapping or exposure mismatch");
+      }
+      frame.post_process.tonemapping = false;
+      frame.post_process.exposure_stops = 0;
+      frame.camera.viewport_width = frame.camera.viewport_height = 9;
+      frame.particles[0] = {{4.5f, 4.5f}, 9.0f, {0.2f, 0.2f, 0.2f, 1}};
+      const auto unvignetted = renderer.readback_pixel(frame);
+      frame.post_process.vignette_intensity = 0.308f;
+      const auto vignetted = renderer.readback_pixel(frame);
+      if (vignetted[0] >= unvignetted[0] || vignetted[3] != 255)
+        throw std::runtime_error("vignette corner mismatch");
+      frame.post_process.vignette_intensity = 0;
+      frame.particles.clear();
       frame.camera.viewport_width = frame.camera.viewport_height = 9;
       frame.particles.push_back({{2.5f, 2.5f}, 3.0f, {0.2f, 0.2f, 0.2f, 1}});
       const auto dim_halo = renderer.readback_pixel(frame);

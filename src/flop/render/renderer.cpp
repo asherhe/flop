@@ -162,7 +162,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     }
     pipeline_ = create_pipeline(device_, window_, "test_tri", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     particle_pipeline_ = create_pipeline(device_, window_, "particle", true, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
-    post_copy_pipeline_ = create_pipeline(device_, window_, "post/copy", false);
+    post_composite_pipeline_ = create_pipeline(device_, window_, "post/composite", false);
     sanitize_pipeline_ = create_pipeline(device_, window_, "post/sanitize", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     bloom_pipeline_ = create_pipeline(device_, window_, "post/bloom", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     point_light_pipeline_ = create_pipeline(device_, window_, "point_light", false,
@@ -199,7 +199,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     if (post_sampler_) SDL_ReleaseGPUSampler(device_, post_sampler_);
     if (bloom_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, bloom_pipeline_);
     if (sanitize_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, sanitize_pipeline_);
-    if (post_copy_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_copy_pipeline_);
+    if (post_composite_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_composite_pipeline_);
     if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
     if (sprite_sampler_)
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
@@ -234,7 +234,7 @@ Renderer::~Renderer() {
     if (post_sampler_) SDL_ReleaseGPUSampler(device_, post_sampler_);
     if (bloom_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, bloom_pipeline_);
     if (sanitize_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, sanitize_pipeline_);
-    if (post_copy_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_copy_pipeline_);
+    if (post_composite_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_composite_pipeline_);
     if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
     if (sprite_sampler_)
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
@@ -564,9 +564,22 @@ void Renderer::present(const view::FrameDrawData &frame) {
       SDL_SubmitGPUCommandBuffer(commands);
       throw error;
     }
-    SDL_BindGPUGraphicsPipeline(post_pass, post_copy_pipeline_);
+    SDL_BindGPUGraphicsPipeline(post_pass, post_composite_pipeline_);
     SDL_GPUTextureSamplerBinding post_inputs[]{{sanitized_texture_, sprite_sampler_}, {bloom_result, post_sampler_}};
     SDL_BindGPUFragmentSamplers(post_pass, 0, post_inputs, 2);
+    const auto &settings = frame.post_process;
+    const float exposure = std::isfinite(settings.exposure_stops)
+        ? std::clamp(settings.exposure_stops, -16.0f, 16.0f) : 0.0f;
+    const float white = std::isfinite(settings.white_point)
+        ? std::clamp(settings.white_point, 0.001f, 65504.0f) : 11.2f;
+    const float intensity = std::isfinite(settings.vignette_intensity)
+        ? std::clamp(settings.vignette_intensity, 0.0f, 1.0f) : 0.0f;
+    const float smoothness = std::isfinite(settings.vignette_smoothness)
+        ? std::clamp(settings.vignette_smoothness, 0.01f, 1.0f) : 0.454f;
+    const std::array<float, 8> display{
+        std::exp2(exposure), white, intensity, smoothness,
+        settings.tonemapping ? 1.0f : 0.0f, 0, 0, 0};
+    SDL_PushGPUFragmentUniformData(commands, 0, display.data(), sizeof(display));
     SDL_DrawGPUPrimitives(post_pass, 3, 1, 0, 0);
     SDL_EndGPURenderPass(post_pass);
   }

@@ -102,6 +102,7 @@ int App::run(int argc, char **argv) {
   views.flight.focus = scene.craft.empty() ? view::Focus{scene.body_visuals.front().name}
                                            : view::Focus{scene.craft.front()};
   view::ParticleScene particles;
+  view::PostProcessSettings global_post_process;
 
   int exit_code = 0;
   bool running = true;
@@ -158,7 +159,8 @@ int App::run(int argc, char **argv) {
     views.flight.update(
         frame.camera, logical_width, logical_height, pixel_width, pixel_height
     );
-    const auto draw_data = views.flight.build_frame({universe, scene.body_visuals, &particles});
+    auto draw_data = views.flight.build_frame({universe, scene.body_visuals, &particles});
+    draw_data.post_process = global_post_process;
     try {
       renderer->present(draw_data);
     } catch (const std::exception &error) {
