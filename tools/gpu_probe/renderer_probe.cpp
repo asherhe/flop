@@ -94,8 +94,32 @@ int main() {
     {
       flop::render::Renderer renderer(window, flop::config::AssetResolver(assets));
       flop::view::FrameDrawData frame;
+      frame.post_process.antialiasing = false;
       frame.post_process.tonemapping = false;
       frame.post_process.vignette_intensity = 0;
+      frame.camera.viewport_width = frame.camera.viewport_height = 1;
+      frame.particles.push_back({{0.5f, 0.5f}, 1.0f, {0.2f, 0.2f, 0.2f, 1}});
+      const auto flat_without_smaa = renderer.readback_pixel(frame);
+      frame.post_process.antialiasing = true;
+      const auto flat_with_smaa = renderer.readback_pixel(frame);
+      if (flat_without_smaa != flat_with_smaa)
+        throw std::runtime_error("SMAA changed a flat color");
+      frame.post_process.antialiasing = false;
+      frame.particles.clear();
+      frame.camera.viewport_width = frame.camera.viewport_height = 16;
+      frame.particles.push_back({{3.0f, 3.0f}, 6.0f, {0.3f, 0.3f, 0.3f, 1}, 0.5f});
+      bool smoothed_edge = false;
+      for (int i = 0; i < 12 && !smoothed_edge; ++i) {
+        frame.particles[0].center_pixels.x = 2.0f + i * 0.25f;
+        frame.post_process.antialiasing = false;
+        const auto sharp = renderer.readback_pixel(frame);
+        frame.post_process.antialiasing = true;
+        const auto smooth = renderer.readback_pixel(frame);
+        smoothed_edge = std::abs(int(sharp[0]) - int(smooth[0])) > 1;
+      }
+      if (!smoothed_edge) throw std::runtime_error("SMAA did not change a diagonal edge");
+      frame.post_process.antialiasing = false;
+      frame.particles.clear();
       frame.camera.viewport_width = frame.camera.viewport_height = 1;
       frame.particles.push_back({{0.5f, 0.5f}, 1.0f, {0.1f, 0.2f, 0.3f, 1}});
       frame.post_process.tonemapping = true;

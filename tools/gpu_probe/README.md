@@ -48,6 +48,7 @@ backend.
 The probe checks that a dim patch produces no visible halo at a nearby control
 pixel and that an HDR patch does. It uses an odd-sized target and also exercises
 resize through the existing renderer checks; it does not establish Unity parity.
+It also checks that SMAA preserves a flat color and changes a diagonal edge.
 
 On Windows, set `$env:SDL_GPU_DRIVER = 'direct3d12'` or `'vulkan'` before
 running the executable. On Linux, build with

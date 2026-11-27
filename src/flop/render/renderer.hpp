@@ -49,10 +49,16 @@ private:
   SDL_GPUGraphicsPipeline *post_composite_pipeline_{};
   SDL_GPUGraphicsPipeline *sanitize_pipeline_{};
   SDL_GPUGraphicsPipeline *bloom_pipeline_{};
+  SDL_GPUGraphicsPipeline *smaa_edge_pipeline_{};
+  SDL_GPUGraphicsPipeline *smaa_weights_pipeline_{};
+  SDL_GPUGraphicsPipeline *smaa_blend_pipeline_{};
   SDL_GPUTexture *light_texture_{};
   SDL_GPUTexture *normal_texture_{};
   SDL_GPUTexture *scene_texture_{};
   SDL_GPUTexture *sanitized_texture_{};
+  SDL_GPUTexture *smaa_edges_{};
+  SDL_GPUTexture *smaa_weights_{};
+  SDL_GPUTexture *smaa_output_{};
   std::array<SDL_GPUTexture *, 6> bloom_down_{};
   std::array<SDL_GPUTexture *, 6> bloom_up_{};
   unsigned bloom_count_{};

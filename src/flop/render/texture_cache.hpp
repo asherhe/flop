@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <unordered_map>
 
@@ -23,8 +24,11 @@ public:
 
   SDL_GPUTexture *get(const std::string &address, TextureColorSpace color_space);
   SDL_GPUTexture *get_default(DefaultTexture kind);
+  SDL_GPUTexture *get_embedded(const std::string &name, const unsigned char *bytes, std::size_t size);
 
 private:
+  SDL_GPUTexture *load_png(const std::string &key, const std::string &address,
+                           const unsigned char *bytes, std::size_t size, bool srgb);
   SDL_GPUDevice *device_;
   config::AssetResolver resolver_;
   std::unordered_map<std::string, SDL_GPUTexture *> textures_;

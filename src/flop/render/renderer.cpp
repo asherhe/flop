@@ -16,6 +16,7 @@
 #include "flop/view/frame.hpp"
 
 #include "embedded.hpp"
+#include "smaa_lookup.hpp"
 
 namespace flop::render {
 namespace {
@@ -165,6 +166,9 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     post_composite_pipeline_ = create_pipeline(device_, window_, "post/composite", false);
     sanitize_pipeline_ = create_pipeline(device_, window_, "post/sanitize", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     bloom_pipeline_ = create_pipeline(device_, window_, "post/bloom", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    smaa_edge_pipeline_ = create_pipeline(device_, window_, "post/smaa/edge", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    smaa_weights_pipeline_ = create_pipeline(device_, window_, "post/smaa/weights", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    smaa_blend_pipeline_ = create_pipeline(device_, window_, "post/smaa/blend", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     point_light_pipeline_ = create_pipeline(device_, window_, "point_light", false,
         nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, true);
     normal_pipeline_ = create_pipeline(device_, window_, "craft/normal", true,
@@ -196,6 +200,9 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     }
     textures_ = std::make_unique<TextureCache>(device_, resolver);
   } catch (...) {
+    if (smaa_edge_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, smaa_edge_pipeline_);
+    if (smaa_weights_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, smaa_weights_pipeline_);
+    if (smaa_blend_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, smaa_blend_pipeline_);
     if (post_sampler_) SDL_ReleaseGPUSampler(device_, post_sampler_);
     if (bloom_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, bloom_pipeline_);
     if (sanitize_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, sanitize_pipeline_);
@@ -229,6 +236,12 @@ Renderer::~Renderer() {
     if (normal_texture_) SDL_ReleaseGPUTexture(device_, normal_texture_);
     if (scene_texture_) SDL_ReleaseGPUTexture(device_, scene_texture_);
     if (sanitized_texture_) SDL_ReleaseGPUTexture(device_, sanitized_texture_);
+    if (smaa_edges_) SDL_ReleaseGPUTexture(device_, smaa_edges_);
+    if (smaa_weights_) SDL_ReleaseGPUTexture(device_, smaa_weights_);
+    if (smaa_output_) SDL_ReleaseGPUTexture(device_, smaa_output_);
+    if (smaa_edge_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, smaa_edge_pipeline_);
+    if (smaa_weights_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, smaa_weights_pipeline_);
+    if (smaa_blend_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, smaa_blend_pipeline_);
     for (auto *texture : bloom_down_) if (texture) SDL_ReleaseGPUTexture(device_, texture);
     for (auto *texture : bloom_up_) if (texture) SDL_ReleaseGPUTexture(device_, texture);
     if (post_sampler_) SDL_ReleaseGPUSampler(device_, post_sampler_);
@@ -253,6 +266,8 @@ Renderer::~Renderer() {
 }
 
 void Renderer::present(const view::FrameDrawData &frame) {
+  auto *smaa_area = textures_->get_embedded("smaa area", smaa::area, sizeof(smaa::area));
+  auto *smaa_search = textures_->get_embedded("smaa search", smaa::search, sizeof(smaa::search));
   struct SpriteTextures { SDL_GPUTexture *albedo{}, *normal{}, *emission{}; bool lit{}; };
   std::vector<SpriteTextures> sprite_textures;
   sprite_textures.reserve(frame.sprites.size());
@@ -369,6 +384,15 @@ void Renderer::present(const view::FrameDrawData &frame) {
       normal_texture_ = normal_replacement;
       scene_texture_ = scene_replacement;
       sanitized_texture_ = sanitized_replacement;
+      for (auto **texture : {&smaa_edges_, &smaa_weights_, &smaa_output_}) {
+        if (*texture) SDL_ReleaseGPUTexture(device_, *texture);
+        *texture = SDL_CreateGPUTexture(device_, &info);
+        if (!*texture) {
+          const auto error = failure("create SMAA texture");
+          SDL_SubmitGPUCommandBuffer(commands);
+          throw error;
+        }
+      }
       for (auto *&texture : bloom_down_) { if (texture) SDL_ReleaseGPUTexture(device_, texture); texture = nullptr; }
       for (auto *&texture : bloom_up_) { if (texture) SDL_ReleaseGPUTexture(device_, texture); texture = nullptr; }
       unsigned max_dimension = std::max(width >> 1, height >> 1);
@@ -526,6 +550,36 @@ void Renderer::present(const view::FrameDrawData &frame) {
     SDL_BindGPUFragmentSamplers(sanitize_pass, 0, &scene_binding, 1);
     SDL_DrawGPUPrimitives(sanitize_pass, 3, 1, 0, 0);
     SDL_EndGPURenderPass(sanitize_pass);
+    const std::array<float, 4> metrics{1.0f / width, 1.0f / height, float(width), float(height)};
+    const auto smaa_pass = [&](SDL_GPUTexture *output, SDL_GPUGraphicsPipeline *pipeline,
+                               SDL_GPUTextureSamplerBinding *bindings, unsigned count) {
+      SDL_GPUColorTargetInfo smaa_target{};
+      smaa_target.texture = output;
+      smaa_target.load_op = SDL_GPU_LOADOP_CLEAR;
+      smaa_target.store_op = SDL_GPU_STOREOP_STORE;
+      auto *pass = SDL_BeginGPURenderPass(commands, &smaa_target, 1, nullptr);
+      if (!pass) return false;
+      SDL_BindGPUGraphicsPipeline(pass, pipeline);
+      SDL_BindGPUFragmentSamplers(pass, 0, bindings, count);
+      SDL_PushGPUFragmentUniformData(commands, 0, metrics.data(), sizeof(metrics));
+      SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+      SDL_EndGPURenderPass(pass);
+      return true;
+    };
+    SDL_GPUTexture *post_source = sanitized_texture_;
+    if (frame.post_process.antialiasing) {
+      SDL_GPUTextureSamplerBinding edge_inputs[]{{sanitized_texture_, sprite_sampler_}};
+      SDL_GPUTextureSamplerBinding weights_inputs[]{{smaa_edges_, post_sampler_}, {smaa_area, post_sampler_}, {smaa_search, post_sampler_}};
+      SDL_GPUTextureSamplerBinding blend_inputs[]{{sanitized_texture_, post_sampler_}, {smaa_weights_, post_sampler_}};
+      if (!smaa_pass(smaa_edges_, smaa_edge_pipeline_, edge_inputs, 1) ||
+          !smaa_pass(smaa_weights_, smaa_weights_pipeline_, weights_inputs, 3) ||
+          !smaa_pass(smaa_output_, smaa_blend_pipeline_, blend_inputs, 2)) {
+        const auto error = failure("begin SMAA render pass");
+        SDL_SubmitGPUCommandBuffer(commands);
+        throw error;
+      }
+      post_source = smaa_output_;
+    }
     const float threshold = 0.87f; // linear scene brightness
     const auto bloom_pass = [&](SDL_GPUTexture *output, SDL_GPUTexture *source, SDL_GPUTexture *low, float mode) {
       SDL_GPUColorTargetInfo bloom_target{};
@@ -543,7 +597,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
       SDL_EndGPURenderPass(bloom);
       return true;
     };
-    bool bloom_ok = bloom_pass(bloom_down_[0], sanitized_texture_, sanitized_texture_, 0);
+    bool bloom_ok = bloom_pass(bloom_down_[0], post_source, post_source, 0);
     for (unsigned i = 1; bloom_ok && i < bloom_count_; ++i)
       bloom_ok = bloom_pass(bloom_down_[i], bloom_down_[i - 1], bloom_down_[i - 1], 1);
     SDL_GPUTexture *bloom_result = bloom_down_[bloom_count_ - 1];
@@ -565,7 +619,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
       throw error;
     }
     SDL_BindGPUGraphicsPipeline(post_pass, post_composite_pipeline_);
-    SDL_GPUTextureSamplerBinding post_inputs[]{{sanitized_texture_, sprite_sampler_}, {bloom_result, post_sampler_}};
+    SDL_GPUTextureSamplerBinding post_inputs[]{{post_source, sprite_sampler_}, {bloom_result, post_sampler_}};
     SDL_BindGPUFragmentSamplers(post_pass, 0, post_inputs, 2);
     const auto &settings = frame.post_process;
     const float exposure = std::isfinite(settings.exposure_stops)

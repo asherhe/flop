@@ -101,6 +101,7 @@ struct ParticleDraw {
   float angle_rad{};
 };
 struct PostProcessSettings {
+  bool antialiasing{true};
   bool tonemapping{true};
   float exposure_stops{0.0f}; // exposure adjustment in stops
   float white_point{11.2f}; // linear scene value mapped to display white

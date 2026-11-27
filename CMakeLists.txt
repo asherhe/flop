@@ -132,6 +132,15 @@ if(FLOP_BUILD_GAME)
     add_dependencies(flop flop_assets)
 
     include(cmake/shaders.cmake)
+    set(smaa_header "${shader_dir}/smaa_lookup.hpp")
+    add_custom_command(OUTPUT "${smaa_header}"
+        COMMAND "${CMAKE_COMMAND}" "-DOUTPUT=${smaa_header}"
+            "-DINPUT_DIR=${CMAKE_CURRENT_SOURCE_DIR}/src/flop/render/resources/smaa"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_smaa.cmake"
+        DEPENDS src/flop/render/resources/smaa/area.png
+            src/flop/render/resources/smaa/search.png cmake/embed_smaa.cmake VERBATIM)
+    add_custom_target(flop_smaa_lookup DEPENDS "${smaa_header}")
+    add_dependencies(flop flop_smaa_lookup)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
     flop_add_shader(ID craft/sprite SOURCE craft/sprite.hlsl)
     flop_add_shader(ID craft/lit_sprite SOURCE craft/lit_sprite.hlsl)
@@ -139,6 +148,9 @@ if(FLOP_BUILD_GAME)
     flop_add_shader(ID post/composite SOURCE post/composite.hlsl)
     flop_add_shader(ID post/sanitize SOURCE post/sanitize.hlsl)
     flop_add_shader(ID post/bloom SOURCE post/bloom.hlsl)
+    flop_add_shader(ID post/smaa/edge SOURCE post/smaa/edge.hlsl)
+    flop_add_shader(ID post/smaa/weights SOURCE post/smaa/weights.hlsl)
+    flop_add_shader(ID post/smaa/blend SOURCE post/smaa/blend.hlsl)
     flop_add_shader(ID point_light SOURCE point_light.hlsl)
     flop_add_shader(ID craft/normal SOURCE craft/normal.hlsl)
     flop_embed_shaders(flop)
