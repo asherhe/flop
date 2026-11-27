@@ -12,6 +12,7 @@
 #include "flop/config/asset_path.hpp"
 #include "flop/render/renderer.hpp"
 #include "flop/view/frame.hpp"
+#include "post_process_fixtures.hpp"
 
 namespace {
 struct TempDirectory {
@@ -85,6 +86,11 @@ int main() {
       flop::render::Renderer renderer(window, flop::config::AssetResolver(assets));
       flop::view::FrameDrawData frame;
       frame.camera.viewport_width = frame.camera.viewport_height = 1;
+      frame.particles.push_back({{0.5f, 0.5f}, 1.0f, hdr_red});
+      const auto hdr = renderer.readback_scene(frame);
+      if (hdr != hdr_red_half)
+        throw std::runtime_error("scene target did not retain HDR particle color");
+      frame.particles.clear();
       frame.particles.push_back({{0.5f, 0.5f}, 1.0f, {1, 0, 0, 0.5f}});
       const auto particle_pixel = renderer.readback_pixel(frame);
       if (std::abs(int(particle_pixel[0]) - 188) > 3 || particle_pixel[1] > 2 || particle_pixel[2] > 2)

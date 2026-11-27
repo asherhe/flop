@@ -160,8 +160,9 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
         )) {
       throw failure("SDL_SetGPUSwapchainParameters (linear SDR)");
     }
-    pipeline_ = create_pipeline(device_, window_, "test_tri", false);
-    particle_pipeline_ = create_pipeline(device_, window_, "particle", true);
+    pipeline_ = create_pipeline(device_, window_, "test_tri", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    particle_pipeline_ = create_pipeline(device_, window_, "particle", true, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    post_copy_pipeline_ = create_pipeline(device_, window_, "post_copy", false);
     point_light_pipeline_ = create_pipeline(device_, window_, "point_light", false,
         nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, true);
     normal_pipeline_ = create_pipeline(device_, window_, "craft/normal", true,
@@ -172,7 +173,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
         throw std::runtime_error("assets/shared/shaders/craft_sprite.yaml: unexpected shader ID");
       const auto recipe = loaded_recipe.view();
       try {
-        craft_pipeline_ = create_pipeline(device_, window_, loaded_recipe.shader.c_str(), true, &craft_bindings_, &recipe);
+        craft_pipeline_ = create_pipeline(device_, window_, loaded_recipe.shader.c_str(), true, &craft_bindings_, &recipe, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
       } catch (const std::exception &error) {
         throw std::runtime_error(std::string("assets/shared/shaders/craft_sprite.yaml: ") + error.what());
       }
@@ -189,6 +190,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
     }
     textures_ = std::make_unique<TextureCache>(device_, resolver);
   } catch (...) {
+    if (post_copy_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_copy_pipeline_);
     if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
     if (sprite_sampler_)
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
@@ -216,6 +218,8 @@ Renderer::~Renderer() {
     if (light_texture_)
       SDL_ReleaseGPUTexture(device_, light_texture_);
     if (normal_texture_) SDL_ReleaseGPUTexture(device_, normal_texture_);
+    if (scene_texture_) SDL_ReleaseGPUTexture(device_, scene_texture_);
+    if (post_copy_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, post_copy_pipeline_);
     if (normal_pipeline_) SDL_ReleaseGPUGraphicsPipeline(device_, normal_pipeline_);
     if (sprite_sampler_)
       SDL_ReleaseGPUSampler(device_, sprite_sampler_);
@@ -245,7 +249,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (lit && !lit_pipeline_) {
       const auto loaded = load_craft_lit_sprite_recipe(resolver_);
       const auto recipe = loaded.view();
-      lit_pipeline_ = create_pipeline(device_, window_, "craft/lit_sprite", true, nullptr, &recipe, &lit_bindings_);
+      lit_pipeline_ = create_pipeline(device_, window_, "craft/lit_sprite", true, nullptr, &recipe, &lit_bindings_, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     }
     SpriteTextures maps{};
     maps.lit = lit;
@@ -296,7 +300,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (!capture_texture) { SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture texture"); }
     SDL_GPUTransferBufferCreateInfo transfer{};
     transfer.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
-    transfer.size = capture_normal_ ? 8 : 4;
+    transfer.size = (capture_normal_ || capture_scene_) ? 8 : 4;
     download = SDL_CreateGPUTransferBuffer(device_, &transfer);
     if (!download) { SDL_ReleaseGPUTexture(device_, capture_texture); SDL_SubmitGPUCommandBuffer(commands); throw failure("create capture buffer"); }
     swapchain = capture_texture;
@@ -325,10 +329,20 @@ void Renderer::present(const view::FrameDrawData &frame) {
         SDL_SubmitGPUCommandBuffer(commands);
         throw error;
       }
+      auto *scene_replacement = SDL_CreateGPUTexture(device_, &info);
+      if (!scene_replacement) {
+        const auto error = failure("create scene texture");
+        SDL_ReleaseGPUTexture(device_, normal_replacement);
+        SDL_ReleaseGPUTexture(device_, replacement);
+        SDL_SubmitGPUCommandBuffer(commands);
+        throw error;
+      }
       if (light_texture_) SDL_ReleaseGPUTexture(device_, light_texture_);
       if (normal_texture_) SDL_ReleaseGPUTexture(device_, normal_texture_);
+      if (scene_texture_) SDL_ReleaseGPUTexture(device_, scene_texture_);
       light_texture_ = replacement;
       normal_texture_ = normal_replacement;
+      scene_texture_ = scene_replacement;
       light_width_ = width;
       light_height_ = height;
     }
@@ -391,7 +405,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     }
     SDL_EndGPURenderPass(light_pass);
     SDL_GPUColorTargetInfo target{};
-    target.texture = swapchain;
+    target.texture = scene_texture_;
     target.clear_color = SDL_FColor{0.0f, 0.0f, 0.0f, 1.0f};
     target.load_op = SDL_GPU_LOADOP_CLEAR;
     target.store_op = SDL_GPU_STOREOP_STORE;
@@ -455,13 +469,26 @@ void Renderer::present(const view::FrameDrawData &frame) {
       SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
     }
     SDL_EndGPURenderPass(pass);
+    target.texture = swapchain;
+    target.load_op = SDL_GPU_LOADOP_DONT_CARE;
+    auto *post_pass = SDL_BeginGPURenderPass(commands, &target, 1, nullptr);
+    if (!post_pass) {
+      const auto error = failure("begin post-process render pass");
+      SDL_SubmitGPUCommandBuffer(commands);
+      throw error;
+    }
+    SDL_BindGPUGraphicsPipeline(post_pass, post_copy_pipeline_);
+    SDL_GPUTextureSamplerBinding scene_binding{scene_texture_, sprite_sampler_};
+    SDL_BindGPUFragmentSamplers(post_pass, 0, &scene_binding, 1);
+    SDL_DrawGPUPrimitives(post_pass, 3, 1, 0, 0);
+    SDL_EndGPURenderPass(post_pass);
   }
 #ifdef FLOP_RENDER_TESTING
   if (capture_) {
     auto *copy = SDL_BeginGPUCopyPass(commands);
     if (!copy) throw failure("begin capture copy");
     SDL_GPUTextureRegion region{};
-    region.texture = capture_normal_ ? normal_texture_ : capture_texture;
+    region.texture = capture_normal_ ? normal_texture_ : (capture_scene_ ? scene_texture_ : capture_texture);
     region.w = region.h = region.d = 1;
     SDL_GPUTextureTransferInfo destination{};
     destination.transfer_buffer = download;
@@ -471,7 +498,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
     if (!fence || !SDL_WaitForGPUFences(device_, true, &fence, 1)) throw failure("capture submission");
     const auto *pixels = static_cast<const std::uint8_t *>(SDL_MapGPUTransferBuffer(device_, download, false));
     if (!pixels) throw failure("map capture");
-    if (capture_normal_) {
+    if (capture_normal_ || capture_scene_) {
       std::memcpy(captured_normal_.data(), pixels, 8);
     } else {
       const auto format = SDL_GetGPUSwapchainTextureFormat(device_, window_);
@@ -502,6 +529,14 @@ std::array<std::uint16_t, 4> Renderer::readback_normal(const view::FrameDrawData
   try { present(frame); } catch (...) { capture_ = false; capture_normal_ = false; throw; }
   capture_ = false;
   capture_normal_ = false;
+  return captured_normal_;
+}
+std::array<std::uint16_t, 4> Renderer::readback_scene(const view::FrameDrawData &frame) {
+  capture_ = true;
+  capture_scene_ = true;
+  try { present(frame); } catch (...) { capture_ = false; capture_scene_ = false; throw; }
+  capture_ = false;
+  capture_scene_ = false;
   return captured_normal_;
 }
 #endif

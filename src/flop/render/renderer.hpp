@@ -33,6 +33,7 @@ public:
 #ifdef FLOP_RENDER_TESTING
   std::array<std::uint8_t, 4> readback_pixel(const view::FrameDrawData &frame);
   std::array<std::uint16_t, 4> readback_normal(const view::FrameDrawData &frame);
+  std::array<std::uint16_t, 4> readback_scene(const view::FrameDrawData &frame);
 #endif
 
 private:
@@ -44,8 +45,10 @@ private:
   SDL_GPUGraphicsPipeline *particle_pipeline_{};
   SDL_GPUGraphicsPipeline *point_light_pipeline_{};
   SDL_GPUGraphicsPipeline *normal_pipeline_{};
+  SDL_GPUGraphicsPipeline *post_copy_pipeline_{};
   SDL_GPUTexture *light_texture_{};
   SDL_GPUTexture *normal_texture_{};
+  SDL_GPUTexture *scene_texture_{};
   unsigned light_width_{}, light_height_{};
   SDL_GPUSampler *sprite_sampler_{};
   CraftSpriteBindings craft_bindings_{};
@@ -55,6 +58,7 @@ private:
 #ifdef FLOP_RENDER_TESTING
   bool capture_{};
   bool capture_normal_{};
+  bool capture_scene_{};
   std::array<std::uint8_t, 4> captured_{};
   std::array<std::uint16_t, 4> captured_normal_{};
 #endif

@@ -38,7 +38,9 @@ falloff, outside-radius, additive overlap above one, sprite alpha, unaffected
 unlit sprites and particles, clearing, and target resize. Color comparisons
 use a tolerance of up to three byte values. It also checks the source context
 in an invalid-PNG error. The offscreen capture uses the selected swapchain
-format and normal renderer draw code; it does not test presentation or
+format and normal renderer draw code. It also reads a floating-point scene pixel
+and verifies a red value of 2 survives before the identity display pass. It does
+not test presentation or
 multi-pixel UV orientation. The shaders must be packaged for the selected
 backend.
 
