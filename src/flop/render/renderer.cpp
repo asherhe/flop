@@ -15,6 +15,7 @@
 #include "flop/render/texture_cache.hpp"
 #include "flop/view/frame.hpp"
 
+#include "SDL3/SDL_gpu.h"
 #include "embedded.hpp"
 #include "smaa_lookup.hpp"
 
@@ -105,7 +106,7 @@ SDL_GPUGraphicsPipeline *create_pipeline(
   SDL_GPUGraphicsPipelineCreateInfo pipeline_info{};
   pipeline_info.vertex_shader = vertex;
   pipeline_info.fragment_shader = fragment;
-  pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+  pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP;
   pipeline_info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
   pipeline_info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
   pipeline_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
@@ -441,7 +442,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
         SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
         SDL_GPUTextureSamplerBinding bindings[]{{maps.albedo, sprite_sampler_}, {maps.normal, sprite_sampler_}};
         SDL_BindGPUFragmentSamplers(normal_pass, 0, bindings, 2);
-        SDL_DrawGPUPrimitives(normal_pass, 6, 1, 0, 0);
+        SDL_DrawGPUPrimitives(normal_pass, 4, 1, 0, 0);
       }
     }
     SDL_EndGPURenderPass(normal_pass);
@@ -468,7 +469,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
             {static_cast<float>(width), static_cast<float>(height), light.falloff, light.z_offset_pixels},
             {light.color[0], light.color[1], light.color[2], 0}};
         SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
-        SDL_DrawGPUPrimitives(light_pass, 6, 1, 0, 0);
+        SDL_DrawGPUPrimitives(light_pass, 4, 1, 0, 0);
       }
     }
     SDL_EndGPURenderPass(light_pass);
@@ -498,7 +499,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
             particle.color
         };
         SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
-        SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
+        SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
       }
       for (std::size_t i = 0; i < frame.sprites.size(); ++i) {
         const auto &maps = sprite_textures[i];
@@ -531,7 +532,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
           const Lighting light{sun.direction, sun.color, shine.direction_and_spread, shine.color};
           SDL_PushGPUFragmentUniformData(commands, lit_bindings_.light_uniform_slot, &light, sizeof(light));
         }
-        SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
+        SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
       }
     } else if (!craft_pipeline_) {
       SDL_BindGPUGraphicsPipeline(pass, pipeline_);

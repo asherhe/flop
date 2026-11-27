@@ -1,4 +1,4 @@
-#include "sprite_geometry.hlsli"
+#include "../quad_geometry.hlsli"
 cbuffer NormalGeometry : register(b0, space1) {
   float4 origin_viewport;
   float4 xy_axis;
@@ -18,7 +18,7 @@ struct VertexOutput {
 
 VertexOutput vertex(uint id : SV_VertexID) {
   VertexOutput result;
-  project_sprite_vertex(id, origin_viewport, xy_axis, result.position, result.uv);
+  project_quad_vertex(id, origin_viewport, xy_axis, result.position, result.uv);
   result.rotation = rotation.xy;
   return result;
 }

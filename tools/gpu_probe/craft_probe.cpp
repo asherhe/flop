@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
     SDL_GPUGraphicsPipelineCreateInfo pipeline_info{};
     pipeline_info.vertex_shader = vertex;
     pipeline_info.fragment_shader = fragment;
-    pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+    pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP;
     pipeline_info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
     pipeline_info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
     pipeline_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
     SDL_BindGPUGraphicsPipeline(pass, pipeline);
     SDL_GPUTextureSamplerBinding binding{texture, sampler};
     SDL_BindGPUFragmentSamplers(pass, 0, &binding, 1);
-    SDL_DrawGPUPrimitives(pass, 6, 1, 0, 0);
+    SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
     SDL_EndGPURenderPass(pass);
     copy = SDL_BeginGPUCopyPass(commands);
     check(copy != nullptr, "begin download pass");

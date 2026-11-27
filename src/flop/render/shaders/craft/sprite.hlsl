@@ -1,3 +1,5 @@
+#include "../quad_geometry.hlsli"
+
 // draw a unit quad through a camera-relative transform in drawable pixels
 cbuffer SpriteGeometry : register(b0, space1) {
   float4 origin_viewport; // origin x/y, viewport width/height
@@ -13,15 +15,8 @@ struct VertexOutput {
 };
 
 VertexOutput vertex(uint id : SV_VertexID) {
-  const float2 corners[6] = {
-      float2(0, 0), float2(1, 0), float2(1, 1),
-      float2(0, 0), float2(1, 1), float2(0, 1)};
-  float2 corner = corners[id];
-  float2 pixel = origin_viewport.xy + corner.x * xy_axis.xy + corner.y * xy_axis.zw;
   VertexOutput result;
-  result.position = float4(pixel.x / origin_viewport.z * 2.0 - 1.0,
-                           1.0 - pixel.y / origin_viewport.w * 2.0, 0.0, 1.0);
-  result.uv = float2(corner.x, 1.0 - corner.y);
+  project_quad_vertex(id, origin_viewport, xy_axis, result.position, result.uv);
   return result;
 }
 

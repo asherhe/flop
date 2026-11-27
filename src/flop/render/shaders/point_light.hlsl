@@ -1,3 +1,5 @@
+#include "quad_geometry.hlsli"
+
 // screen-space point light bounds and parameters, in drawable pixels
 cbuffer LightGeometry : register(b0, space1) {
   float4 center_radii; // center xy, inner radius, outer radius
@@ -17,13 +19,15 @@ struct VertexOutput {
 };
 
 VertexOutput vertex(uint id : SV_VertexID) {
-  const float2 corners[6] = {
-      float2(-1, -1), float2(1, -1), float2(1, 1),
-      float2(-1, -1), float2(1, 1), float2(-1, 1)};
-  float2 pixel = center_radii.xy + corners[id] * center_radii.w;
+
+  float r = center_radii.w;
+  float4 origin_viewport = float4(center_radii.xy - r, viewport_falloff.xy);
+  float4 xy_axis = float4(2.0 * r, 0.0, 0.0, 2.0 * r);
+  float2 unused_uv;
+
   VertexOutput result;
-  result.position = float4(pixel.x / viewport_falloff.x * 2.0 - 1.0,
-                           1.0 - pixel.y / viewport_falloff.y * 2.0, 0.0, 1.0);
+  project_quad_vertex(id, origin_viewport, xy_axis, result.position, unused_uv);
+
   result.center_radii = center_radii;
   result.falloff = viewport_falloff.z;
   result.color = light_color.rgb;
