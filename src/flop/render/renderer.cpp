@@ -154,7 +154,7 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "fragment", "dxil"))
     formats |= SDL_GPU_SHADERFORMAT_DXIL;
   if (formats == SDL_GPU_SHADERFORMAT_INVALID) {
-    throw std::runtime_error("craft/sprite: no complete packaged shader format; rebuild with shader reflection enabled");
+    throw std::runtime_error("shader:craft/sprite: no complete packaged shader format; rebuild with shader reflection enabled");
   }
   device_ = SDL_CreateGPUDevice(formats, true, nullptr);
   if (!device_) {
@@ -179,16 +179,16 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
         )) {
       throw failure("SDL_SetGPUSwapchainParameters (linear SDR)");
     }
-    particle_pipeline_ = create_pipeline(device_, window_, "particle", true, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
-    post_composite_pipeline_ = create_pipeline(device_, window_, "post/composite", false);
-    sanitize_pipeline_ = create_pipeline(device_, window_, "post/sanitize", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
-    bloom_pipeline_ = create_pipeline(device_, window_, "post/bloom", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
-    smaa_edge_pipeline_ = create_pipeline(device_, window_, "post/smaa/edge", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
-    smaa_weights_pipeline_ = create_pipeline(device_, window_, "post/smaa/weights", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
-    smaa_blend_pipeline_ = create_pipeline(device_, window_, "post/smaa/blend", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
-    point_light_pipeline_ = create_pipeline(device_, window_, "point_light", false,
+    particle_pipeline_ = create_pipeline(device_, window_, "shader:particle", true, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    post_composite_pipeline_ = create_pipeline(device_, window_, "shader:post/composite", false);
+    sanitize_pipeline_ = create_pipeline(device_, window_, "shader:post/sanitize", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    bloom_pipeline_ = create_pipeline(device_, window_, "shader:post/bloom", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    smaa_edge_pipeline_ = create_pipeline(device_, window_, "shader:post/smaa/edge", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    smaa_weights_pipeline_ = create_pipeline(device_, window_, "shader:post/smaa/weights", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    smaa_blend_pipeline_ = create_pipeline(device_, window_, "shader:post/smaa/blend", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+    point_light_pipeline_ = create_pipeline(device_, window_, "shader:point_light", false,
         nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, true);
-    normal_pipeline_ = create_pipeline(device_, window_, "craft/normal", true,
+    normal_pipeline_ = create_pipeline(device_, window_, "shader:craft/normal", true,
         nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     {
       const auto loaded_recipe = load_craft_sprite_recipe(resolver);
@@ -287,13 +287,13 @@ void Renderer::present(const view::FrameDrawData &frame) {
   sprite_textures.reserve(frame.sprites.size());
   for (const auto &sprite : frame.sprites) {
     const auto &material = sprite.visual.material;
-    const bool lit = material.shader == "craft/lit_sprite";
+    const bool lit = material.shader == "shader:craft/lit_sprite";
     if (!lit && material.shader != craft_sprite_recipe.shader)
       throw std::runtime_error("unsupported sprite shader '" + sprite.visual.material.shader + "'");
     if (lit && !lit_pipeline_) {
       const auto loaded = load_craft_lit_sprite_recipe(resolver_);
       const auto recipe = loaded.view();
-      lit_pipeline_ = create_pipeline(device_, window_, "craft/lit_sprite", true, nullptr, &recipe, &lit_bindings_, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
+      lit_pipeline_ = create_pipeline(device_, window_, "shader:craft/lit_sprite", true, nullptr, &recipe, &lit_bindings_, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     }
     SpriteTextures maps{};
     maps.lit = lit;

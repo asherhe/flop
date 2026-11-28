@@ -288,7 +288,7 @@ CraftSpriteBindings resolve_craft_sprite_bindings(
 CraftLitSpriteBindings resolve_craft_lit_sprite_bindings(
     const MaterialRecipe &recipe, const shaders::Entry &vertex, const shaders::Entry &fragment
 ) {
-  if (recipe.shader != "craft/lit_sprite")
+  if (recipe.shader != "shader:craft/lit_sprite")
     throw std::runtime_error("unexpected lit sprite shader");
   const auto inputs = resolve_inputs(recipe, vertex, fragment, true);
   return {

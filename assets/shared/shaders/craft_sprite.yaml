@@ -1,4 +1,4 @@
-shader: craft/sprite
+shader: shader:craft/sprite
 properties:
   albedo:
     stage: fragment

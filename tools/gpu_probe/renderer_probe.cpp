@@ -67,12 +67,12 @@ int main() {
     const auto assets = temp.path / "assets";
     std::filesystem::create_directories(assets / "shared" / "shaders");
     { std::ofstream out(assets / "shared" / "shaders" / "craft_sprite.yaml");
-      out << "shader: craft/sprite\nproperties:\n"
+      out << "shader: shader:craft/sprite\nproperties:\n"
              "  albedo: {stage: fragment, type: texture_2d}\n"
              "  origin_viewport: {stage: vertex, type: float4, auto: sprite.projected_origin_viewport}\n"
              "  xy_axis: {stage: vertex, type: float4, auto: sprite.projected_xy_axis}\n"; }
     { std::ofstream out(assets / "shared" / "shaders" / "craft_lit_sprite.yaml");
-      out << "shader: craft/lit_sprite\nproperties:\n"
+      out << "shader: shader:craft/lit_sprite\nproperties:\n"
              "  albedo: {stage: fragment, type: texture_2d}\n"
              "  normal_map: {stage: fragment, type: texture_2d}\n"
              "  emission_map: {stage: fragment, type: texture_2d}\n"
@@ -184,7 +184,7 @@ int main() {
       if (rotated[0] < 250) throw std::runtime_error("rotated particle should cover control pixel");
       frame.particles.clear();
       flop::view::SpriteDraw sprite{};
-      sprite.visual.material.shader = "craft/sprite";
+      sprite.visual.material.shader = "shader:craft/sprite";
       sprite.visual.sprite_source.address = "assets/test_part.yaml";
       sprite.visual.sprite_source.key = "plugins.SpritePlugin.sprite";
       sprite.corners_pixels = {{{0, 1}, {1, 1}, {1, 0}, {0, 0}}};
@@ -204,7 +204,7 @@ int main() {
           std::abs(int(ordered[2]) - 40) > 2)
         throw std::runtime_error("craft sprite should draw over particles");
       frame.particles.clear();
-      frame.sprites[0].visual.material.shader = "craft/lit_sprite";
+      frame.sprites[0].visual.material.shader = "shader:craft/lit_sprite";
       frame.sprites[0].visual.sprite = "assets/opaque.png";
       frame.sprites[0].sun.direction = {1, 0, 0, 0};
       frame.sprites[0].sun.color = {0, 0, 0, 0};
@@ -247,7 +247,7 @@ int main() {
         throw std::runtime_error("resized normal clear mismatch");
       frame.camera.viewport_width = frame.camera.viewport_height = 1;
       frame.sprites.push_back(sprite);
-      frame.sprites[0].visual.material.shader = "craft/lit_sprite";
+      frame.sprites[0].visual.material.shader = "shader:craft/lit_sprite";
       frame.sprites[0].visual.sprite = "assets/opaque.png";
       frame.sprites[0].sun.direction = {1, 0, 0, 0};
       frame.sprites[0].sun.color = {0, 0, 0, 0};
@@ -311,7 +311,7 @@ int main() {
       if (std::abs(int(pixel[1]) - lit_blended_expected(100, 2.0, 128)) > 3 || pixel[3] != 255)
         throw std::runtime_error("local light alpha mismatch");
       frame.sprites[0].visual.sprite = "assets/opaque.png";
-      frame.sprites[0].visual.material.shader = "craft/sprite";
+      frame.sprites[0].visual.material.shader = "shader:craft/sprite";
       pixel = renderer.readback_pixel(frame);
       if (std::abs(int(pixel[0]) - 200) > 2 || std::abs(int(pixel[1]) - 100) > 2)
         throw std::runtime_error("unlit sprite should ignore local lights");
@@ -321,7 +321,7 @@ int main() {
       if (pixel[0] < 250 || pixel[1] > 2) throw std::runtime_error("particles should ignore local lights");
       frame.particles.clear();
       frame.sprites.push_back(sprite);
-      frame.sprites[0].visual.material.shader = "craft/lit_sprite";
+      frame.sprites[0].visual.material.shader = "shader:craft/lit_sprite";
       frame.sprites[0].visual.sprite = "assets/opaque.png";
       frame.sprites[0].sun.direction = {1, 0, 0, 0};
       frame.sprites[0].sun.color = {0, 0, 0, 0};
@@ -423,7 +423,7 @@ int main() {
       if (pixel[0] > 2 || pixel[1] > 2 || pixel[2] > 2 || pixel[3] != 255)
         throw std::runtime_error("zero alpha control mismatch");
       std::cout << "lit default maps, emission and sunlight: passed\n";
-      frame.sprites[0].visual.material.shader = "craft/sprite";
+      frame.sprites[0].visual.material.shader = "shader:craft/sprite";
       frame.sprites[0].visual.sprite = "assets/invalid.png";
       try { renderer.readback_pixel(frame); throw std::runtime_error("invalid PNG accepted"); }
       catch (const std::exception &e) {

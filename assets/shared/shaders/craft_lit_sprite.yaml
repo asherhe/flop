@@ -1,4 +1,4 @@
-shader: craft/lit_sprite
+shader: shader:craft/lit_sprite
 properties:
   albedo: {stage: fragment, type: texture_2d}
   normal_map: {stage: fragment, type: texture_2d}

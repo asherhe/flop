@@ -55,7 +55,7 @@ struct AssetSource {
 
 struct SpriteMaterialConfig {
   std::string shader;
-  // retained for a future lit shader, not yet sampled by craft/sprite
+  // retained for a future lit shader, not yet sampled by shader:craft/sprite
   std::string normal_map;
   std::string emission_map;
   AssetSource normal_map_source;

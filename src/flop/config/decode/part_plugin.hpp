@@ -88,7 +88,7 @@ inline craft::plugin::SpriteMaterialConfig decode_material(const ConfigView &val
   MapReader reader(value, PluginReadMode::create);
   reader.assign("shader", result.shader, [](const ConfigView &field) {
     auto id = field.nonempty_string();
-    if (id != "craft/sprite" && id != "craft/lit_sprite") field.fail(field.mark(), "Unknown sprite shader");
+    if (id != "shader:craft/sprite" && id != "shader:craft/lit_sprite") field.fail(field.mark(), "Unknown sprite shader");
     return id;
   }, PluginRequired::on_create);
   auto properties = result;

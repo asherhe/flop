@@ -6,18 +6,18 @@
 #include "flop/config/load.hpp"
 
 TEST_CASE("Material recipes decode automatic semantics and reject unknown fields") {
-  const auto node = YAML::Load("shader: craft/sprite\nproperties:\n  albedo: {stage: fragment, type: texture_2d}\n  origin_viewport: {stage: vertex, type: float4, auto: sprite.projected_origin_viewport}\n");
+  const auto node = YAML::Load("shader: shader:craft/sprite\nproperties:\n  albedo: {stage: fragment, type: texture_2d}\n  origin_viewport: {stage: vertex, type: float4, auto: sprite.projected_origin_viewport}\n");
   auto recipe = flop::render::decode_material_recipe(flop::config::ConfigView(node, "fixture.yaml"));
   REQUIRE(recipe.view().inputs.size() == 2);
   CHECK(recipe.view().inputs[1].auto_input == flop::render::AutoInput::sprite_projected_origin_viewport);
-  const auto invalid = YAML::Load("shader: craft/sprite\nproperties:\n  x: {stage: vertex, type: float4, auto: unknown.value}\n");
+  const auto invalid = YAML::Load("shader: shader:craft/sprite\nproperties:\n  x: {stage: vertex, type: float4, auto: unknown.value}\n");
   CHECK_THROWS_AS(flop::render::decode_material_recipe(flop::config::ConfigView(invalid, "fixture.yaml")), flop::config::ConfigError);
   for (const auto *yaml : {
-           "shader: craft/sprite\nshader: duplicate\nproperties: {}",
-           "shader: craft/sprite\nproperties: {}\nunknown: true",
-           "shader: craft/sprite\nproperties:\n  x: {stage: vertex, type: float4, extra: true}",
-           "shader: craft/sprite\nproperties:\n  x: {stage: invalid, type: float4}",
-           "shader: craft/sprite\nproperties:\n  x: {stage: vertex, type: invalid}"}) {
+           "shader: shader:craft/sprite\nshader: duplicate\nproperties: {}",
+           "shader: shader:craft/sprite\nproperties: {}\nunknown: true",
+           "shader: shader:craft/sprite\nproperties:\n  x: {stage: vertex, type: float4, extra: true}",
+           "shader: shader:craft/sprite\nproperties:\n  x: {stage: invalid, type: float4}",
+           "shader: shader:craft/sprite\nproperties:\n  x: {stage: vertex, type: invalid}"}) {
     CHECK_THROWS_AS(flop::render::decode_material_recipe(
                         flop::config::ConfigView(YAML::Load(yaml), "fixture.yaml")),
                     flop::config::ConfigError);
@@ -25,14 +25,14 @@ TEST_CASE("Material recipes decode automatic semantics and reject unknown fields
 }
 
 TEST_CASE("Sun semantics require fragment float4 inputs") {
-  const auto valid = YAML::Load("shader: craft/lit_sprite\nproperties:\n  direction: {stage: fragment, type: float4, auto: sun.direction}\n  color: {stage: fragment, type: float4, auto: sun.color}\n");
+  const auto valid = YAML::Load("shader: shader:craft/lit_sprite\nproperties:\n  direction: {stage: fragment, type: float4, auto: sun.direction}\n  color: {stage: fragment, type: float4, auto: sun.color}\n");
   const auto recipe = flop::render::decode_material_recipe(flop::config::ConfigView(valid, "lighting.yaml"));
   REQUIRE(recipe.inputs.size() == 2);
   CHECK(recipe.inputs[0].auto_input == flop::render::AutoInput::sun_direction);
   CHECK(recipe.inputs[1].auto_input == flop::render::AutoInput::sun_color);
   for (const auto *yaml : {
-           "shader: craft/lit_sprite\nproperties:\n  x: {stage: vertex, type: float4, auto: sun.color}",
-           "shader: craft/lit_sprite\nproperties:\n  x: {stage: fragment, type: texture_2d, auto: sun.direction}"}) {
+           "shader: shader:craft/lit_sprite\nproperties:\n  x: {stage: vertex, type: float4, auto: sun.color}",
+           "shader: shader:craft/lit_sprite\nproperties:\n  x: {stage: fragment, type: texture_2d, auto: sun.direction}"}) {
     try {
       (void)flop::render::decode_material_recipe(flop::config::ConfigView(YAML::Load(yaml), "lighting.yaml"));
       FAIL("expected an invalid automatic input error");
@@ -44,13 +44,13 @@ TEST_CASE("Sun semantics require fragment float4 inputs") {
 }
 
 TEST_CASE("Local light texture semantic requires a fragment texture") {
-  const auto valid = YAML::Load("shader: craft/lit_sprite\nproperties:\n  local_light: {stage: fragment, type: texture_2d, auto: local_light.texture}\n");
+  const auto valid = YAML::Load("shader: shader:craft/lit_sprite\nproperties:\n  local_light: {stage: fragment, type: texture_2d, auto: local_light.texture}\n");
   const auto recipe = flop::render::decode_material_recipe(flop::config::ConfigView(valid, "lighting.yaml"));
   REQUIRE(recipe.inputs.size() == 1);
   CHECK(recipe.inputs[0].auto_input == flop::render::AutoInput::local_light_texture);
   for (const auto *yaml : {
-           "shader: craft/lit_sprite\nproperties:\n  x: {stage: vertex, type: texture_2d, auto: local_light.texture}",
-           "shader: craft/lit_sprite\nproperties:\n  x: {stage: fragment, type: float4, auto: local_light.texture}"}) {
+           "shader: shader:craft/lit_sprite\nproperties:\n  x: {stage: vertex, type: texture_2d, auto: local_light.texture}",
+           "shader: shader:craft/lit_sprite\nproperties:\n  x: {stage: fragment, type: float4, auto: local_light.texture}"}) {
     CHECK_THROWS_AS(flop::render::decode_material_recipe(
                         flop::config::ConfigView(YAML::Load(yaml), "lighting.yaml")),
                     flop::config::ConfigError);
@@ -60,7 +60,7 @@ TEST_CASE("Local light texture semantic requires a fragment texture") {
 using namespace flop::render;
 
 TEST_CASE("Lit sprite bindings validate reflected light inputs") {
-  const auto yaml = YAML::Load(R"(shader: craft/lit_sprite
+  const auto yaml = YAML::Load(R"(shader: shader:craft/lit_sprite
 properties:
   albedo: {stage: fragment, type: texture_2d}
   normal_map: {stage: fragment, type: texture_2d}
@@ -74,9 +74,9 @@ properties:
   planet_shine_color: {stage: fragment, type: float4, auto: planet_shine.color}
 )");
   const auto recipe = decode_material_recipe(flop::config::ConfigView(yaml, "fixture.yaml"));
-  shaders::Entry vertex{"craft/lit_sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1,
+  shaders::Entry vertex{"shader:craft/lit_sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1,
     R"({"stage":"vertex","uniform_buffers":[{"binding":0,"size":32,"members":[{"name":"origin_viewport","type":"float","components":4,"offset":0,"size":16},{"name":"xy_axis","type":"float","components":4,"offset":16,"size":16}]}]})"};
-  shaders::Entry fragment{"craft/lit_sprite", "fragment", "spirv", "fragment", nullptr, 0, 4, 0, 0, 1,
+  shaders::Entry fragment{"shader:craft/lit_sprite", "fragment", "spirv", "fragment", nullptr, 0, 4, 0, 0, 1,
     R"({"stage":"fragment","textures":[{"name":"albedo","binding":0},{"name":"normal_map","binding":1},{"name":"emission_map","binding":2},{"name":"local_light","binding":3}],"uniform_buffers":[{"binding":0,"size":64,"members":[{"name":"sun_direction","type":"float","components":4,"offset":0,"size":16},{"name":"sun_color","type":"float","components":4,"offset":16,"size":16},{"name":"planet_shine_direction_and_spread","type":"float","components":4,"offset":32,"size":16},{"name":"planet_shine_color","type":"float","components":4,"offset":48,"size":16}]}]})"};
   const auto bindings = resolve_craft_lit_sprite_bindings(recipe.view(), vertex, fragment);
   CHECK(bindings.normal_slot == 1);
@@ -123,8 +123,8 @@ TEST_CASE("A missing material recipe reports its asset path") {
 TEST_CASE("Craft recipe resolves reflected bindings and rejects incompatible inputs") {
   const char *vertex_json = R"({"stage":"vertex","uniform_buffers":[{"binding":2,"size":32,"members":[{"name":"origin_viewport","type":"float","components":4,"offset":0,"size":16},{"name":"xy_axis","type":"float","components":4,"offset":16,"size":16}]}]})";
   const char *fragment_json = R"({"stage":"fragment","textures":[{"name":"albedo","binding":3}]})";
-  shaders::Entry vertex{"craft/sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1, vertex_json};
-  shaders::Entry fragment{"craft/sprite", "fragment", "spirv", "fragment", nullptr, 0, 1, 0, 0, 0, fragment_json};
+  shaders::Entry vertex{"shader:craft/sprite", "vertex", "spirv", "vertex", nullptr, 0, 0, 0, 0, 1, vertex_json};
+  shaders::Entry fragment{"shader:craft/sprite", "fragment", "spirv", "fragment", nullptr, 0, 1, 0, 0, 0, fragment_json};
   const auto bindings = resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment);
   CHECK(bindings.uniform_slot == 2);
   CHECK(bindings.texture_slot == 3);
@@ -136,7 +136,7 @@ TEST_CASE("Craft recipe resolves reflected bindings and rejects incompatible inp
   CHECK_THROWS_AS(resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, wrong_format), std::runtime_error);
   auto bad_inputs = craft_sprite_inputs;
   bad_inputs[1].auto_input = AutoInput::sprite_projected_xy_axis;
-  const MaterialRecipe bad_recipe{"craft/sprite", bad_inputs};
+  const MaterialRecipe bad_recipe{"shader:craft/sprite", bad_inputs};
   CHECK_THROWS_AS(resolve_craft_sprite_bindings(bad_recipe, vertex, fragment), std::runtime_error);
   fragment.reflection_json = R"({"stage":"fragment","textures":[]})";
   CHECK_THROWS_AS(resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment), std::runtime_error);
@@ -146,9 +146,9 @@ TEST_CASE("Craft recipe resolves reflected bindings and rejects incompatible inp
 }
 
 TEST_CASE("Craft recipe resolves DXIL resource bindings") {
-  shaders::Entry vertex{"craft/sprite", "vertex", "dxil", "vertex", nullptr, 0, 0, 0, 0, 1,
+  shaders::Entry vertex{"shader:craft/sprite", "vertex", "dxil", "vertex", nullptr, 0, 0, 0, 0, 1,
     R"({"stage":"vertex","resources":[{"name":"SpriteGeometry","type":"uniform_buffer","binding":0}],"uniform_buffers":[{"name":"SpriteGeometry","size":32,"members":[{"name":"origin_viewport","type":"float","components":4,"offset":0,"size":16},{"name":"xy_axis","type":"float","components":4,"offset":16,"size":16}]}]})"};
-  shaders::Entry fragment{"craft/sprite", "fragment", "dxil", "fragment", nullptr, 0, 1, 0, 0, 0,
+  shaders::Entry fragment{"shader:craft/sprite", "fragment", "dxil", "fragment", nullptr, 0, 1, 0, 0, 0,
     R"({"stage":"fragment","resources":[{"name":"albedo_sampler","type":"sampler","binding":0},{"name":"albedo","type":"texture","binding":0}]})"};
   const auto bindings = resolve_craft_sprite_bindings(craft_sprite_recipe, vertex, fragment);
   CHECK(bindings.uniform_slot == 0);

@@ -26,9 +26,6 @@ file(MAKE_DIRECTORY "${shader_dir}")
 file(GLOB_RECURSE shader_includes CONFIGURE_DEPENDS
      "${shader_source_dir}/*.hlsli")
 
-# register a shader
-#   ID - identifier for shader
-#   SOURCE is relative to the shader directory
 function(flop_compile_shader source output profile entry format)
   set(flags)
   if(format STREQUAL spirv)
@@ -42,20 +39,22 @@ endfunction()
 
 function(flop_add_shader)
   set(shader_script_dir "${CMAKE_CURRENT_FUNCTION_LIST_DIR}")
-  cmake_parse_arguments(SHADER "RESOURCE_FREE" "ID;SOURCE;VERTEX_ENTRY;FRAGMENT_ENTRY" "" ${ARGN})
-  if(SHADER_UNPARSED_ARGUMENTS OR NOT SHADER_ID OR NOT SHADER_SOURCE)
-    message(FATAL_ERROR "flop_add_shader requires ID and SOURCE; optional arguments are RESOURCE_FREE, VERTEX_ENTRY and FRAGMENT_ENTRY")
+  cmake_parse_arguments(PARSE_ARGV 0 SHADER "RESOURCE_FREE" "SOURCE;VERTEX_ENTRY;FRAGMENT_ENTRY" "")
+  if(SHADER_UNPARSED_ARGUMENTS OR SHADER_KEYWORDS_MISSING_VALUES OR NOT SHADER_SOURCE)
+    message(FATAL_ERROR "flop_add_shader requires SOURCE; optional arguments are RESOURCE_FREE, VERTEX_ENTRY and FRAGMENT_ENTRY")
   endif()
-  if(NOT SHADER_ID MATCHES "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$")
-    message(FATAL_ERROR "Invalid shader ID '${SHADER_ID}': use slash-separated letters, digits, underscores or hyphens")
+  if(NOT SHADER_SOURCE MATCHES "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*[.]hlsl$")
+    message(FATAL_ERROR "Invalid shader source path: '${SHADER_SOURCE}'")
   endif()
+  string(REGEX REPLACE "[.]hlsl$" "" shader_stem "${SHADER_SOURCE}")
+  set(SHADER_ID "shader:${shader_stem}")
   get_property(ids GLOBAL PROPERTY FLOP_SHADER_IDS)
   if(SHADER_ID IN_LIST ids)
     message(FATAL_ERROR "Duplicate shader ID '${SHADER_ID}'")
   endif()
   set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_IDS "${SHADER_ID}")
   set(shader_source "${shader_source_dir}/${SHADER_SOURCE}")
-  if(NOT EXISTS "${shader_source}")
+  if(NOT EXISTS "${shader_source}" OR IS_DIRECTORY "${shader_source}")
     message(FATAL_ERROR "Shader '${SHADER_ID}' source not found: ${shader_source}")
   endif()
   if(NOT SHADER_VERTEX_ENTRY)
@@ -75,14 +74,14 @@ function(flop_add_shader)
     if(NOT entry MATCHES "^[A-Za-z_][A-Za-z0-9_]*$")
       message(FATAL_ERROR "Invalid ${stage} entry point '${entry}' for shader '${SHADER_ID}'")
     endif()
-    set(reflection "${shader_dir}/${SHADER_ID}.${stage}.reflection.json")
+    set(reflection "${shader_dir}/${shader_stem}.${stage}.reflection.json")
     if(TARGET flop_dxil_reflect)
-      set(dxil_reflection "${shader_dir}/${SHADER_ID}.${stage}.dxil.reflection.json")
+      set(dxil_reflection "${shader_dir}/${shader_stem}.${stage}.dxil.reflection.json")
     else()
       set(dxil_reflection "none")
     endif()
     foreach(format IN LISTS FLOP_SHADER_FORMATS)
-      set(output "${shader_dir}/${SHADER_ID}.${stage}.${format}")
+      set(output "${shader_dir}/${shader_stem}.${stage}.${format}")
       get_filename_component(output_dir "${output}" DIRECTORY)
       file(MAKE_DIRECTORY "${output_dir}")
       flop_compile_shader("${shader_source}" "${output}" "${profile}" "${entry}" "${format}" ${shader_includes})
@@ -90,7 +89,7 @@ function(flop_add_shader)
       set_property(GLOBAL APPEND_STRING PROPERTY FLOP_SHADER_MANIFEST
         "${SHADER_ID}|${stage}|${format}|${entry}|${output}|${reflection}|${SHADER_RESOURCE_FREE}|${dxil_reflection}\n")
     endforeach()
-    set(spirv_file "${shader_dir}/${SHADER_ID}.${stage}.spirv")
+    set(spirv_file "${shader_dir}/${shader_stem}.${stage}.spirv")
     add_custom_command(OUTPUT "${reflection}"
       COMMAND "${CMAKE_COMMAND}" "-DREFLECT=$<TARGET_FILE:flop_spirv_reflect>"
         "-DSHADER=${spirv_file}" "-DOUTPUT=${reflection}" "-DID=${SHADER_ID}"
@@ -98,14 +97,14 @@ function(flop_add_shader)
       DEPENDS "${spirv_file}" flop_spirv_reflect "${shader_script_dir}/reflect_shader.cmake" VERBATIM)
     set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_OUTPUTS "${reflection}")
     if(TARGET flop_dxil_reflect)
-      set(dxil_file "${shader_dir}/${SHADER_ID}.${stage}.dxil")
+      set(dxil_file "${shader_dir}/${shader_stem}.${stage}.dxil")
       add_custom_command(OUTPUT "${dxil_reflection}"
         COMMAND "${CMAKE_COMMAND}" "-DREFLECT=$<TARGET_FILE:flop_dxil_reflect>"
           "-DDXCOMPILER=${dxcompiler}"
           "-DSHADER=${dxil_file}" "-DOUTPUT=${dxil_reflection}" "-DID=${SHADER_ID}"
           "-DSTAGE=${stage}" -P "${shader_script_dir}/reflect_dxil.cmake"
         DEPENDS "${dxil_file}" "${dxcompiler}" flop_dxil_reflect "${shader_script_dir}/reflect_dxil.cmake" VERBATIM)
-      set(comparison "${shader_dir}/${SHADER_ID}.${stage}.validated")
+      set(comparison "${shader_dir}/${shader_stem}.${stage}.validated")
       add_custom_command(OUTPUT "${comparison}"
         COMMAND "${CMAKE_COMMAND}" "-DSPIRV=${reflection}" "-DDXIL=${dxil_reflection}"
           "-DCOMPARE=${shader_script_dir}/compare_shader_reflection.cmake"

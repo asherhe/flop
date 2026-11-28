@@ -16,7 +16,7 @@ plugins:
     size_meters: { x: 2.0, y: 2.0 }
     pivot: { x: 0.5, y: 0.5 }
     material:
-      shader: craft/lit_sprite
+      shader: shader:craft/lit_sprite
       properties:
         normal_map: assets/parts/TestingTank/TestingTank-Normal.png
   ResourceContainerPlugin:

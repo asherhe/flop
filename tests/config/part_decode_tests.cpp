@@ -58,7 +58,7 @@ TEST_CASE("Shipped part types decode dry mass and attachment nodes") {
   CHECK(sprite_config.size_meters.y == 2.0);
   CHECK(sprite_config.pivot.x == 0.5);
   CHECK(sprite_config.pivot.y == 0.5);
-  CHECK(sprite_config.material.shader == "craft/lit_sprite");
+  CHECK(sprite_config.material.shader == "shader:craft/lit_sprite");
   CHECK(
       sprite_config.material.emission_map ==
       "assets/parts/TestingCommandPod/TestingCommandPod-Light.png"
@@ -162,7 +162,7 @@ TEST_CASE("Visual plugin overrides update their own config types") {
   CHECK(std::get<flop::craft::plugin::SpriteConfig>(sprite.values).sprite_source.key == "sprite");
   CHECK(
       std::get<flop::craft::plugin::SpriteConfig>(sprite.values).material.shader ==
-      "craft/lit_sprite"
+      "shader:craft/lit_sprite"
   );
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).intensity == 2);
   CHECK(std::get<flop::craft::plugin::LightConfig>(light.values).color.g == Catch::Approx(236.0 / 255.0));
@@ -199,23 +199,23 @@ TEST_CASE("Sprite materials reject unsupported shaders and properties") {
   CHECK_THROWS(flop::config::detail::decode_material(
       ConfigView(YAML::Load("shader: craft/unknown"), "assets/parts/test.yaml")));
   CHECK_THROWS(flop::config::detail::decode_material(
-      ConfigView(YAML::Load("shader: craft/sprite\nproperties: {unknown: value}"), "assets/parts/test.yaml")));
+      ConfigView(YAML::Load("shader: shader:craft/sprite\nproperties: {unknown: value}"), "assets/parts/test.yaml")));
   CHECK_THROWS(flop::config::detail::decode_material(
-      ConfigView(YAML::Load("shader: craft/sprite\nproperties: {normal_map: [a, b]}"), "assets/parts/test.yaml")));
+      ConfigView(YAML::Load("shader: shader:craft/sprite\nproperties: {normal_map: [a, b]}"), "assets/parts/test.yaml")));
 }
 
 TEST_CASE("Lit sprite material is an explicit opt in") {
   using flop::config::ConfigView;
   const auto material = flop::config::detail::decode_material(ConfigView(YAML::Load(
-      "shader: craft/lit_sprite\nproperties:\n  normal_map: assets/normal.png\n  emission_map: assets/emission.png\n"),
+      "shader: shader:craft/lit_sprite\nproperties:\n  normal_map: assets/normal.png\n  emission_map: assets/emission.png\n"),
       "assets/parts/fixture.yaml"));
-  CHECK(material.shader == "craft/lit_sprite");
+  CHECK(material.shader == "shader:craft/lit_sprite");
   CHECK(material.normal_map == "assets/normal.png");
   CHECK(material.emission_map == "assets/emission.png");
   CHECK(material.normal_map_source.address == "assets/parts/fixture.yaml");
   CHECK(material.normal_map_source.key == "properties.normal_map");
   const auto defaults = flop::config::detail::decode_material(ConfigView(
-      YAML::Load("shader: craft/lit_sprite"), "assets/parts/fixture.yaml"));
+      YAML::Load("shader: shader:craft/lit_sprite"), "assets/parts/fixture.yaml"));
   CHECK(defaults.normal_map.empty());
   CHECK(defaults.emission_map.empty());
 }

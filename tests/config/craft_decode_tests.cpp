@@ -110,12 +110,12 @@ TEST_CASE("Missing craft texture identifies the override file and key") {
   std::string missing = "missing.png";
   SECTION("missing sprite") {}
   SECTION("missing normal map") {
-    override_yaml = "sprite: assets/present.png\n        material: {shader: craft/sprite, properties: {normal_map: assets/missing_normal.png}}";
+    override_yaml = "sprite: assets/present.png\n        material: {shader: shader:craft/sprite, properties: {normal_map: assets/missing_normal.png}}";
     expected_key = "parts[0].plugins.SpritePlugin.material.properties.normal_map";
     missing = "missing_normal.png";
   }
   SECTION("missing emission map") {
-    override_yaml = "sprite: assets/present.png\n        material: {shader: craft/sprite, properties: {emission_map: assets/missing_emission.png}}";
+    override_yaml = "sprite: assets/present.png\n        material: {shader: shader:craft/sprite, properties: {emission_map: assets/missing_emission.png}}";
     expected_key = "parts[0].plugins.SpritePlugin.material.properties.emission_map";
     missing = "missing_emission.png";
   }
@@ -131,7 +131,7 @@ TEST_CASE("Missing craft texture identifies the override file and key") {
       "name: Pod\nmass: 1\ncrossfeed: true\nattachment_nodes: []\nplugins:\n"
       "  SpritePlugin:\n    sprite: assets/original.png\n"
       "    size_meters: {x: 1, y: 1}\n    pivot: {x: 0.5, y: 0.5}\n"
-      "    material: {shader: craft/sprite}\n");
+      "    material: {shader: shader:craft/sprite}\n");
   auto part = ConfigDecoder<flop::craft::PartTypeConfig>::decode(
       ConfigView(part_yaml, "assets/part.yaml"));
   part.type_id = "Pod";

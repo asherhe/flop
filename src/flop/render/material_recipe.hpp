@@ -99,7 +99,7 @@ inline constexpr std::array craft_sprite_inputs{
         AutoInput::sprite_projected_xy_axis
     },
 };
-inline constexpr MaterialRecipe craft_sprite_recipe{"craft/sprite", craft_sprite_inputs};
+inline constexpr MaterialRecipe craft_sprite_recipe{"shader:craft/sprite", craft_sprite_inputs};
 
 struct CraftSpriteBindings {
   unsigned texture_slot;
