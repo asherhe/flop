@@ -23,10 +23,8 @@ VertexOutput vertex(uint id : SV_VertexID) {
   float r = center_radii.w;
   float4 origin_viewport = float4(center_radii.xy - r, viewport_falloff.xy);
   float4 xy_axis = float4(2.0 * r, 0.0, 0.0, 2.0 * r);
-  float2 unused_uv;
-
   VertexOutput result;
-  project_quad_vertex(id, origin_viewport, xy_axis, result.position, unused_uv);
+  result.position = project_quad_vertex(id, origin_viewport, xy_axis);
 
   result.center_radii = center_radii;
   result.falloff = viewport_falloff.z;

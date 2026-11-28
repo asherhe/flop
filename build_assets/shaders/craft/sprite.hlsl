@@ -11,17 +11,16 @@ cbuffer SpriteGeometry : register(b0, space1) {
 
 struct VertexOutput {
   float4 position : SV_Position;
-  float2 uv : TEXCOORD0;
+  QuadUvTransform uv_transform;
 };
 
 VertexOutput vertex(uint id : SV_VertexID) {
   VertexOutput result;
-  project_quad_vertex(id, origin_viewport, xy_axis, result.position, result.uv);
+  result.position = project_quad_vertex(id, origin_viewport, xy_axis);
+  result.uv_transform = quad_uv_transform(origin_viewport.xy, xy_axis);
   return result;
 }
 
 float4 fragment(VertexOutput input) : SV_Target0 {
-  // keep position in the DXIL input signature for vertex/fragment linkage
-  if (input.position.x < 0.0) return 0.0;
-  return albedo.Sample(albedo_sampler, input.uv);
+  return albedo.Sample(albedo_sampler, quad_uv_at_pixel(input.uv_transform, input.position.xy));
 }

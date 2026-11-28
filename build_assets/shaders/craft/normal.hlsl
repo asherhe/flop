@@ -12,20 +12,22 @@ cbuffer NormalGeometry : register(b0, space1) {
 
 struct VertexOutput {
   float4 position : SV_Position;
-  float2 uv : TEXCOORD0;
-  nointerpolation float2 rotation : TEXCOORD1;
+  QuadUvTransform uv_transform;
+  nointerpolation float2 rotation : TEXCOORD2;
 };
 
 VertexOutput vertex(uint id : SV_VertexID) {
   VertexOutput result;
-  project_quad_vertex(id, origin_viewport, xy_axis, result.position, result.uv);
+  result.position = project_quad_vertex(id, origin_viewport, xy_axis);
+  result.uv_transform = quad_uv_transform(origin_viewport.xy, xy_axis);
   result.rotation = rotation.xy;
   return result;
 }
 
 float4 fragment(VertexOutput input) : SV_Target0 {
-  float alpha = albedo.Sample(albedo_sampler, input.uv).a;
-  float3 n = normalize(normal_map.Sample(normal_map_sampler, input.uv).xyz * 2.0 - 1.0);
+  float2 uv = quad_uv_at_pixel(input.uv_transform, input.position.xy);
+  float alpha = albedo.Sample(albedo_sampler, uv).a;
+  float3 n = normalize(normal_map.Sample(normal_map_sampler, uv).xyz * 2.0 - 1.0);
   float c = input.rotation.x, s = input.rotation.y;
   n.xy = float2(c * n.x - s * n.y, s * n.x + c * n.y);
   return float4(n * 0.5 + 0.5, alpha);

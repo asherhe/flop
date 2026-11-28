@@ -14,8 +14,7 @@ struct VertexOutput {
 
 VertexOutput vertex(uint id : SV_VertexID) {
   VertexOutput result;
-  float2 unused_uv;
-  project_quad_vertex(id, origin_viewport, xy_axis, result.position, unused_uv);
+  result.position = project_quad_vertex(id, origin_viewport, xy_axis);
   result.color = color;
   return result;
 }

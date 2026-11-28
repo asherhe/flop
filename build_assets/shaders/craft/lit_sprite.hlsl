@@ -23,19 +23,20 @@ cbuffer SpriteLighting : register(b0, space3) {
 
 struct VertexOutput {
   float4 position : SV_Position;
-  float2 uv : TEXCOORD0;
+  QuadUvTransform uv_transform;
 };
 
 VertexOutput vertex(uint id : SV_VertexID) {
   VertexOutput result;
-  project_quad_vertex(id, origin_viewport, xy_axis, result.position, result.uv);
+  result.position = project_quad_vertex(id, origin_viewport, xy_axis);
+  result.uv_transform = quad_uv_transform(origin_viewport.xy, xy_axis);
   return result;
 }
 
 float4 fragment(VertexOutput input) : SV_Target0 {
-  if (input.position.x < 0.0) return 0.0;
-  float4 main = albedo.Sample(albedo_sampler, input.uv);
-  float3 normal = normalize(normal_map.Sample(normal_map_sampler, input.uv).xyz * 2.0 - 1.0);
+  float2 uv = quad_uv_at_pixel(input.uv_transform, input.position.xy);
+  float4 main = albedo.Sample(albedo_sampler, uv);
+  float3 normal = normalize(normal_map.Sample(normal_map_sampler, uv).xyz * 2.0 - 1.0);
   // set z to 0.3 so that parts are better illuminated
   float3 light_direction = normalize(float3(sun_direction.xy, 0.3));
   // we scale by 2 because that makes the lighting look better
@@ -47,7 +48,7 @@ float4 fragment(VertexOutput input) : SV_Target0 {
   uint light_width, light_height;
   local_light.GetDimensions(light_width, light_height);
   shaded += main.rgb * local_light.Sample(local_light_sampler, input.position.xy / float2(light_width, light_height)).rgb;
-  float4 emission = emission_map.Sample(emission_map_sampler, input.uv);
+  float4 emission = emission_map.Sample(emission_map_sampler, uv);
   // overlay rgba of emission onto shaded
   float alpha = emission.a + main.a * (1.0 - emission.a);
   if (alpha <= 0.0) return 0.0;
