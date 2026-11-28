@@ -46,12 +46,13 @@ else()
 endif()
 message(STATUS "Packaged shader formats: ${FLOP_SHADER_FORMATS}")
 if(BUILD_TESTING)
+  set(shader_test_dir "${PROJECT_SOURCE_DIR}/tests/render")
   add_test(NAME shader_reflection_fixtures
     COMMAND "${CMAKE_COMMAND}" "-DDXC=${dxc}" "-DREFLECT=$<TARGET_FILE:flop_spirv_reflect>"
-      "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
+      "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${shader_test_dir}/fixtures"
       "-DEMBED=${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shaders.cmake"
       "-DTEST_DXIL=$<BOOL:$<TARGET_EXISTS:flop_dxil_reflect>>"
-      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/reflection_test.cmake")
+      -P "${shader_test_dir}/reflection_test.cmake")
   set_tests_properties(shader_reflection_fixtures PROPERTIES LABELS "app;shader")
   if(TARGET flop_dxil_reflect)
     add_test(NAME dxil_reflection_fixture
@@ -60,16 +61,17 @@ if(BUILD_TESTING)
         "-DCOMPARE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/compare_shader_reflection.cmake"
         "-DEMBED=${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shaders.cmake"
         "-DDXCOMPILER=${flop_dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/render/fixtures"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/dxil_reflection_test.cmake")
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}" "-DFIXTURE_DIR=${shader_test_dir}/fixtures"
+        -P "${shader_test_dir}/dxil_reflection_test.cmake")
     set_tests_properties(dxil_reflection_fixture PROPERTIES LABELS "app;shader")
   endif()
 endif()
 set(shader_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
+set(shader_source_dir "${FLOP_BUILD_ASSETS_DIR}/shaders")
 file(MAKE_DIRECTORY "${shader_dir}")
 # Recompile on shared include changes, including when an include is added or removed.
 file(GLOB_RECURSE shader_includes CONFIGURE_DEPENDS
-     "${CMAKE_CURRENT_SOURCE_DIR}/build_assets/shaders/*.hlsli")
+     "${shader_source_dir}/*.hlsli")
 
 # register a shader
 #   ID - identifier for shader
@@ -87,7 +89,7 @@ function(flop_add_shader)
     message(FATAL_ERROR "Duplicate shader ID '${SHADER_ID}'")
   endif()
   set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_IDS "${SHADER_ID}")
-  set(shader_source "${CMAKE_CURRENT_SOURCE_DIR}/build_assets/shaders/${SHADER_SOURCE}")
+  set(shader_source "${shader_source_dir}/${SHADER_SOURCE}")
   if(NOT EXISTS "${shader_source}")
     message(FATAL_ERROR "Shader '${SHADER_ID}' source not found: ${shader_source}")
   endif()
@@ -175,7 +177,7 @@ function(flop_embed_shaders target)
     add_test(NAME craft_shader_package
       COMMAND "${CMAKE_COMMAND}" "-DINPUT=${shader_manifest}"
         "-DEXPECT_DXIL=$<BOOL:$<TARGET_EXISTS:flop_dxil_reflect>>"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/render/package_test.cmake")
+        -P "${shader_test_dir}/package_test.cmake")
     set_tests_properties(craft_shader_package PROPERTIES LABELS "app;shader")
   endif()
 endfunction()

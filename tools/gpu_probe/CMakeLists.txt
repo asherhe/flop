@@ -1,7 +1,8 @@
+set(flop_source_dir "${PROJECT_SOURCE_DIR}/src/flop")
 set(gpu_test_shaders)
 add_executable(flop_input_probe input_probe.cpp
-    ${CMAKE_SOURCE_DIR}/src/flop/platform/input_mapper.cpp
-    ${CMAKE_SOURCE_DIR}/src/flop/platform/sdl_platform.cpp)
+    "${flop_source_dir}/platform/input_mapper.cpp"
+    "${flop_source_dir}/platform/sdl_platform.cpp")
 target_link_libraries(flop_input_probe PRIVATE flop_core SDL3::SDL3)
 if(WIN32)
     add_custom_command(TARGET flop_input_probe POST_BUILD
@@ -42,9 +43,9 @@ endif()
 get_property(registered_shaders GLOBAL PROPERTY FLOP_SHADER_IDS)
 if("craft/sprite" IN_LIST registered_shaders)
     add_executable(flop_renderer_probe renderer_probe.cpp
-        ${CMAKE_SOURCE_DIR}/src/flop/render/renderer.cpp
-        ${CMAKE_SOURCE_DIR}/src/flop/render/material_recipe.cpp
-        ${CMAKE_SOURCE_DIR}/src/flop/render/texture_cache.cpp)
+        "${flop_source_dir}/render/renderer.cpp"
+        "${flop_source_dir}/render/material_recipe.cpp"
+        "${flop_source_dir}/render/texture_cache.cpp")
     add_dependencies(flop_renderer_probe flop)
     target_link_libraries(flop_renderer_probe PRIVATE flop_core SDL3::SDL3)
     target_include_directories(flop_renderer_probe PRIVATE "${shader_dir}")
@@ -56,9 +57,9 @@ if("craft/sprite" IN_LIST registered_shaders)
     endif()
 
     add_executable(flop_scene_lighting_probe scene_lighting_probe.cpp
-        ${CMAKE_SOURCE_DIR}/src/flop/render/renderer.cpp
-        ${CMAKE_SOURCE_DIR}/src/flop/render/material_recipe.cpp
-        ${CMAKE_SOURCE_DIR}/src/flop/render/texture_cache.cpp)
+        "${flop_source_dir}/render/renderer.cpp"
+        "${flop_source_dir}/render/material_recipe.cpp"
+        "${flop_source_dir}/render/texture_cache.cpp")
     add_dependencies(flop_scene_lighting_probe flop)
     target_link_libraries(flop_scene_lighting_probe PRIVATE flop_core SDL3::SDL3)
     target_include_directories(flop_scene_lighting_probe PRIVATE "${shader_dir}")
@@ -83,7 +84,7 @@ foreach(stage IN ITEMS vertex fragment)
             list(APPEND flags -spirv -fspv-target-env=vulkan1.0)
         endif()
         set(output "${CMAKE_CURRENT_BINARY_DIR}/craft/${stage}.${format}")
-        set(source "${CMAKE_SOURCE_DIR}/build_assets/shaders/craft/sprite.hlsl")
+        set(source "${shader_source_dir}/craft/sprite.hlsl")
         add_custom_command(OUTPUT "${output}"
             COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/craft"
             COMMAND "${dxc}" -T "${profile}" -E "${stage}" ${flags} -Fo "${output}" "${source}"
@@ -102,7 +103,7 @@ if(WIN32)
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:SDL3::SDL3-shared>" "$<TARGET_FILE_DIR:flop_craft_probe>" VERBATIM)
 endif()
 
-add_executable(flop_invalid_png_probe invalid_png_probe.cpp ${CMAKE_SOURCE_DIR}/src/flop/render/texture_cache.cpp)
+add_executable(flop_invalid_png_probe invalid_png_probe.cpp "${flop_source_dir}/render/texture_cache.cpp")
 target_link_libraries(flop_invalid_png_probe PRIVATE flop_core SDL3::SDL3)
 target_include_directories(flop_invalid_png_probe SYSTEM PRIVATE "${stb_SOURCE_DIR}")
 if(WIN32)

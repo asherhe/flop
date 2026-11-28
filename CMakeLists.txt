@@ -7,6 +7,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(FLOP_BUILD_GAME "Build the desktop game" OFF)
 
+set(FLOP_ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+set(FLOP_BUILD_ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build_assets")
+set(FLOP_DIST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dist")
+
 add_library(flop_core STATIC
     src/flop/app/game_scene.cpp
     src/flop/app/tick_scheduler.cpp
@@ -98,7 +102,7 @@ if(BUILD_TESTING)
     target_link_libraries(flop_app_tests PRIVATE flop_core Catch2::Catch2WithMain)
     target_include_directories(flop_app_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
     target_compile_definitions(flop_app_tests PRIVATE
-        FLOP_TEST_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets")
+        FLOP_TEST_ASSET_ROOT="${FLOP_ASSETS_DIR}")
     catch_discover_tests(flop_app_tests PROPERTIES LABELS app)
 endif()
 
@@ -115,7 +119,7 @@ if(FLOP_BUILD_GAME)
     )
 
     set_target_properties(flop PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
+      RUNTIME_OUTPUT_DIRECTORY "${FLOP_DIST_DIR}"
     )
 
     target_link_libraries(flop PRIVATE flop_core SDL3::SDL3)
@@ -124,7 +128,7 @@ if(FLOP_BUILD_GAME)
     # copy assets alongside executable
     add_custom_target(flop_assets
         COMMAND "${CMAKE_COMMAND}" -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+            "${FLOP_ASSETS_DIR}"
             "$<TARGET_FILE_DIR:flop>/assets"
         COMMENT "Copying runtime assets"
         VERBATIM
@@ -133,12 +137,13 @@ if(FLOP_BUILD_GAME)
 
     include(cmake/shaders.cmake)
     set(smaa_header "${shader_dir}/smaa_lookup.hpp")
+    set(smaa_source_dir "${FLOP_BUILD_ASSETS_DIR}/resources/smaa")
     add_custom_command(OUTPUT "${smaa_header}"
         COMMAND "${CMAKE_COMMAND}" "-DOUTPUT=${smaa_header}"
-            "-DINPUT_DIR=${CMAKE_CURRENT_SOURCE_DIR}/build_assets/resources/smaa"
+            "-DINPUT_DIR=${smaa_source_dir}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_smaa.cmake"
-        DEPENDS build_assets/resources/smaa/area.png
-            build_assets/resources/smaa/search.png cmake/embed_smaa.cmake VERBATIM)
+        DEPENDS "${smaa_source_dir}/area.png" "${smaa_source_dir}/search.png"
+            cmake/embed_smaa.cmake VERBATIM)
     add_custom_target(flop_smaa_lookup DEPENDS "${smaa_header}")
     add_dependencies(flop flop_smaa_lookup)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
