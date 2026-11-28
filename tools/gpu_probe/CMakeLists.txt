@@ -1,4 +1,10 @@
 set(flop_source_dir "${PROJECT_SOURCE_DIR}/src/flop")
+# use the production shader toolchain for probe fixtures
+get_directory_property(dxc DIRECTORY "${FLOP_BUILD_ASSETS_DIR}" DEFINITION dxc)
+get_directory_property(FLOP_SHADER_FORMATS DIRECTORY "${FLOP_BUILD_ASSETS_DIR}" DEFINITION FLOP_SHADER_FORMATS)
+get_directory_property(shader_source_dir DIRECTORY "${FLOP_BUILD_ASSETS_DIR}" DEFINITION shader_source_dir)
+get_directory_property(shader_includes DIRECTORY "${FLOP_BUILD_ASSETS_DIR}" DEFINITION shader_includes)
+
 set(gpu_test_shaders)
 add_executable(flop_input_probe input_probe.cpp
     "${flop_source_dir}/platform/input_mapper.cpp"
@@ -46,9 +52,7 @@ if("craft/sprite" IN_LIST registered_shaders)
         "${flop_source_dir}/render/renderer.cpp"
         "${flop_source_dir}/render/material_recipe.cpp"
         "${flop_source_dir}/render/texture_cache.cpp")
-    add_dependencies(flop_renderer_probe flop)
-    target_link_libraries(flop_renderer_probe PRIVATE flop_core SDL3::SDL3)
-    target_include_directories(flop_renderer_probe PRIVATE "${shader_dir}")
+    target_link_libraries(flop_renderer_probe PRIVATE flop_core SDL3::SDL3 flop_shader_assets)
     target_include_directories(flop_renderer_probe SYSTEM PRIVATE "${stb_SOURCE_DIR}")
     target_compile_definitions(flop_renderer_probe PRIVATE FLOP_RENDER_TESTING)
     if(WIN32)
@@ -60,9 +64,7 @@ if("craft/sprite" IN_LIST registered_shaders)
         "${flop_source_dir}/render/renderer.cpp"
         "${flop_source_dir}/render/material_recipe.cpp"
         "${flop_source_dir}/render/texture_cache.cpp")
-    add_dependencies(flop_scene_lighting_probe flop)
-    target_link_libraries(flop_scene_lighting_probe PRIVATE flop_core SDL3::SDL3)
-    target_include_directories(flop_scene_lighting_probe PRIVATE "${shader_dir}")
+    target_link_libraries(flop_scene_lighting_probe PRIVATE flop_core SDL3::SDL3 flop_shader_assets)
     target_include_directories(flop_scene_lighting_probe SYSTEM PRIVATE "${stb_SOURCE_DIR}")
     target_compile_definitions(flop_scene_lighting_probe PRIVATE FLOP_RENDER_TESTING)
     if(WIN32)
