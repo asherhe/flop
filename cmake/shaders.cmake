@@ -29,6 +29,17 @@ file(GLOB_RECURSE shader_includes CONFIGURE_DEPENDS
 # register a shader
 #   ID - identifier for shader
 #   SOURCE is relative to the shader directory
+function(flop_compile_shader source output profile entry format)
+  set(flags)
+  if(format STREQUAL spirv)
+    list(APPEND flags -spirv -fspv-target-env=vulkan1.0)
+  endif()
+  add_custom_command(OUTPUT "${output}"
+    COMMAND "${dxc}" -T "${profile}" -E "${entry}" ${flags} -Fo "${output}" "${source}"
+    DEPENDS "${source}" "${dxc}" ${ARGN}
+    VERBATIM)
+endfunction()
+
 function(flop_add_shader)
   set(shader_script_dir "${CMAKE_CURRENT_FUNCTION_LIST_DIR}")
   cmake_parse_arguments(SHADER "RESOURCE_FREE" "ID;SOURCE;VERTEX_ENTRY;FRAGMENT_ENTRY" "" ${ARGN})
@@ -74,13 +85,7 @@ function(flop_add_shader)
       set(output "${shader_dir}/${SHADER_ID}.${stage}.${format}")
       get_filename_component(output_dir "${output}" DIRECTORY)
       file(MAKE_DIRECTORY "${output_dir}")
-      set(flags)
-      if("${format}" STREQUAL "spirv")
-        list(APPEND flags -spirv -fspv-target-env=vulkan1.0)
-      endif()
-      add_custom_command(OUTPUT "${output}"
-        COMMAND "${dxc}" -T "${profile}" -E "${entry}" ${flags} -Fo "${output}" "${shader_source}"
-        DEPENDS "${shader_source}" "${dxc}" ${shader_includes} VERBATIM)
+      flop_compile_shader("${shader_source}" "${output}" "${profile}" "${entry}" "${format}" ${shader_includes})
       set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_OUTPUTS "${output}")
       set_property(GLOBAL APPEND_STRING PROPERTY FLOP_SHADER_MANIFEST
         "${SHADER_ID}|${stage}|${format}|${entry}|${output}|${reflection}|${SHADER_RESOURCE_FREE}|${dxil_reflection}\n")

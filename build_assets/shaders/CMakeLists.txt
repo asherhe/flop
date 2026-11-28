@@ -1,4 +1,3 @@
-flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)
 flop_add_shader(ID craft/sprite SOURCE craft/sprite.hlsl)
 flop_add_shader(ID craft/lit_sprite SOURCE craft/lit_sprite.hlsl)
 flop_add_shader(ID particle SOURCE particle.hlsl)

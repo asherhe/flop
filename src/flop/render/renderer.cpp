@@ -147,18 +147,14 @@ SDL_GPUGraphicsPipeline *create_pipeline(
 
 Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : window_(window), resolver_(resolver) {
   SDL_GPUShaderFormat formats = SDL_GPU_SHADERFORMAT_INVALID;
-  if (shaders::contains(shaders::manifest, "test_tri", "vertex", "spirv") &&
-      shaders::contains(shaders::manifest, "test_tri", "fragment", "spirv") &&
-      shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "spirv") &&
+  if (shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "spirv") &&
       shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "fragment", "spirv"))
     formats |= SDL_GPU_SHADERFORMAT_SPIRV;
-  if (shaders::contains(shaders::manifest, "test_tri", "vertex", "dxil") &&
-      shaders::contains(shaders::manifest, "test_tri", "fragment", "dxil") &&
-      shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "dxil") &&
+  if (shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "vertex", "dxil") &&
       shaders::contains(shaders::manifest, craft_sprite_recipe.shader, "fragment", "dxil"))
     formats |= SDL_GPU_SHADERFORMAT_DXIL;
   if (formats == SDL_GPU_SHADERFORMAT_INVALID) {
-    throw std::runtime_error("test_tri and craft/sprite: no common complete packaged shader format; rebuild with shader reflection enabled");
+    throw std::runtime_error("craft/sprite: no complete packaged shader format; rebuild with shader reflection enabled");
   }
   device_ = SDL_CreateGPUDevice(formats, true, nullptr);
   if (!device_) {
@@ -183,7 +179,6 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
         )) {
       throw failure("SDL_SetGPUSwapchainParameters (linear SDR)");
     }
-    pipeline_ = create_pipeline(device_, window_, "test_tri", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     particle_pipeline_ = create_pipeline(device_, window_, "particle", true, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
     post_composite_pipeline_ = create_pipeline(device_, window_, "post/composite", false);
     sanitize_pipeline_ = create_pipeline(device_, window_, "post/sanitize", false, nullptr, nullptr, nullptr, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT);
@@ -240,8 +235,6 @@ Renderer::Renderer(SDL_Window *window, const config::AssetResolver &resolver) : 
       SDL_ReleaseGPUGraphicsPipeline(device_, point_light_pipeline_);
     if (lit_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, lit_pipeline_);
-    if (pipeline_)
-      SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
     SDL_DestroyGPUDevice(device_);
     device_ = nullptr;
@@ -281,7 +274,6 @@ Renderer::~Renderer() {
       SDL_ReleaseGPUGraphicsPipeline(device_, point_light_pipeline_);
     if (lit_pipeline_)
       SDL_ReleaseGPUGraphicsPipeline(device_, lit_pipeline_);
-    SDL_ReleaseGPUGraphicsPipeline(device_, pipeline_);
     SDL_ReleaseWindowFromGPUDevice(device_, window_);
     SDL_DestroyGPUDevice(device_);
   }
@@ -502,7 +494,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
       SDL_SubmitGPUCommandBuffer(commands);
       throw error;
     }
-    if (craft_pipeline_ && frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
+    if (frame.camera.viewport_width > 0 && frame.camera.viewport_height > 0) {
       SDL_BindGPUGraphicsPipeline(pass, particle_pipeline_);
       for (const auto &particle : frame.particles) {
         struct ParticleGeometry { std::array<float, 4> origin_viewport, xy_axis, color; };
@@ -541,9 +533,6 @@ void Renderer::present(const view::FrameDrawData &frame) {
         }
         SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
       }
-    } else if (!craft_pipeline_) {
-      SDL_BindGPUGraphicsPipeline(pass, pipeline_);
-      SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
     }
     SDL_EndGPURenderPass(pass);
     target.texture = sanitized_texture_;
