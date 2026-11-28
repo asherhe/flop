@@ -135,10 +135,10 @@ if(FLOP_BUILD_GAME)
     set(smaa_header "${shader_dir}/smaa_lookup.hpp")
     add_custom_command(OUTPUT "${smaa_header}"
         COMMAND "${CMAKE_COMMAND}" "-DOUTPUT=${smaa_header}"
-            "-DINPUT_DIR=${CMAKE_CURRENT_SOURCE_DIR}/src/flop/render/resources/smaa"
+            "-DINPUT_DIR=${CMAKE_CURRENT_SOURCE_DIR}/build_assets/resources/smaa"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_smaa.cmake"
-        DEPENDS src/flop/render/resources/smaa/area.png
-            src/flop/render/resources/smaa/search.png cmake/embed_smaa.cmake VERBATIM)
+        DEPENDS build_assets/resources/smaa/area.png
+            build_assets/resources/smaa/search.png cmake/embed_smaa.cmake VERBATIM)
     add_custom_target(flop_smaa_lookup DEPENDS "${smaa_header}")
     add_dependencies(flop flop_smaa_lookup)
     flop_add_shader(ID test_tri SOURCE test_tri.hlsl RESOURCE_FREE)

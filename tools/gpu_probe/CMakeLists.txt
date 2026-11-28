@@ -83,7 +83,7 @@ foreach(stage IN ITEMS vertex fragment)
             list(APPEND flags -spirv -fspv-target-env=vulkan1.0)
         endif()
         set(output "${CMAKE_CURRENT_BINARY_DIR}/craft/${stage}.${format}")
-        set(source "${CMAKE_SOURCE_DIR}/src/flop/render/shaders/craft/sprite.hlsl")
+        set(source "${CMAKE_SOURCE_DIR}/build_assets/shaders/craft/sprite.hlsl")
         add_custom_command(OUTPUT "${output}"
             COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/craft"
             COMMAND "${dxc}" -T "${profile}" -E "${stage}" ${flags} -Fo "${output}" "${source}"

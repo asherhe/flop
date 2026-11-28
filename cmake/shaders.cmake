@@ -69,7 +69,7 @@ set(shader_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
 file(MAKE_DIRECTORY "${shader_dir}")
 # Recompile on shared include changes, including when an include is added or removed.
 file(GLOB_RECURSE shader_includes CONFIGURE_DEPENDS
-     "${CMAKE_CURRENT_SOURCE_DIR}/src/flop/render/shaders/*.hlsli")
+     "${CMAKE_CURRENT_SOURCE_DIR}/build_assets/shaders/*.hlsli")
 
 # register a shader
 #   ID - identifier for shader
@@ -87,7 +87,7 @@ function(flop_add_shader)
     message(FATAL_ERROR "Duplicate shader ID '${SHADER_ID}'")
   endif()
   set_property(GLOBAL APPEND PROPERTY FLOP_SHADER_IDS "${SHADER_ID}")
-  set(shader_source "${CMAKE_CURRENT_SOURCE_DIR}/src/flop/render/shaders/${SHADER_SOURCE}")
+  set(shader_source "${CMAKE_CURRENT_SOURCE_DIR}/build_assets/shaders/${SHADER_SOURCE}")
   if(NOT EXISTS "${shader_source}")
     message(FATAL_ERROR "Shader '${SHADER_ID}' source not found: ${shader_source}")
   endif()
