@@ -28,6 +28,27 @@ struct alignas(16) SpriteGeometry {
 static_assert(sizeof(SpriteGeometry) == 8 * sizeof(float));
 static_assert(offsetof(SpriteGeometry, x_axis_x) == 4 * sizeof(float));
 
+struct NormalGeometry {
+  SpriteGeometry quad;
+  std::array<float, 4> rotation;
+};
+static_assert(offsetof(NormalGeometry, rotation) == 8 * sizeof(float));
+static_assert(sizeof(NormalGeometry) == 12 * sizeof(float));
+
+SpriteGeometry pack_sprite_geometry(const view::SpriteDraw &sprite, const view::CameraState &camera) {
+  const auto &corners = sprite.corners_pixels;
+  return {
+      corners[0].x,
+      corners[0].y,
+      static_cast<float>(camera.viewport_width),
+      static_cast<float>(camera.viewport_height),
+      corners[1].x - corners[0].x,
+      corners[1].y - corners[0].y,
+      corners[3].x - corners[0].x,
+      corners[3].y - corners[0].y
+  };
+}
+
 std::runtime_error failure(const char *operation) {
   return std::runtime_error(std::string(operation) + ": " + SDL_GetError());
 }
@@ -432,12 +453,8 @@ void Renderer::present(const view::FrameDrawData &frame) {
         const auto &maps = sprite_textures[i];
         if (!maps.lit) continue;
         const auto &sprite = frame.sprites[i];
-        const auto &corners = sprite.corners_pixels;
-        struct NormalGeometry { std::array<float, 4> origin, viewport, rotation; };
         const NormalGeometry geometry{
-            {corners[0].x, corners[0].y, corners[1].x - corners[0].x, corners[1].y - corners[0].y},
-            {corners[3].x - corners[0].x, corners[3].y - corners[0].y,
-             static_cast<float>(frame.camera.viewport_width), static_cast<float>(frame.camera.viewport_height)},
+            pack_sprite_geometry(sprite, frame.camera),
             {static_cast<float>(std::cos(sprite.angle_rad)), static_cast<float>(std::sin(sprite.angle_rad)), 0, 0}};
         SDL_PushGPUVertexUniformData(commands, 0, &geometry, sizeof(geometry));
         SDL_GPUTextureSamplerBinding bindings[]{{maps.albedo, sprite_sampler_}, {maps.normal, sprite_sampler_}};
@@ -504,17 +521,7 @@ void Renderer::present(const view::FrameDrawData &frame) {
       for (std::size_t i = 0; i < frame.sprites.size(); ++i) {
         const auto &maps = sprite_textures[i];
         SDL_BindGPUGraphicsPipeline(pass, maps.lit ? lit_pipeline_ : craft_pipeline_);
-        const auto &corners = frame.sprites[i].corners_pixels;
-        const SpriteGeometry geometry{
-            corners[0].x,
-            corners[0].y,
-            static_cast<float>(frame.camera.viewport_width),
-            static_cast<float>(frame.camera.viewport_height),
-            corners[1].x - corners[0].x,
-            corners[1].y - corners[0].y,
-            corners[3].x - corners[0].x,
-            corners[3].y - corners[0].y
-        };
+        const auto geometry = pack_sprite_geometry(frame.sprites[i], frame.camera);
         const auto &bindings = maps.lit ? lit_bindings_.geometry : craft_bindings_;
         SDL_PushGPUVertexUniformData(commands, bindings.uniform_slot, &geometry, sizeof(geometry));
         SDL_GPUTextureSamplerBinding binding{maps.albedo, sprite_sampler_};
