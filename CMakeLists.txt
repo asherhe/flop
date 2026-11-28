@@ -17,6 +17,8 @@ include(CTest)
 include(dependencies)
 
 if(FLOP_BUILD_GAME)
+    include(shader_toolchain)
+    add_subdirectory(tools/reflection)
     add_subdirectory("${FLOP_BUILD_ASSETS_DIR}" generated)
 endif()
 
